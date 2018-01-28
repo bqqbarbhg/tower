@@ -25,10 +25,12 @@ class FbxAsset(filename: String) extends Asset(filename) {
   }
 
   private val animations = new ArrayBuffer[Animation]
+  private val meshes = new ArrayBuffer[Mesh]
 
   {
     val scene = aiImportFile(filename, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices)
     val sceneAnimations = collect(scene.mAnimations, scene.mNumAnimations, AIAnimation.create)
+    val sceneMeshes = collect(scene.mMeshes, scene.mNumMeshes, AIMesh.create)
 
     for (animation <- sceneAnimations) {
       val name = animation.mName.dataString
@@ -36,9 +38,15 @@ class FbxAsset(filename: String) extends Asset(filename) {
       animations += anim
     }
 
+    for (sceneMesh <- sceneMeshes) {
+      val name = sceneMesh.mName.dataString
+      val mesh = new Mesh(name)
+      meshes += mesh
+    }
+
     aiReleaseImport(scene)
   }
 
-  def resources: Seq[Resource] = animations
+  def resources: Seq[Resource] = animations ++ meshes
 
 }
