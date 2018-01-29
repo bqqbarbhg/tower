@@ -8,7 +8,7 @@ object Asset {
     val ext = filename.substring(extBegin + 1).toLowerCase
 
     ext match {
-      case "fbx" => Some(() => new asset.FbxAsset(filename))
+      case "fbx" => Some(() => new asset.AssimpAsset(filename))
       case _ => None
     }
   }
