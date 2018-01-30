@@ -5,8 +5,8 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 
 import tower.authoring.Asset
-import tower.authoring.output.AnimationFile
-import tower.authoring.processing.AnimationOptimization
+import tower.authoring.output.{AnimationFile, MeshFile}
+import tower.authoring.processing.{AnimationOptimization, MeshPreprocessing}
 import tower.authoring.resource._
 
 import scala.reflect.io.Path
@@ -54,9 +54,17 @@ object ResourceProcesser extends App {
                 siz
               })
 
-            val file = Paths.get(dataRootPath, relativeFilename + "." + a.name + ".s2an").toFile
-            file.getParentFile.mkdirs()
-            AnimationFile.save(file.getAbsolutePath, a)
+              val file = Paths.get(dataRootPath, relativeFilename + "." + a.name + ".s2an").toFile
+              file.getParentFile.mkdirs()
+              AnimationFile.save(file.getAbsolutePath, a)
+
+            case m: MeshResource =>
+              MeshPreprocessing.sortBoneWeights(m)
+
+              val file = Paths.get(dataRootPath, relativeFilename + "." + m.name + ".s2ms").toFile
+              file.getParentFile.mkdirs()
+              MeshFile.save(file.getAbsolutePath, m)
+
 
             case _ =>
           }

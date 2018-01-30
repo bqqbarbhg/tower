@@ -36,7 +36,8 @@ class AssimpAsset(filename: String) extends Asset(filename) {
   private val meshes = new ArrayBuffer[MeshResource]
 
   {
-    val aScene = aiImportFile(filename, aiProcess_Triangulate | aiProcess_JoinIdenticalVertices)
+    val flags = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_Debone | aiProcess_GenNormals | aiProcess_GenUVCoords | aiProcess_CalcTangentSpace
+    val aScene = aiImportFile(filename, flags)
     val aAnims = collect(aScene.mAnimations, aScene.mNumAnimations, AIAnimation.create)
     val aMeshes = collect(aScene.mMeshes, aScene.mNumMeshes, AIMesh.create)
 
@@ -60,6 +61,62 @@ class AssimpAsset(filename: String) extends Asset(filename) {
       val name = aMesh.mName.dataString
       val mesh = new MeshResource(name)
       meshes += mesh
+
+      val numVerts = aMesh.mNumVertices
+      mesh.vertices = Array.fill(numVerts)(new Vertex)
+      for (i <- 0 until numVerts) {
+        mesh.vertices(i).position = convertVec3(aMesh.mVertices.get(i))
+
+        // Normals are always available
+        val z = convertVec3(aMesh.mNormals.get(i))
+
+        // If there's no tangents generate some dummy tangent space
+        val x = if (aMesh.mTangents != null) {
+          convertVec3(aMesh.mTangents.get(i))
+        } else if (math.abs(z dot Vector3(0.0, 0.0, 1.0)) < 0.5) {
+          Vector3(0.0, 0.0, 1.0)
+        } else {
+          Vector3(0.0, 1.0, 0.0)
+        }
+        val y = if (aMesh.mBitangents != null) {
+         convertVec3(aMesh.mBitangents.get(i))
+        } else {
+          (z cross x).normalize
+        }
+
+        val qw = math.sqrt(1 + x.x + y.y + z.z)
+        val qx = (y.z - z.y) / (4.0 * qw)
+        val qy = (z.x - x.z) / (4.0 * qw)
+        val qz = (x.y - y.x) / (4.0 * qw)
+        mesh.vertices(i).tangentSpace = Quaternion(qx, qy, qz, qw)
+      }
+
+      val uvs = aMesh.mTextureCoords(0)
+      if (uvs != null) {
+        for (i <- 0 until numVerts) {
+          val uv = uvs.get(i)
+          mesh.vertices(i).uv = Vector2(uv.x, uv.y)
+        }
+      }
+
+      val aBones = collect(aMesh.mBones, aMesh.mNumBones, AIBone.create)
+      for ((aBone, boneIndex) <- aBones.zipWithIndex) {
+        mesh.boneNames += aBone.mName.dataString
+        for (weightI <- 0 until aBone.mNumWeights) {
+          val aWeight = aBone.mWeights.get(weightI)
+          mesh.vertices(aWeight.mVertexId).bones += BoneWeight(boneIndex, aWeight.mWeight)
+        }
+      }
+
+      val numIndices = aMesh.mNumFaces * 3
+      mesh.indices = new Array[Int](numIndices)
+      for (i <- 0 until aMesh.mNumFaces) {
+        val aFace = aMesh.mFaces.get(i)
+        mesh.indices(i * 3 + 0) = aFace.mIndices.get(0)
+        mesh.indices(i * 3 + 1) = aFace.mIndices.get(1)
+        mesh.indices(i * 3 + 2) = aFace.mIndices.get(2)
+      }
+
     }
 
     aiReleaseImport(aScene)

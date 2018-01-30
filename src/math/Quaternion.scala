@@ -1,6 +1,8 @@
 package tower.math
 
 object Quaternion {
+  val Identity = Quaternion(0.0, 0.0, 0.0, 1.0)
+
   def lerp(a: Quaternion, b: Quaternion, t: Double): Quaternion = a * (1.0 - t) + b * t
 }
 

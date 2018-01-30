@@ -1,6 +1,8 @@
 package tower.math
 
 object Vector3 {
+  val Zero = Vector3(0.0, 0.0, 0.0)
+
   def lerp(a: Vector3, b: Vector3, t: Double): Vector3 = a * (1.0 - t) + b * t
 }
 
@@ -13,5 +15,8 @@ case class Vector3(x: Double, y: Double, z: Double) {
   def /(f: Double): Vector3 = this * (1.0 / f)
   def +(v: Vector3): Vector3 = Vector3(x + v.x, y + v.y, z + v.z)
   def -(v: Vector3): Vector3 = Vector3(x - v.x, y - v.y, z - v.z)
+
+  def cross(v: Vector3): Vector3 = Vector3(y*v.z - v.y*z, z*v.x - v.z*x, x*v.y - v.x*y)
+  def dot(v: Vector3): Double = x*v.x + y*v.y + z*v.z
 
 }
