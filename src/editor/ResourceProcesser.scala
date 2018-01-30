@@ -1,12 +1,15 @@
-package editor
+package tower.editor
 
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
+import java.nio.file.{Files, Paths}
 
-import authoring.Asset
-import authoring.processing.AnimationOptimization
-import authoring.resource._
+import tower.authoring.Asset
+import tower.authoring.output.AnimationFile
+import tower.authoring.processing.AnimationOptimization
+import tower.authoring.resource._
+
+import scala.reflect.io.Path
 
 object ResourceProcesser extends App {
 
@@ -20,24 +23,40 @@ object ResourceProcesser extends App {
     })
   }
 
-  for (file <- listFilesRecursive(new File("asset"))) {
+  val assetRoot = new File("asset")
+  val assetRootPath = assetRoot.getAbsolutePath
+
+  val dataRoot = new File("data")
+  val dataRootPath = dataRoot.getAbsolutePath
+
+  for (file <- listFilesRecursive(assetRoot)) {
     Asset.deferLoad(file.getAbsolutePath) match {
       case Some(loader) =>
-        println(s"Found asset: ${file}")
+        val relativeFilename = file.getAbsolutePath.substring(assetRootPath.length + 1)
+
+        println(s"Found asset: ${relativeFilename}")
         val asset = loader()
         for (res <- asset.resources) {
           println(s"  Resource: ${res.name} (${res.getClass.getName})")
 
           res match {
-            case a: Animation =>
+            case a: AnimationResource =>
               a.timelines = a.timelines.map(timeline => {
                 println(s"  .. Optimizing timeline: ${timeline.boneName}")
                 val error = 0.01
-                val rot = AnimationOptimization.reduceRotationKeyframes(timeline, 0.01)
-                println(s"  .... Reduced rotation keyframes: ${timeline.rot.length} -> ${rot.rot.length} (max error ${error})")
+                val rot = AnimationOptimization.reduceRotationKeyframes(timeline, 0.005)
+                println(s"  .... Reduced rotation keyframes: ${timeline.rot.length} -> ${rot.rot.length} (max error ${0.005})")
+                val pos = AnimationOptimization.reducePositionKeyframes(rot, 0.1)
+                println(s"  .... Reduced position keyframes: ${rot.pos.length} -> ${pos.pos.length} (max error ${0.1})")
+                val siz = AnimationOptimization.reduceSizeKeyframes(pos, 0.05)
+                println(s"  .... Reduced size     keyframes: ${rot.pos.length} -> ${pos.pos.length} (max error ${0.05})")
 
-                rot
+                siz
               })
+
+            val file = Paths.get(dataRootPath, relativeFilename + "." + a.name + ".s2an").toFile
+            file.getParentFile.mkdirs()
+            AnimationFile.save(file.getAbsolutePath, a)
 
             case _ =>
           }

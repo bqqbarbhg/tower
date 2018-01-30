@@ -1,55 +1,76 @@
-package util
-
-/*
+package tower.util
 
 import java.nio.ByteBuffer
+import java.io.OutputStream
 
-case class SerializationException(message: String) extends Exception(message)
-case class DeserializationException(message: String) extends Exception(message)
+import tower.Identifier
+
+case class SerializationException(msg: String) extends Exception(msg)
 
 object Serialization {
 
-  private def safeAscii(str: String): String = {
-    str.map(c => {
-      if (c >= ' ' && c <= '~') c
-      else f"\\x${c.toInt}%04x"
-    })
-  }
+  implicit class ByteBufferExtension(val buffer: ByteBuffer) extends AnyVal {
 
-  implicit class ExtendedByteBuffer(buf: ByteBuffer) {
-
-    /**
-      * Write a magic number to the header
-      * @param magic 4 character ASCII code
-      */
+    /** Writes a 4-byte ASCII magic number */
     def putMagic(magic: String): Unit = {
-      if (magic.length != 4) {
-        throw SerializationException(s"Expected magic to have 4 characters, got ${magic.length}")
-      }
-
-      buf.put(magic.map(_.toChar).toArray)
+      val chars = magic.map(_.toByte).toArray
+      buffer.put(chars)
     }
 
-    /**
-      * Verify a magic number in the header
-      * @param magic Expected 4 character ASCII code
-      */
+    /** Verifies a 4-byte ASCII magic number */
     def verifyMagic(magic: String): Unit = {
-      if (magic.length != 4) {
-        throw DeserializationException(s"Expected reference magic to have 4 characters, got ${magic.length}")
-      }
+      val ref = magic.map(_.toByte).toArray
+      val chars = new Array[Byte](4)
+      buffer.get(chars)
+      if (ref != chars) throw SerializationException(s"Invalid magic, expected $magic!")
+    }
 
-      val ref = new Array[Byte](4)
-      buf.get(ref)
+    /** Writes version number as 32-bit integer */
+    def putVersion(version: Int): Unit = buffer.putInt(version)
 
-      val refS = ref.map(_.toChar).toString
-      if (ref != refS) {
-        throw DeserializationException(s"Magic '${safeAscii(refS)}' doesn't match expected '$magic'")
+    /** Reads version number as 32-bit integer and checks support */
+    def getVersion(maxVersion: Int, minVersion: Int = 1): Int = {
+      val version = buffer.getInt()
+      if (version < minVersion || version > maxVersion)
+        throw SerializationException(s"Unsupported version, expected between: $minVersion - $maxVersion")
+      version
+    }
+
+    /** Writes the contents of this buffer (up to current position) to a stream. */
+    def writeTo(stream: OutputStream): Unit = {
+      val chunk = new Array[Byte](64 * 1024)
+      val copy = buffer.duplicate()
+      copy.position(0)
+      while (copy.position < buffer.position) {
+        val toCopy = scala.math.min(chunk.size, buffer.position - copy.position)
+        copy.get(chunk, 0, toCopy)
+        stream.write(chunk, 0, toCopy)
       }
     }
+
+    /** Writes a string with leading size and UTF-8 encoded content padded to 4-byte boundary */
+    def putString(str: String): Unit = {
+      val utf8 = str.getBytes("UTF-8")
+      val pad = (4 - (utf8.length + 2) % 4) % 4
+      buffer.putShort(str.length.toShort)
+      buffer.put(utf8)
+      for (p <- 0 until pad) buffer.put(0.toByte)
+    }
+
+    /** Reads a string with leading size and UTF-8 encoded content padded to 4-byte boundary */
+    def getString(): String = {
+      val length = buffer.getShort()
+      val pad = (4 - (length + 2) % 4) % 4
+      val utf8 = new Array[Byte](length + pad)
+      buffer.get(utf8)
+      new String(utf8, 0, length, "UTF-8")
+    }
+
+    /** Writes a identifier with leading size and UTF-8 encoded content padded to 4-byte boundary */
+    def putIdentifier(str: String): Unit = putString(str)
+    /** Reads a identifier with leading size and UTF-8 encoded content padded to 4-byte boundary */
+    def getIdentifier(): Identifier = Identifier(buffer.getString())
 
   }
 
 }
-
-*/

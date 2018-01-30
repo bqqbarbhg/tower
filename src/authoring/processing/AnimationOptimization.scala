@@ -1,7 +1,7 @@
-package authoring.processing
+package tower.authoring.processing
 
-import authoring.resource._
-import util.math._
+import tower.authoring.resource._
+import tower.math._
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -78,14 +78,14 @@ object AnimationOptimization {
   def reduceRotationKeyframes(timeline: Timeline, maximumError: Double): Timeline = {
 
     def canRangeBeReplaced(begin: Int, end: Int): Boolean = {
-      val a: FrameRot = timeline.rot(begin)
-      val b: FrameRot = timeline.rot(end)
+      val a: FrameQuat = timeline.rot(begin)
+      val b: FrameQuat = timeline.rot(end)
 
       for (index <- (begin + 1) to (end - 1)) {
         val mid = timeline.rot(index)
         val t = (mid.time - a.time) / (b.time - a.time)
-        val quat = Quaternion.lerp(a.rot, b.rot, t).normalize
-        if ((mid.rot - quat).length > maximumError) return false
+        val quat = Quaternion.lerp(a.value, b.value, t).normalize
+        if ((mid.value - quat).length > maximumError) return false
       }
 
       true
@@ -94,6 +94,54 @@ object AnimationOptimization {
     val keepFrames = reduceKeyframes(timeline.rot.length, canRangeBeReplaced)
     val newKeyframes = keepFrames.map(timeline.rot)
     timeline.copy(rot = newKeyframes.toArray)
+  }
+
+  /**
+    * Removes position keyframes that could be replaced by linear interpolation (within a relative error margin).
+    */
+  def reducePositionKeyframes(timeline: Timeline, maximumError: Double): Timeline = {
+
+    def canRangeBeReplaced(begin: Int, end: Int): Boolean = {
+      val a: FrameVec3 = timeline.pos(begin)
+      val b: FrameVec3 = timeline.pos(end)
+
+      for (index <- (begin + 1) to (end - 1)) {
+        val mid = timeline.pos(index)
+        val t = (mid.time - a.time) / (b.time - a.time)
+        val vec = Vector3.lerp(a.value, b.value, t)
+        if ((mid.value - vec).length > maximumError) return false
+      }
+
+      true
+    }
+
+    val keepFrames = reduceKeyframes(timeline.pos.length, canRangeBeReplaced)
+    val newKeyframes = keepFrames.map(timeline.pos)
+    timeline.copy(pos = newKeyframes.toArray)
+  }
+
+  /**
+    * Removes size keyframes that could be replaced by linear interpolation (within a relative error margin).
+    */
+  def reduceSizeKeyframes(timeline: Timeline, maximumError: Double): Timeline = {
+
+    def canRangeBeReplaced(begin: Int, end: Int): Boolean = {
+      val a: FrameVec3 = timeline.size(begin)
+      val b: FrameVec3 = timeline.size(end)
+
+      for (index <- (begin + 1) to (end - 1)) {
+        val mid = timeline.size(index)
+        val t = (mid.time - a.time) / (b.time - a.time)
+        val vec = Vector3.lerp(a.value, b.value, t)
+        if ((mid.value - vec).length > maximumError) return false
+      }
+
+      true
+    }
+
+    val keepFrames = reduceKeyframes(timeline.size.length, canRangeBeReplaced)
+    val newKeyframes = keepFrames.map(timeline.size)
+    timeline.copy(size = newKeyframes.toArray)
   }
 
 }

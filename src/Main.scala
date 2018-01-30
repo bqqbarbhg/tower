@@ -1,3 +1,5 @@
+package tower
+
 import org.lwjgl._
 import org.lwjgl.glfw._
 
