@@ -1,6 +1,7 @@
 package tower.util
 
-import java.nio.ByteBuffer
+import java.nio.{ByteBuffer, ByteOrder}
+import tower.util.Serialization.ByteBufferExtension
 
 /**
   * Since ByteBuffers are not deterministically garbage collected it's possible to run into a
@@ -8,7 +9,7 @@ import java.nio.ByteBuffer
   * time let's just use one for everything!
   */
 object SharedByteBuffer {
-  private val buffer = ByteBuffer.allocateDirect(64 * 1024 * 1024)
+  private val buffer = ByteBuffer.allocateDirect(64 * 1024 * 1024).order(ByteOrder.LITTLE_ENDIAN)
   private var taken: Boolean = false
 
   /** Requests access to a shared direct ByteBuffer */
@@ -16,7 +17,7 @@ object SharedByteBuffer {
     SharedByteBuffer.synchronized {
       assert(!taken)
       taken = true
-      buffer.duplicate()
+      buffer.duplicateEx()
     }
   }
 

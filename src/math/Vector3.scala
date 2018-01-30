@@ -15,6 +15,7 @@ case class Vector3(x: Double, y: Double, z: Double) {
   def /(f: Double): Vector3 = this * (1.0 / f)
   def +(v: Vector3): Vector3 = Vector3(x + v.x, y + v.y, z + v.z)
   def -(v: Vector3): Vector3 = Vector3(x - v.x, y - v.y, z - v.z)
+  def unary_- = Vector3(-x, -y, -z)
 
   def cross(v: Vector3): Vector3 = Vector3(y*v.z - v.y*z, z*v.x - v.z*x, x*v.y - v.x*y)
   def dot(v: Vector3): Double = x*v.x + y*v.y + z*v.z

@@ -61,6 +61,9 @@ object ResourceProcesser extends App {
             case m: MeshResource =>
               MeshPreprocessing.sortBoneWeights(m)
 
+              println(s"  Vertices: ${m.vertices.length}")
+              println(s"  Indices:  ${m.indices.length}")
+
               val file = Paths.get(dataRootPath, relativeFilename + "." + m.name + ".s2ms").toFile
               file.getParentFile.mkdirs()
               MeshFile.save(file.getAbsolutePath, m)

@@ -42,6 +42,10 @@ object MeshFile {
       for (boneI <- 0 until 4) {
         val bone = vert.bones.lift(boneI).getOrElse(BoneWeight(0, 0))
         buffer.put(bone.index.toByte)
+      }
+
+      for (boneI <- 0 until 4) {
+        val bone = vert.bones.lift(boneI).getOrElse(BoneWeight(0, 0))
         buffer.put(clamp((bone.weight * 255.0).toInt, 0, 255).toByte)
       }
     }

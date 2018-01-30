@@ -1,10 +1,10 @@
-package tower.engine
+package tower.engine.render
 
 import java.nio.ByteBuffer
 
-import tower.util.Serialization.ByteBufferExtension
 import Animation._
 import tower.Identifier
+import tower.util.Serialization.ByteBufferExtension
 
 object Animation {
 

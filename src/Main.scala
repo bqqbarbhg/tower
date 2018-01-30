@@ -12,11 +12,8 @@ import org.lwjgl.system.MemoryUtil._
 object Main extends App {
 
   glfwInit()
-
   val window = glfwCreateWindow(300, 300, "Hello World!", NULL, NULL)
-
   glfwMakeContextCurrent(window)
-
   org.lwjgl.opengl.GL.createCapabilities()
 
   while ( !glfwWindowShouldClose(window) ) {

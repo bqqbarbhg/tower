@@ -1,7 +1,7 @@
 package tower.util
 
-import java.nio.ByteBuffer
-import java.io.OutputStream
+import java.nio.{ByteBuffer, ByteOrder}
+import java.io.{InputStream, OutputStream}
 
 import tower.Identifier
 
@@ -22,7 +22,7 @@ object Serialization {
       val ref = magic.map(_.toByte).toArray
       val chars = new Array[Byte](4)
       buffer.get(chars)
-      if (ref != chars) throw SerializationException(s"Invalid magic, expected $magic!")
+      if (ref.deep != chars.deep) throw SerializationException(s"Invalid magic, expected $magic!")
     }
 
     /** Writes version number as 32-bit integer */
@@ -39,13 +39,27 @@ object Serialization {
     /** Writes the contents of this buffer (up to current position) to a stream. */
     def writeTo(stream: OutputStream): Unit = {
       val chunk = new Array[Byte](64 * 1024)
-      val copy = buffer.duplicate()
+      val copy = buffer.duplicateEx()
       copy.position(0)
       while (copy.position < buffer.position) {
         val toCopy = scala.math.min(chunk.size, buffer.position - copy.position)
         copy.get(chunk, 0, toCopy)
         stream.write(chunk, 0, toCopy)
       }
+    }
+
+    /** Reads the contents of a stream to this buffer and resets the position, returns the number of bytes read */
+    def readFrom(stream: InputStream): Int = {
+      val chunk = new Array[Byte](64 * 1024)
+      buffer.position(0)
+      var num = stream.read(chunk)
+      while (num > 0) {
+        buffer.put(chunk, 0, num)
+        num = stream.read(chunk)
+      }
+      val size = buffer.position
+      buffer.position(0)
+      size
     }
 
     /** Writes a string with leading size and UTF-8 encoded content padded to 4-byte boundary */
@@ -70,6 +84,9 @@ object Serialization {
     def putIdentifier(str: String): Unit = putString(str)
     /** Reads a identifier with leading size and UTF-8 encoded content padded to 4-byte boundary */
     def getIdentifier(): Identifier = Identifier(buffer.getString())
+
+    /** For some reason JVM forgets byte order when duplicating !?! */
+    def duplicateEx(): ByteBuffer = buffer.duplicate.order(buffer.order())
 
   }
 
