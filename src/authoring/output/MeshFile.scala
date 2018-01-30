@@ -6,6 +6,7 @@ import java.nio.ByteBuffer
 import tower.authoring.resource._
 import tower.util.Serialization.ByteBufferExtension
 import tower.math._
+import tower.util.SharedByteBuffer
 
 object MeshFile {
 
@@ -13,7 +14,7 @@ object MeshFile {
 
     // @Serialize(s2ms)
 
-    val buffer = ByteBuffer.allocateDirect(64 * 1024 * 1024)
+    val buffer = SharedByteBuffer.acquire()
 
     val Version = 1
     buffer.putMagic("s2ms")
@@ -52,6 +53,8 @@ object MeshFile {
     val output = new FileOutputStream(filename)
     buffer.writeTo(output)
     output.close()
+
+    SharedByteBuffer.release()
   }
 
 }

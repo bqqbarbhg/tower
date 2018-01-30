@@ -5,8 +5,8 @@ import java.nio.ByteBuffer
 
 import scala.collection.mutable.ArrayBuffer
 import tower.authoring.resource._
-
 import tower.util.Serialization.ByteBufferExtension
+import tower.util.SharedByteBuffer
 
 object AnimationFile {
 
@@ -14,7 +14,7 @@ object AnimationFile {
 
     // @Serialize(s2an)
 
-    val buffer = ByteBuffer.allocateDirect(64 * 1024 * 1024)
+    val buffer = SharedByteBuffer.acquire()
 
     val Version = 1
 
@@ -66,6 +66,8 @@ object AnimationFile {
     val output = new FileOutputStream(filename)
     buffer.writeTo(output)
     output.close()
+
+    SharedByteBuffer.release()
   }
 
 }
