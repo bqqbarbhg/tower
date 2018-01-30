@@ -54,7 +54,7 @@ object MeshFile {
     buffer.writeTo(output)
     output.close()
 
-    SharedByteBuffer.release()
+    SharedByteBuffer.release(buffer)
   }
 
 }
