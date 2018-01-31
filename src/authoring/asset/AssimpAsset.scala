@@ -119,6 +119,15 @@ class AssimpAsset(filename: String) extends Asset(filename) {
 
     }
 
+    def processNode(aNode: AINode): Unit = {
+      val aChildren = collect(aNode.mChildren, aNode.mNumChildren, AINode.create)
+      println(s"${aNode.mName.dataString}: ${aNode.mNumMeshes}")
+      for (aChild <- aChildren)
+        processNode(aChild)
+    }
+
+    processNode(aScene.mRootNode)
+
     aiReleaseImport(aScene)
   }
 
