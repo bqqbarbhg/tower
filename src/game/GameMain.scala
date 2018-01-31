@@ -113,13 +113,13 @@ object GameMain extends App {
   // -- Main loop
   while ( !glfwWindowShouldClose(window) ) {
 
-    time += 0.016 * 0.5
+    time += 0.016 * 2.5
 
     glClearColor(0x64 / 255.0f, 0x95 / 255.0f, 0xED / 255.0f, 1.0f)
     glClear(GL_COLOR_BUFFER_BIT)
 
     val proj = Matrix4.perspective(1280.0/720.0, scala.math.Pi / 2.0, 0.01, 1000.0)
-    val world = Matrix4.rotateY(time)
+    val world = Matrix4.rotateY(time).inverse
     val view = Matrix4.look(Vector3(0.0, 0.0, -20.0), Vector3(0.0, 0.0, 1.0))
 
     val wvp = proj * view * world
