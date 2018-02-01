@@ -60,7 +60,7 @@ object ResourceProcesser extends App {
 
             case m: MeshResource =>
               val MaxBonesPerVert = 4
-              val MaxBonesPerDraw = 32
+              val MaxBonesPerDraw = 12
 
               MeshProcessing.sortBoneWeights(m)
               MeshOptimization.limitBoneAmountPerVertex(m, MaxBonesPerVert)
@@ -73,11 +73,11 @@ object ResourceProcesser extends App {
                 println(s"    Vertices: ${part.vertices.length}")
                 println(s"    Indices:  ${part.indices.length}")
                 println(s"    Bones:  ${part.boneNames.length}")
-
-                val file = Paths.get(dataRootPath, relativeFilename + "." + part.name + ".s2ms").toFile
-                file.getParentFile.mkdirs()
-                MeshFile.save(file.getAbsolutePath, part)
               }
+
+              val file = Paths.get(dataRootPath, relativeFilename + "." + m.name + ".s2ms").toFile
+              file.getParentFile.mkdirs()
+              MeshFile.save(file.getAbsolutePath, m.name, parts)
 
             case _ =>
           }

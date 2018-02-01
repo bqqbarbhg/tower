@@ -4,6 +4,7 @@ import java.nio.{ByteBuffer, ByteOrder}
 import java.io.{InputStream, OutputStream}
 
 import tower.Identifier
+import tower.math.Matrix4
 
 case class SerializationException(msg: String) extends Exception(msg)
 
@@ -78,6 +79,48 @@ object Serialization {
       val utf8 = new Array[Byte](length + pad)
       buffer.get(utf8)
       new String(utf8, 0, length, "UTF-8")
+    }
+
+    /** Writes a Matrix4 with full precision */
+    def putMatrix4(m: Matrix4): Unit = {
+      buffer.putDouble(m.m11)
+      buffer.putDouble(m.m12)
+      buffer.putDouble(m.m13)
+      buffer.putDouble(m.m14)
+      buffer.putDouble(m.m21)
+      buffer.putDouble(m.m22)
+      buffer.putDouble(m.m23)
+      buffer.putDouble(m.m24)
+      buffer.putDouble(m.m31)
+      buffer.putDouble(m.m32)
+      buffer.putDouble(m.m33)
+      buffer.putDouble(m.m34)
+      buffer.putDouble(m.m41)
+      buffer.putDouble(m.m42)
+      buffer.putDouble(m.m43)
+      buffer.putDouble(m.m44)
+    }
+
+    /** Reads a Matrix4 with full precision */
+    def getMatrix4(): Matrix4 = {
+      val m = new Matrix4
+      m.m11 = buffer.getDouble()
+      m.m12 = buffer.getDouble()
+      m.m13 = buffer.getDouble()
+      m.m14 = buffer.getDouble()
+      m.m21 = buffer.getDouble()
+      m.m22 = buffer.getDouble()
+      m.m23 = buffer.getDouble()
+      m.m24 = buffer.getDouble()
+      m.m31 = buffer.getDouble()
+      m.m32 = buffer.getDouble()
+      m.m33 = buffer.getDouble()
+      m.m34 = buffer.getDouble()
+      m.m41 = buffer.getDouble()
+      m.m42 = buffer.getDouble()
+      m.m43 = buffer.getDouble()
+      m.m44 = buffer.getDouble()
+      m
     }
 
     /** Writes a identifier with leading size and UTF-8 encoded content padded to 4-byte boundary */

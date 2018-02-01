@@ -3,7 +3,15 @@ package tower.engine.render
 import tower.Identifier
 import tower.math._
 
+import java.io.InputStream
+import java.nio.ByteBuffer
+
+import tower.util.Serialization.ByteBufferExtension
+import tower.Identifier
+
 class Model {
+
+  var name: Identifier = Identifier.Empty
 
   // Nodes
   var transformToParent: Array[Matrix4] = Array[Matrix4]()
@@ -13,11 +21,64 @@ class Model {
   var numNodes: Int = 0
 
   // Meshes
-  var parentNode: Array[Int] = Array[Int]()
+  var meshParentNode: Array[Int] = Array[Int]()
+  var meshResource: Array[Identifier] = Array[Identifier]()
   var numMeshes: Int = 0
+
+  // Animations
+  var animResource: Array[Identifier] = Array[Identifier]()
+  var numAnims: Int = 0
 
   // Misc
   private val animationMappingCache = new java.util.IdentityHashMap[Animation, Array[Int]]
+
+  def load(buffer: ByteBuffer): Unit = {
+
+    // -- Load data
+
+    // @Serialize(s2md)
+    buffer.verifyMagic("s2md")
+    val MaxVersion = 1
+    val version = buffer.getVersion(MaxVersion)
+
+    // Model header
+    this.name = buffer.getIdentifier()
+    this.numNodes = buffer.getInt()
+    this.numMeshes = buffer.getInt()
+    this.numAnims = buffer.getInt()
+
+    // Nodes
+    this.transformToParent = new Array[Matrix4](this.numNodes)
+    this.transformToRoot = new Array[Matrix4](this.numNodes)
+    this.parentIndex = new Array[Int](this.numNodes)
+    this.nodeName = new Array[Identifier](this.numNodes)
+    for (i <- 0 until this.numNodes) {
+      this.transformToParent(i) = buffer.getMatrix4()
+      this.parentIndex(i) = buffer.getInt()
+      this.nodeName(i) = buffer.getIdentifier()
+    }
+
+    // Meshes
+    this.meshParentNode = new Array[Int](this.numNodes)
+    this.meshResource = new Array[Identifier](this.numNodes)
+    for (i <- 0 until this.numMeshes) {
+      this.meshParentNode(i) = buffer.getInt()
+      this.meshResource(i) = buffer.getIdentifier()
+    }
+
+    // Animations
+    this.animResource = new Array[Identifier](this.numAnims)
+    for (i <- 0 until this.numAnims) {
+      this.animResource(i) = buffer.getIdentifier()
+    }
+
+    // -- Compute transform to root
+    this.transformToRoot(0) = Matrix4.Identity
+    for (i <- 1 until this.numNodes) {
+      val parent = this.parentIndex(i)
+      this.transformToRoot(i) = this.transformToParent(i) * this.transformToRoot(parent)
+    }
+  }
 
   /**
     * Find a node by name. Returns -1 on failure (for performance reasons).

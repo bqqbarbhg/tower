@@ -2,8 +2,8 @@ package tower.game
 
 import java.util
 
-import tower.engine.render.{Animation, Mesh}
-import tower.engine.file.{DirectoryPackage, JarPackage, MultiPackage, ZipFilePackage}
+import tower.engine.render._
+import tower.engine.file._
 import tower.util.SharedByteBuffer
 import tower.util.Serialization.ByteBufferExtension
 import org.lwjgl._
@@ -15,6 +15,7 @@ import org.lwjgl.system.MemoryUtil._
 import org.lwjgl.opengl.GL11._
 import org.lwjgl.opengl.GL15._
 import org.lwjgl.opengl.GL20._
+import org.lwjgl.opengl.GL30._
 import tower.math._
 
 import scala.io.StdIn
@@ -97,7 +98,7 @@ object GameMain extends App {
       | varying vec3 v_normal;
       |
       | void main() {
-      |   float l = dot(v_normal, normalize(vec3(1.0, 1.0, 1.0)));
+      |   float l = dot(normalize(v_normal), normalize(vec3(1.0, 1.0, 1.0)));
       |   float lc = clamp(l * 0.5 + 0.5, 0.0, 1.0);
       |   float llc = length(v_normal) * 0.5;
       |   gl_FragColor = vec4(vec3(lc), 1.0);
@@ -141,12 +142,17 @@ object GameMain extends App {
 
     val wvp = proj * view * world
 
-    glUseProgram(prog)
-    val arr = new Array[Float](16)
-    wvp.store(arr)
-    glUniformMatrix4fv(u_wvp, false, arr)
+    for (part <- mesh.parts) {
+      glBindVertexArray(part.vertexArray)
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, part.indexBuffer)
 
-    glDrawElements(GL_TRIANGLES, mesh.numIndices, GL_UNSIGNED_SHORT, 0)
+      glUseProgram(prog)
+      val arr = new Array[Float](16)
+      wvp.store(arr)
+      glUniformMatrix4fv(u_wvp, false, arr)
+
+      glDrawElements(GL_TRIANGLES, part.numIndices, GL_UNSIGNED_SHORT, 0)
+    }
 
     glfwSwapBuffers(window)
     glfwPollEvents()

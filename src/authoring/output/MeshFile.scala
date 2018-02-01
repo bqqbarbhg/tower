@@ -10,19 +10,20 @@ import tower.util.SharedByteBuffer
 
 object MeshFile {
 
-  def save(filename: String, mesh: MeshResource): Unit = {
-
-    // @Serialize(s2ms)
-
-    val buffer = SharedByteBuffer.acquire()
+  def saveMesh(buffer: ByteBuffer, mesh: MeshResource): Unit = {
+    // @Serialize(s2mp)
 
     val Version = 1
-    buffer.putMagic("s2ms")
+    buffer.putMagic("s2mp")
     buffer.putVersion(Version)
 
-    buffer.putIdentifier(mesh.name)
     buffer.putInt(mesh.vertices.length)
     buffer.putInt(mesh.indices.length)
+    buffer.putInt(mesh.boneNames.length)
+
+    for (name <- mesh.boneNames) {
+      buffer.putIdentifier(name)
+    }
 
     val quat = new Array[Byte](4)
 
@@ -53,6 +54,27 @@ object MeshFile {
     for (index <- mesh.indices) {
       buffer.putShort(index.toShort)
     }
+
+    buffer.putMagic("E.mp")
+  }
+
+  def save(filename: String, name: String, parts: Seq[MeshResource]): Unit = {
+    // @Serialize(s2ms)
+
+    val buffer = SharedByteBuffer.acquire()
+
+    val Version = 1
+    buffer.putMagic("s2ms")
+    buffer.putVersion(1)
+
+    buffer.putIdentifier(name)
+    buffer.putInt(parts.length)
+
+    for (part <- parts) {
+      saveMesh(buffer, part)
+    }
+
+    buffer.putMagic("E.ms")
 
     val output = new FileOutputStream(filename)
     buffer.writeTo(output)

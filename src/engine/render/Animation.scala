@@ -203,5 +203,7 @@ class Animation {
     data = new Array[Float](dataSize)
     buffer.asFloatBuffer.get(this.data)
     buffer.position(buffer.position + dataSize * 4)
+
+    buffer.verifyMagic("E.an")
   }
 }

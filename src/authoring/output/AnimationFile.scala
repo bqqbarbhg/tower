@@ -63,6 +63,8 @@ object AnimationFile {
     buffer.asFloatBuffer.put(data.toArray)
     buffer.position(buffer.position + data.length * 4)
 
+    buffer.putMagic("E.an")
+
     val output = new FileOutputStream(filename)
     buffer.writeTo(output)
     output.close()
