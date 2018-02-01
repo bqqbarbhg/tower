@@ -10,7 +10,13 @@ object Vector3 {
 case class Vector3(x: Double, y: Double, z: Double) {
 
   def length: Double = math.sqrt(x*x + y*y + z*z)
-  def normalize: Vector3 = this * (1.0 / length)
+  def normalize: Vector3 = {
+    val len = length
+    if (scala.math.abs(len) < 0.0001)
+      throw new RuntimeException("Normalizing zero Vector3")
+    else
+      this * (1.0 / len)
+  }
 
   def *(f: Double): Vector3 = Vector3(x * f, y * f, z * f)
   def /(f: Double): Vector3 = this * (1.0 / f)

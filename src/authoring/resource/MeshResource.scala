@@ -12,11 +12,20 @@ class Vertex {
   var uv: Vector2 = Vector2.Zero
   var bones: ArrayBuffer[BoneWeight] = ArrayBuffer[BoneWeight]()
   var tangentSpace: Quaternion = Quaternion.Identity
+
+  def copy: Vertex = {
+    val vert = new Vertex
+    vert.position = position.copy()
+    vert.uv = uv.copy()
+    vert.bones = bones.map(_.copy())
+    vert.tangentSpace = tangentSpace.copy()
+    vert
+  }
 }
 
 class MeshResource(name: String) extends tower.authoring.Resource(name) {
 
-  val boneNames = ArrayBuffer[String]()
+  var boneNames = ArrayBuffer[String]()
   var vertices = Array[Vertex]()
   var indices = Array[Int]()
 

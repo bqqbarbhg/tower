@@ -72,9 +72,11 @@ class Mesh {
     vertexArray = glGenVertexArrays()
     glBindVertexArray(vertexArray)
     glEnableVertexAttribArray(0)
+    glEnableVertexAttribArray(1)
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer)
     glVertexAttribPointer(0, 4, GL_FLOAT, false, Mesh.VertexSizeBytes, 0)
+    glVertexAttribPointer(1, 4, GL_BYTE, true, Mesh.VertexSizeBytes, 5 * 4)
 
   }
 

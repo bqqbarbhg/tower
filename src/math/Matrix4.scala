@@ -37,7 +37,7 @@ object Matrix4 {
   }
 
   def rotateX(angle: Double): Matrix4 = {
-    val m = Matrix4.Identity
+    val m = Matrix4.makeIdentity
     val c = math.cos(angle)
     val s = math.sin(angle)
     m.m22 = c
@@ -48,7 +48,7 @@ object Matrix4 {
   }
 
   def rotateY(angle: Double): Matrix4 = {
-    val m = Matrix4.Identity
+    val m = Matrix4.makeIdentity
     val c = math.cos(angle)
     val s = math.sin(angle)
     m.m11 = c
@@ -76,7 +76,7 @@ object Matrix4 {
     r
   }
 
-  def unsafeWorld(r: Matrix4, orientation: Quaternion, scale: Vector3, origin: Vector3 = Vector3.Zero): Unit = {
+  def unsafeWorldRot(r: Matrix4, orientation: Quaternion, scale: Vector3, origin: Vector3 = Vector3.Zero): Unit = {
 
     val q = orientation
     val s = scale
@@ -121,9 +121,9 @@ object Matrix4 {
     r.m44 = 1.0
   }
 
-  def world(orientation: Quaternion, scale: Vector3, origin: Vector3 = Vector3.Zero): Matrix4 = {
+  def worldRot(orientation: Quaternion, scale: Vector3, origin: Vector3 = Vector3.Zero): Matrix4 = {
     val r = new Matrix4()
-    unsafeWorld(r)
+    unsafeWorldRot(r, orientation, scale, origin)
     r
   }
 

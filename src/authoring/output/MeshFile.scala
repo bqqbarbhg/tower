@@ -33,10 +33,10 @@ object MeshFile {
       buffer.putFloat(vert.uv.x.toFloat)
       buffer.putFloat(vert.uv.y.toFloat)
 
-      quat(0) = clamp((vert.tangentSpace.x * 128.0).toInt, -128, 127).toByte
-      quat(1) = clamp((vert.tangentSpace.y * 128.0).toInt, -128, 127).toByte
-      quat(2) = clamp((vert.tangentSpace.z * 128.0).toInt, -128, 127).toByte
-      quat(3) = clamp((vert.tangentSpace.w * 128.0).toInt, -128, 127).toByte
+      quat(0) = clamp((vert.tangentSpace.x * 128.0).toInt, -127, 127).toByte
+      quat(1) = clamp((vert.tangentSpace.y * 128.0).toInt, -127, 127).toByte
+      quat(2) = clamp((vert.tangentSpace.z * 128.0).toInt, -127, 127).toByte
+      quat(3) = clamp((vert.tangentSpace.w * 128.0).toInt, -127, 127).toByte
       buffer.put(quat)
 
       for (boneI <- 0 until 4) {

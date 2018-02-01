@@ -7,7 +7,7 @@ import scala.collection.mutable.ArrayBuffer
 
 object AnimationState {
 
-  class AnimationLayer(val animation: Animation, val model: Model) extends Layer {
+  class AnimationLayer(val animation: Animation, val model: Model) {
 
     val timelineToNode = model.resolveAnimationTimelineNodeIndices(animation)
     val animationState = Array.fill(animation.timelines.length * Animation.Timeline.StateSize)(0)
@@ -68,7 +68,7 @@ class AnimationState(val model: Model) {
       transform(ix).unsafeMul(model.transformToParent(ix), transform(parentIx))
 
       val frame = composition(ix)
-      Matrix4.unsafeWorld(tmpMatrix, frame.rotation, frame.scale, frame.position)
+      Matrix4.unsafeWorldRot(tmpMatrix, frame.rotation, frame.scale, frame.position)
       transform(ix).unsafeMulLeft(tmpMatrix)
 
       // Don't hang on to garbage

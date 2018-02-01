@@ -6,7 +6,7 @@ import java.nio.file.{Files, Paths}
 
 import tower.authoring.Asset
 import tower.authoring.output.{AnimationFile, MeshFile}
-import tower.authoring.processing.{AnimationOptimization, MeshPreprocessing}
+import tower.authoring.processing.{AnimationOptimization, MeshOptimization, MeshProcessing}
 import tower.authoring.resource._
 
 import scala.reflect.io.Path
@@ -59,15 +59,25 @@ object ResourceProcesser extends App {
               AnimationFile.save(file.getAbsolutePath, a)
 
             case m: MeshResource =>
-              MeshPreprocessing.sortBoneWeights(m)
+              val MaxBonesPerVert = 4
+              val MaxBonesPerDraw = 32
 
-              println(s"  Vertices: ${m.vertices.length}")
-              println(s"  Indices:  ${m.indices.length}")
+              MeshProcessing.sortBoneWeights(m)
+              MeshOptimization.limitBoneAmountPerVertex(m, MaxBonesPerVert)
+              MeshProcessing.normalizeBoneWeights(m)
 
-              val file = Paths.get(dataRootPath, relativeFilename + "." + m.name + ".s2ms").toFile
-              file.getParentFile.mkdirs()
-              MeshFile.save(file.getAbsolutePath, m)
+              val parts = MeshOptimization.splitMeshByBoneAmount(m, MaxBonesPerDraw)
+              println(s"  Parts: ${parts.length}")
+              for ((part, index) <- parts.zipWithIndex) {
+                println(s"  Part $index")
+                println(s"    Vertices: ${part.vertices.length}")
+                println(s"    Indices:  ${part.indices.length}")
+                println(s"    Bones:  ${part.boneNames.length}")
 
+                val file = Paths.get(dataRootPath, relativeFilename + "." + part.name + ".s2ms").toFile
+                file.getParentFile.mkdirs()
+                MeshFile.save(file.getAbsolutePath, part)
+              }
 
             case _ =>
           }

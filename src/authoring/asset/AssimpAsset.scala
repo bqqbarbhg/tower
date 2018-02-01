@@ -68,27 +68,33 @@ class AssimpAsset(filename: String) extends Asset(filename) {
         mesh.vertices(i).position = convertVec3(aMesh.mVertices.get(i))
 
         // Normals are always available
-        val z = convertVec3(aMesh.mNormals.get(i))
+        val z = convertVec3(aMesh.mNormals.get(i)).normalize
 
         // If there's no tangents generate some dummy tangent space
-        val x = if (aMesh.mTangents != null) {
-          convertVec3(aMesh.mTangents.get(i))
-        } else if (math.abs(z dot Vector3(0.0, 0.0, 1.0)) < 0.5) {
-          Vector3(0.0, 0.0, 1.0)
+        val (x, y) = if (aMesh.mTangents != null && aMesh.mBitangents != null) {
+          (convertVec3(aMesh.mTangents.get(i)).normalize, convertVec3(aMesh.mBitangents.get(i)).normalize)
         } else {
-          Vector3(0.0, 1.0, 0.0)
-        }
-        val y = if (aMesh.mBitangents != null) {
-         convertVec3(aMesh.mBitangents.get(i))
-        } else {
-          (z cross x).normalize
+          val ref = if (math.abs(z dot Vector3(0.0, 0.0, 1.0)) < 0.5) {
+            Vector3(0.0, 0.0, 1.0)
+          } else {
+            Vector3(0.0, 1.0, 0.0)
+          }
+
+          val yref = (z cross ref).normalize
+          val x = (z cross yref).normalize
+          val y = (z cross x).normalize
+          (x, y)
         }
 
-        val qw = math.sqrt(1 + x.x + y.y + z.z)
-        val qx = (y.z - z.y) / (4.0 * qw)
-        val qy = (z.x - x.z) / (4.0 * qw)
-        val qz = (x.y - y.x) / (4.0 * qw)
-        mesh.vertices(i).tangentSpace = Quaternion(qx, qy, qz, qw)
+        assert(math.abs(x.length - 1.0) < 0.001)
+        assert(math.abs(y.length - 1.0) < 0.001)
+        assert(math.abs(z.length - 1.0) < 0.001)
+        assert(math.abs(x dot y) < 0.001)
+        assert(math.abs(y dot z) < 0.001)
+        assert(math.abs(z dot x) < 0.001)
+        val quat = Quaternion.fromAxes(x, y, z)
+        assert(math.abs(quat.length - 1.0) < 0.001, s"Length should be 1, was ${quat.length} ($x $y $z)")
+        mesh.vertices(i).tangentSpace = quat.normalize
       }
 
       val uvs = aMesh.mTextureCoords(0)
@@ -121,7 +127,6 @@ class AssimpAsset(filename: String) extends Asset(filename) {
 
     def processNode(aNode: AINode): Unit = {
       val aChildren = collect(aNode.mChildren, aNode.mNumChildren, AINode.create)
-      println(s"${aNode.mName.dataString}: ${aNode.mNumMeshes}")
       for (aChild <- aChildren)
         processNode(aChild)
     }

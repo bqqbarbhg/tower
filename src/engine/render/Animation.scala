@@ -151,7 +151,7 @@ object Animation {
   object Frame {
     val Identity = Frame(Quaternion.Identity, Vector3.Zero, Vector3.One)
 
-    def lerp(a: Frame, b: Frame, t: Double): Frame Frame(
+    def lerp(a: Frame, b: Frame, t: Double): Frame = Frame(
       Quaternion.lerp(a.rotation, b.rotation, t),
       Vector3.lerp(a.position, b.position, t),
       Vector3.lerp(a.scale, b.scale, t),
