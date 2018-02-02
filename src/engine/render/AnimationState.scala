@@ -43,11 +43,11 @@ object AnimationState {
 
 class AnimationState(val model: Model) {
 
-  val transform = Array.fill(model.numNodes)(Matrix4.makeIdentity)
+  val transform = Array.fill(model.numNodes)(Matrix43.makeIdentity)
   val layers = new ArrayBuffer[AnimationLayer]()
-  var worldTransform = Matrix4.Identity
+  var worldTransform = Matrix43.Identity
 
-  private var tmpMatrix = new Matrix4()
+  private var tmpMatrix = new Matrix43()
 
   // Temporary, contains valid frames only during `apply`. Otherwise identity.
   private val composition = Array.fill(model.numNodes)(Animation.Frame.Identity)
@@ -65,7 +65,7 @@ class AnimationState(val model: Model) {
 
     {
       val frame = composition(0)
-      Matrix4.unsafeWorldRot(tmpMatrix, frame.rotation.normalize, frame.scale, frame.position)
+      Matrix43.unsafeWorldRot(tmpMatrix, frame.rotation.normalize, frame.scale, frame.position)
       transform(0).unsafeMul(worldTransform, tmpMatrix)
     }
 
@@ -74,7 +74,7 @@ class AnimationState(val model: Model) {
       val parentIx = model.parentIndex(ix)
 
       val frame = composition(ix)
-      Matrix4.unsafeWorldRot(tmpMatrix, frame.rotation.normalize, frame.scale, frame.position)
+      Matrix43.unsafeWorldRot(tmpMatrix, frame.rotation.normalize, frame.scale, frame.position)
 
       transform(ix).unsafeMul(transform(parentIx), tmpMatrix)
 

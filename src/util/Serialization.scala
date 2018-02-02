@@ -4,7 +4,7 @@ import java.nio.{ByteBuffer, ByteOrder}
 import java.io.{InputStream, OutputStream}
 
 import tower.Identifier
-import tower.math.Matrix4
+import tower.math.{Matrix4, Matrix43}
 
 case class SerializationException(msg: String) extends Exception(msg)
 
@@ -120,6 +120,60 @@ object Serialization {
       m.m42 = buffer.getDouble()
       m.m43 = buffer.getDouble()
       m.m44 = buffer.getDouble()
+      m
+    }
+
+    /** Writes a Matrix43 with full precision */
+    def putMatrix43(m: Matrix4): Unit = {
+      assert(math.abs(m.m41 - 0.0) < 0.0001)
+      assert(math.abs(m.m42 - 0.0) < 0.0001)
+      assert(math.abs(m.m43 - 0.0) < 0.0001)
+      assert(math.abs(m.m44 - 1.0) < 0.0001)
+      buffer.putDouble(m.m11)
+      buffer.putDouble(m.m12)
+      buffer.putDouble(m.m13)
+      buffer.putDouble(m.m14)
+      buffer.putDouble(m.m21)
+      buffer.putDouble(m.m22)
+      buffer.putDouble(m.m23)
+      buffer.putDouble(m.m24)
+      buffer.putDouble(m.m31)
+      buffer.putDouble(m.m32)
+      buffer.putDouble(m.m33)
+      buffer.putDouble(m.m34)
+    }
+
+    /** Writes a Matrix43 with full precision */
+    def putMatrix43(m: Matrix43): Unit = {
+      buffer.putDouble(m.m11)
+      buffer.putDouble(m.m12)
+      buffer.putDouble(m.m13)
+      buffer.putDouble(m.m14)
+      buffer.putDouble(m.m21)
+      buffer.putDouble(m.m22)
+      buffer.putDouble(m.m23)
+      buffer.putDouble(m.m24)
+      buffer.putDouble(m.m31)
+      buffer.putDouble(m.m32)
+      buffer.putDouble(m.m33)
+      buffer.putDouble(m.m34)
+    }
+
+    /** Reads a Matrix43 with full precision */
+    def getMatrix43(): Matrix43 = {
+      val m = new Matrix43
+      m.m11 = buffer.getDouble()
+      m.m12 = buffer.getDouble()
+      m.m13 = buffer.getDouble()
+      m.m14 = buffer.getDouble()
+      m.m21 = buffer.getDouble()
+      m.m22 = buffer.getDouble()
+      m.m23 = buffer.getDouble()
+      m.m24 = buffer.getDouble()
+      m.m31 = buffer.getDouble()
+      m.m32 = buffer.getDouble()
+      m.m33 = buffer.getDouble()
+      m.m34 = buffer.getDouble()
       m
     }
 

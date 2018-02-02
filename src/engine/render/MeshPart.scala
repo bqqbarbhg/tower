@@ -10,7 +10,7 @@ import org.lwjgl.opengl.GL30._
 import tower.util.Serialization.ByteBufferExtension
 import tower.Identifier
 import MeshPart._
-import tower.math.Matrix4
+import tower.math.Matrix43
 
 object MeshPart {
   val VertexSizeBytes = 3*4 + 2*4 + 4 + 4 + 4
@@ -28,7 +28,7 @@ class MeshPart {
   var numBones: Int = 0
 
   var boneNames: Array[Identifier] = Array[Identifier]()
-  var boneMeshToBone: Array[Matrix4] = Array[Matrix4]()
+  var boneMeshToBone: Array[Matrix43] = Array[Matrix43]()
 
   def load(buffer: ByteBuffer): Unit = {
 
@@ -46,10 +46,10 @@ class MeshPart {
 
     // Read bone names
     this.boneNames = new Array[Identifier](numBones)
-    this.boneMeshToBone = new Array[Matrix4](numBones)
+    this.boneMeshToBone = new Array[Matrix43](numBones)
     for (i <- 0 until numBones) {
       this.boneNames(i) = buffer.getIdentifier()
-      this.boneMeshToBone(i) = buffer.getMatrix4()
+      this.boneMeshToBone(i) = buffer.getMatrix43()
     }
 
     // Create the vertex and index buffers

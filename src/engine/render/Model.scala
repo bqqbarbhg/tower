@@ -14,8 +14,8 @@ class Model {
   var name: Identifier = Identifier.Empty
 
   // Nodes
-  var transformToParent: Array[Matrix4] = Array[Matrix4]()
-  var transformToRoot: Array[Matrix4] = Array[Matrix4]()
+  var transformToParent: Array[Matrix43] = Array[Matrix43]()
+  var transformToRoot: Array[Matrix43] = Array[Matrix43]()
   var parentIndex: Array[Int] = Array[Int]()
   var nodeName: Array[Identifier] = Array[Identifier]()
   var numNodes: Int = 0
@@ -48,13 +48,13 @@ class Model {
     this.numAnims = buffer.getInt()
 
     // Nodes
-    this.transformToParent = new Array[Matrix4](this.numNodes)
-    this.transformToRoot = new Array[Matrix4](this.numNodes)
+    this.transformToParent = new Array[Matrix43](this.numNodes)
+    this.transformToRoot = new Array[Matrix43](this.numNodes)
     this.parentIndex = new Array[Int](this.numNodes)
     this.nodeName = new Array[Identifier](this.numNodes)
     for (i <- 0 until this.numNodes) {
       this.nodeName(i) = buffer.getIdentifier()
-      this.transformToParent(i) = buffer.getMatrix4()
+      this.transformToParent(i) = buffer.getMatrix43()
       this.parentIndex(i) = buffer.getInt()
     }
 
@@ -75,7 +75,7 @@ class Model {
     buffer.verifyMagic("E.md")
 
     // -- Compute transform to root
-    this.transformToRoot(0) = Matrix4.Identity
+    this.transformToRoot(0) = Matrix43.Identity
     for (i <- 1 until this.numNodes) {
       val parent = this.parentIndex(i)
       this.transformToRoot(i) = this.transformToParent(i) * this.transformToRoot(parent)

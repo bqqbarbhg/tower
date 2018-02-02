@@ -23,7 +23,7 @@ object MeshFile {
 
     for (bone <- mesh.bones) {
       buffer.putIdentifier(bone.name)
-      buffer.putMatrix4(bone.meshToBone)
+      buffer.putMatrix43(bone.meshToBone)
     }
 
     val quat = new Array[Byte](4)

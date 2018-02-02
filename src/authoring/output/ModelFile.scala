@@ -52,7 +52,7 @@ object ModelFile {
 
     for (node <- nodes) {
       buffer.putIdentifier(node.node.name)
-      buffer.putMatrix4(node.node.transform)
+      buffer.putMatrix43(node.node.transform)
       buffer.putInt(node.parent)
     }
 
