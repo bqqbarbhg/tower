@@ -170,7 +170,7 @@ object GameMain extends App {
   // -- Main loop
   while ( !glfwWindowShouldClose(window) ) {
 
-    time += 0.016 * 25.0
+    time += 0.016
     animLayer.time = time % animation.duration
 
     glClearColor(0x64 / 255.0f, 0x95 / 255.0f, 0xED / 255.0f, 1.0f)

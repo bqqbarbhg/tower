@@ -29,8 +29,8 @@ class AssimpAsset(filename: String, baseName: String) extends Asset(filename, ba
   // Helper functions to convert Assimp types to own ones
   private def convertQuat(q: AIQuaternion) = Quaternion(q.x, q.y, q.z, q.w)
   private def convertVec3(q: AIVector3D) = Vector3(q.x, q.y, q.z)
-  private def convertQuatFrame(frame: AIQuatKey) = FrameQuat(frame.mTime, convertQuat(frame.mValue))
-  private def convertVec3Frame(frame: AIVectorKey) = FrameVec3(frame.mTime, convertVec3(frame.mValue))
+  private def convertQuatFrame(frame: AIQuatKey, timeScale: Double) = FrameQuat(frame.mTime * timeScale, convertQuat(frame.mValue))
+  private def convertVec3Frame(frame: AIVectorKey, timeScale: Double) = FrameVec3(frame.mTime * timeScale, convertVec3(frame.mValue))
   private def convertMat4(m: AIMatrix4x4) = {
     val r = new Matrix4()
     r.m11 = m.a1; r.m12 = m.a2; r.m13 = m.a3; r.m14 = m.a4
@@ -59,13 +59,16 @@ class AssimpAsset(filename: String, baseName: String) extends Asset(filename, ba
 
     for (aAnim <- aAnims) {
       val name = aAnim.mName.dataString.split('|')(1)
-      val anim = new AnimationResource(s"$baseName.$name.s2an", aAnim.mDuration)
+      val anim = new AnimationResource(s"$baseName.$name.s2an", aAnim.mDuration / aAnim.mTicksPerSecond)
+
+      anim.ticksPerSecond = aAnim.mTicksPerSecond
+      val timeScale = 1.0 / anim.ticksPerSecond
 
       val aChans = collect(aAnim.mChannels, aAnim.mNumChannels, AINodeAnim.create)
       for (aChan <- aChans) {
-        val rot = for (i <- 0 until aChan.mNumRotationKeys) yield convertQuatFrame(aChan.mRotationKeys.get(i))
-        val pos = for (i <- 0 until aChan.mNumPositionKeys) yield convertVec3Frame(aChan.mPositionKeys.get(i))
-        val siz = for (i <- 0 until aChan.mNumScalingKeys)  yield convertVec3Frame(aChan.mScalingKeys.get(i))
+        val rot = for (i <- 0 until aChan.mNumRotationKeys) yield convertQuatFrame(aChan.mRotationKeys.get(i), timeScale)
+        val pos = for (i <- 0 until aChan.mNumPositionKeys) yield convertVec3Frame(aChan.mPositionKeys.get(i), timeScale)
+        val siz = for (i <- 0 until aChan.mNumScalingKeys)  yield convertVec3Frame(aChan.mScalingKeys.get(i), timeScale)
         val timeline = new Timeline(aChan.mNodeName.dataString, rot.toArray, pos.toArray, siz.toArray)
         anim.timelines += timeline
       }

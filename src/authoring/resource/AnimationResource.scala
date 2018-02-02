@@ -11,6 +11,7 @@ case class Timeline(val boneName: String, val rot: Array[FrameQuat], val pos: Ar
 
 class AnimationResource(name: String, val duration: Double) extends tower.authoring.Resource(name) {
 
+  var ticksPerSecond: Double = 1.0
   var timelines = new ArrayBuffer[Timeline]
 
 }
