@@ -38,8 +38,13 @@ object MeshOptimization {
       val indices = for (i <- 0 until 3) yield mesh.indices(base + i)
       val bonesPerVertex = for (i <- indices) yield mesh.vertices(i).bones.map(_.index).toSet
       val bones = bonesPerVertex.reduce(_ ++ _)
+      if (bones.size > maxBonesPerMesh) {
+        throw new RuntimeException(s"Triangle bones than max bones per mesh: ${bones.size} > $maxBonesPerMesh")
+      }
       boneMap(bones) ++= indices
     }
+
+    assert(boneMap.map(_._2.length).sum == mesh.indices.length)
 
     val indexGroups = mutable.ArrayBuffer[(BoneSet, IndexList)]()
 
@@ -71,9 +76,11 @@ object MeshOptimization {
         boneMap.remove(bones2)
 
         // Combine the sets and re-insert
-        boneMap(bones ++ bones2) = indices ++ indices2
+        boneMap(bones ++ bones2) ++= indices ++ indices2
       }
     }
+
+    assert(indexGroups.map(_._2.length).sum == mesh.indices.length)
 
     var meshPartIndex = 0
     // Remap the group vertex/bone indices

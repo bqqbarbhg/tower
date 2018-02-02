@@ -60,7 +60,7 @@ object ResourceProcesser extends App {
 
             case m: MeshResource =>
               val MaxBonesPerVert = 4
-              val MaxBonesPerDraw = 12
+              val MaxBonesPerDraw = 6
 
               MeshProcessing.sortBoneWeights(m)
               MeshOptimization.limitBoneAmountPerVertex(m, MaxBonesPerVert)
