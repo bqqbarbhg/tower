@@ -128,7 +128,7 @@ object GameMain extends App {
       | varying vec3 v_normal;
       |
       | void main() {
-      |   float l = dot(normalize(v_normal), normalize(vec3(-1.0, -1.0, 1.0)));
+      |   float l = dot(normalize(v_normal), normalize(vec3(-1.0, 1.0, -1.0)));
       |   float lc = clamp(l * 0.5 + 0.5, 0.0, 1.0);
       |   float llc = length(v_normal) * 0.5;
       |   gl_FragColor = vec4(vec3(lc), 1.0);
@@ -153,6 +153,8 @@ object GameMain extends App {
   println(glGetProgramInfoLog(prog))
 
   glEnable(GL_DEPTH_TEST)
+  glEnable(GL_CULL_FACE)
+  glFrontFace(GL_CW)
 
   glfwSwapInterval(1)
 
@@ -175,11 +177,12 @@ object GameMain extends App {
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
 
     val proj = Matrix4.perspective(1280.0/720.0, scala.math.Pi / 2.5, 0.01, 1000.0)
-    val world = Matrix4.rotateY(4.0)
+    val world = Matrix4.rotateY(4.0 + time * 0.05)
     val view = Matrix4.look(Vector3(0.0, 5.0, -10.0), Vector3(0.0, 0.0, 1.0))
 
-    val wvp = proj * view * world * Matrix4.scale(0.01)
+    val wvp = proj * view
 
+    animState.worldTransform = world
     animState.apply()
 
     for (part <- mesh.parts) {
