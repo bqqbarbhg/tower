@@ -125,9 +125,9 @@ object Matrix4 {
       r.m23 = 2.0 * (yz - xw) * s.y
     }
 
-    r.m14 = r.m11*o.x + r.m12*o.y + r.m13*o.z
-    r.m24 = r.m21*o.x + r.m22*o.y + r.m23*o.z
-    r.m34 = r.m31*o.x + r.m32*o.y + r.m33*o.z
+    r.m14 = o.x
+    r.m24 = o.y
+    r.m34 = o.z
 
     r.m44 = 1.0
   }
@@ -185,6 +185,12 @@ class Matrix4 {
     r.m43 = m41*m.m13 + m42*m.m23 + m43*m.m33 + m44*m.m43
     r.m44 = m41*m.m14 + m42*m.m24 + m43*m.m34 + m44*m.m44
 
+    r
+  }
+
+  def copy: Matrix4 = {
+    val r = new Matrix4()
+    r.unsafeCopy(this)
     r
   }
 

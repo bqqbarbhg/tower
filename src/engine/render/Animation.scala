@@ -128,7 +128,6 @@ object Animation {
         val y = data(ia + 1) * alpha + data(ib + 1) * beta
         val z = data(ia + 2) * alpha + data(ib + 2) * beta
         Vector3(x, y, z)
-        Vector3.Zero
       }
 
       val scale = {
@@ -144,7 +143,6 @@ object Animation {
         val y = data(ia + 1) * alpha + data(ib + 1) * beta
         val z = data(ia + 2) * alpha + data(ib + 2) * beta
         Vector3(x, y, z)
-        Vector3.One
       }
 
       Frame(rotation, position, scale)

@@ -13,6 +13,24 @@ class Matrix4Spec extends FlatSpec with Matchers {
   val Epsilon = 1e-4f
   implicit val doubleEq = TolerantNumerics.tolerantDoubleEquality(Epsilon)
 
+  val MatA = {
+    val x = Vector3(0.1333333,-0.6666667,0.7333333)
+    val y = Vector3(0.9333333,0.3333333,0.1333333)
+    val z = Vector3(-0.3333333,0.6666667,0.6666667)
+    val q1 = Quaternion.fromAxes(x, y, z)
+    Matrix4.worldRot(q1, Vector3(1.0, 2.0, 3.0), Vector3(4.0, 5.0, 6.0))
+  }
+
+  val MatB = {
+    val x = Vector3(0.3710692,-0.8427673,0.3899371)
+    val y = Vector3(-0.9182390,-0.2704403,0.2893082)
+    val z = Vector3(-0.1383648,-0.4654088,-0.8742138)
+    val q1 = Quaternion.fromAxes(x, y, z)
+    Matrix4.worldRot(q1, Vector3(-0.3, 0.5, 0.3), Vector3(0.4, 25.0, -7.0))
+  }
+
+  val MatAB = MatA * MatB
+
   def assertEqual(a: Vector3, b: Vector3): Unit = {
     withClue(s"$a == $b:") {
       assert(a.x === b.x)
@@ -94,6 +112,24 @@ class Matrix4Spec extends FlatSpec with Matchers {
     val mat = Matrix4.worldRot(q1, Vector3(1.0, 2.5, 7.0), Vector3(-2.0, -5.0, 3.0))
 
     assert(mat.inverse.determinant === 1.0 / mat.determinant)
+  }
+
+  "unsafeMul" should "give the same result as safe multiply" in {
+    val res = new Matrix4()
+    res.unsafeMul(MatA, MatB)
+    assertEqualAndAffine(res, MatAB)
+  }
+
+  "unsafeMulRight" should "give the same result as safe multiply" in {
+    val res = MatA.copy
+    res.unsafeMulRight(MatB)
+    assertEqualAndAffine(res, MatAB)
+  }
+
+  "unsafeMulLeft" should "give the same result as safe multiply" in {
+    val res = MatB.copy
+    res.unsafeMulLeft(MatA)
+    assertEqualAndAffine(res, MatAB)
   }
 
 }

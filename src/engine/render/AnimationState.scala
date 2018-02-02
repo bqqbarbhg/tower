@@ -62,15 +62,21 @@ class AnimationState(val model: Model) {
     }
 
     // 2. Apply transforms
-    transform(0).unsafeMulRight(worldTransform)
+
+    {
+      val frame = composition(0)
+      Matrix4.unsafeWorldRot(tmpMatrix, frame.rotation.normalize, frame.scale, frame.position)
+      transform(0).unsafeMul(worldTransform, tmpMatrix)
+    }
+
     ix = 1
     while (ix < numTransform) {
       val parentIx = model.parentIndex(ix)
-      transform(ix).unsafeMul(transform(parentIx), model.transformToParent(ix))
 
       val frame = composition(ix)
-      Matrix4.unsafeWorldRot(tmpMatrix, frame.rotation, frame.scale, frame.position)
-      transform(ix).unsafeMulRight(tmpMatrix)
+      Matrix4.unsafeWorldRot(tmpMatrix, frame.rotation.normalize, frame.scale, frame.position)
+
+      transform(ix).unsafeMul(transform(parentIx), tmpMatrix)
 
       // Don't hang on to garbage
       composition(ix) = Animation.Frame.Identity
