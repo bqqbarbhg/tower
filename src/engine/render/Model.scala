@@ -53,9 +53,9 @@ class Model {
     this.parentIndex = new Array[Int](this.numNodes)
     this.nodeName = new Array[Identifier](this.numNodes)
     for (i <- 0 until this.numNodes) {
+      this.nodeName(i) = buffer.getIdentifier()
       this.transformToParent(i) = buffer.getMatrix4()
       this.parentIndex(i) = buffer.getInt()
-      this.nodeName(i) = buffer.getIdentifier()
     }
 
     // Meshes
@@ -72,6 +72,8 @@ class Model {
       this.animResource(i) = buffer.getIdentifier()
     }
 
+    buffer.verifyMagic("E.md")
+
     // -- Compute transform to root
     this.transformToRoot(0) = Matrix4.Identity
     for (i <- 1 until this.numNodes) {
@@ -87,6 +89,7 @@ class Model {
     var index = 0
     while (index < numNodes) {
       if (name == nodeName(index)) return index
+      index += 1
     }
     -1
   }

@@ -2,22 +2,22 @@ package tower.authoring
 
 object Asset {
 
-  def deferLoad(filename: String): Option[() => Asset] = {
+  def deferLoad(filename: String, baseName: String): Option[() => Asset] = {
     val extBegin = filename.lastIndexOf('.')
     if (extBegin == -1) return None
     val ext = filename.substring(extBegin + 1).toLowerCase
 
     ext match {
-      case "fbx" => Some(() => new asset.AssimpAsset(filename))
+      case "fbx" => Some(() => new asset.AssimpAsset(filename, baseName))
       case _ => None
     }
   }
 
-  def load(filename: String): Option[Asset] = deferLoad(filename).map(load => load())
+  def load(filename: String, baseName: String): Option[Asset] = deferLoad(filename, baseName).map(load => load())
 
 }
 
-abstract class Asset(val filename: String) {
+abstract class Asset(val filename: String, val baseName: String) {
 
   def resources: Seq[Resource]
 

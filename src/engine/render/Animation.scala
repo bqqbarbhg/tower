@@ -82,6 +82,7 @@ object Animation {
       // In theory `first` should never be zero since upper bound returns the
       // first element _greater_ than the time, but I don't trust floats to play nice.
       if (first > 0) first -= 1
+      if (first + 1 >= numFrames) first = numFrames - 2
       state(stateOffset) = first
       first
     }
@@ -100,13 +101,13 @@ object Animation {
 
       val rotation = {
         val frame = findKeyframe(timeF, rotTimeIndex, numRotKeys, state, stateOffset + 0)
-        val nextFrame = (frame + 1) % numRotKeys
+        val nextFrame = frame + 1
         val begin = data(rotTimeIndex + frame)
-        val length = if (nextFrame > frame) (data(rotTimeIndex + frame) - begin) else 0
+        val length = data(rotTimeIndex + nextFrame) - begin
         val alpha = (timeF - begin) / length
         val beta = 1.0f - alpha
-        val ia = rotValueIndex + frame * 4
-        val ib = rotValueIndex + nextFrame * 4
+        val ib = rotValueIndex + frame * 4
+        val ia = rotValueIndex + nextFrame * 4
         val x = data(ia + 0) * alpha + data(ib + 0) * beta
         val y = data(ia + 1) * alpha + data(ib + 1) * beta
         val z = data(ia + 2) * alpha + data(ib + 2) * beta
@@ -116,32 +117,34 @@ object Animation {
 
       val position = {
         val frame = findKeyframe(timeF, posTimeIndex, numPosKeys, state, stateOffset + 1)
-        val nextFrame = (frame + 1) % numPosKeys
+        val nextFrame = frame + 1
         val begin = data(posTimeIndex + frame)
-        val length = if (nextFrame > frame) (data(posTimeIndex + frame) - begin) else 0
+        val length = data(posTimeIndex + nextFrame) - begin
         val alpha = (timeF - begin) / length
         val beta = 1.0f - alpha
-        val ia = posValueIndex + frame * 3
-        val ib = posValueIndex + nextFrame * 3
+        val ib = posValueIndex + frame * 3
+        val ia = posValueIndex + nextFrame * 3
         val x = data(ia + 0) * alpha + data(ib + 0) * beta
         val y = data(ia + 1) * alpha + data(ib + 1) * beta
         val z = data(ia + 2) * alpha + data(ib + 2) * beta
         Vector3(x, y, z)
+        Vector3.Zero
       }
 
       val scale = {
         val frame = findKeyframe(timeF, sizTimeIndex, numSizKeys, state, stateOffset + 2)
-        val nextFrame = (frame + 1) % numPosKeys
+        val nextFrame = frame + 1
         val begin = data(sizTimeIndex + frame)
-        val length = if (nextFrame > frame) (data(sizTimeIndex + frame) - begin) else 0
+        val length = data(sizTimeIndex + nextFrame) - begin
         val alpha = (timeF - begin) / length
         val beta = 1.0f - alpha
-        val ia = sizValueIndex + frame * 3
-        val ib = sizValueIndex + nextFrame * 3
+        val ib = sizValueIndex + frame * 3
+        val ia = sizValueIndex + nextFrame * 3
         val x = data(ia + 0) * alpha + data(ib + 0) * beta
         val y = data(ia + 1) * alpha + data(ib + 1) * beta
         val z = data(ia + 2) * alpha + data(ib + 2) * beta
         Vector3(x, y, z)
+        Vector3.One
       }
 
       Frame(rotation, position, scale)

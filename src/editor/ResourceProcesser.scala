@@ -5,8 +5,8 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 
 import tower.authoring.Asset
-import tower.authoring.output.{AnimationFile, MeshFile}
-import tower.authoring.processing.{AnimationOptimization, MeshOptimization, MeshProcessing}
+import tower.authoring.output._
+import tower.authoring.processing._
 import tower.authoring.resource._
 
 import scala.reflect.io.Path
@@ -30,9 +30,15 @@ object ResourceProcesser extends App {
   val dataRootPath = dataRoot.getAbsolutePath
 
   for (file <- listFilesRecursive(assetRoot)) {
-    Asset.deferLoad(file.getAbsolutePath) match {
+    val relativeFilename = file.getAbsolutePath.substring(assetRootPath.length + 1)
+    val baseName = if (relativeFilename.contains('.')) {
+      relativeFilename.substring(0, relativeFilename.lastIndexOf('.'))
+    } else {
+      relativeFilename
+    }
+
+    Asset.deferLoad(file.getAbsolutePath, baseName) match {
       case Some(loader) =>
-        val relativeFilename = file.getAbsolutePath.substring(assetRootPath.length + 1)
 
         println(s"Found asset: ${relativeFilename}")
         val asset = loader()
@@ -54,13 +60,13 @@ object ResourceProcesser extends App {
                 siz
               })
 
-              val file = Paths.get(dataRootPath, relativeFilename + "." + a.name + ".s2an").toFile
+              val file = Paths.get(dataRootPath, a.name).toFile
               file.getParentFile.mkdirs()
               AnimationFile.save(file.getAbsolutePath, a)
 
             case m: MeshResource =>
               val MaxBonesPerVert = 4
-              val MaxBonesPerDraw = 6
+              val MaxBonesPerDraw = 12
 
               MeshProcessing.sortBoneWeights(m)
               MeshOptimization.limitBoneAmountPerVertex(m, MaxBonesPerVert)
@@ -72,12 +78,34 @@ object ResourceProcesser extends App {
                 println(s"  Part $index")
                 println(s"    Vertices: ${part.vertices.length}")
                 println(s"    Indices:  ${part.indices.length}")
-                println(s"    Bones:  ${part.boneNames.length}")
+                println(s"    Bones:  ${part.bones.length}")
               }
 
-              val file = Paths.get(dataRootPath, relativeFilename + "." + m.name + ".s2ms").toFile
+              val file = Paths.get(dataRootPath, m.name).toFile
               file.getParentFile.mkdirs()
               MeshFile.save(file.getAbsolutePath, m.name, parts)
+
+            case m: ModelResource =>
+
+              def printNode(node: ModelNode, indent: Int = 0): Unit = {
+                val ind = "    " + " " * indent
+                println(ind + node.name)
+                for (mesh <- node.meshes) {
+                  println(ind + " Mesh: " + mesh.meshResource)
+                }
+                for (child <- node.children) {
+                  printNode(child, indent + 1)
+                }
+              }
+
+              for (anim <- m.animationResources)
+                println(s"    Animation: $anim")
+
+              printNode(m.root)
+
+              val file = Paths.get(dataRootPath, m.name).toFile
+              file.getParentFile.mkdirs()
+              ModelFile.save(file.getAbsolutePath, m)
 
             case _ =>
           }

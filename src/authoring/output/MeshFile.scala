@@ -19,10 +19,11 @@ object MeshFile {
 
     buffer.putInt(mesh.vertices.length)
     buffer.putInt(mesh.indices.length)
-    buffer.putInt(mesh.boneNames.length)
+    buffer.putInt(mesh.bones.length)
 
-    for (name <- mesh.boneNames) {
-      buffer.putIdentifier(name)
+    for (bone <- mesh.bones) {
+      buffer.putIdentifier(bone.name)
+      buffer.putMatrix4(bone.meshToBone)
     }
 
     val quat = new Array[Byte](4)

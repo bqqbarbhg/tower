@@ -23,9 +23,14 @@ class Vertex {
   }
 }
 
+class MeshBone {
+  var name: String = ""
+  var meshToBone: Matrix4 = Matrix4.Identity
+}
+
 class MeshResource(name: String) extends tower.authoring.Resource(name) {
 
-  var boneNames = ArrayBuffer[String]()
+  var bones = ArrayBuffer[MeshBone]()
   var vertices = Array[Vertex]()
   var indices = Array[Int]()
 

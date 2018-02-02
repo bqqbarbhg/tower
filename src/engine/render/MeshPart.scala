@@ -7,11 +7,10 @@ import org.lwjgl.opengl.GL11._
 import org.lwjgl.opengl.GL15._
 import org.lwjgl.opengl.GL20._
 import org.lwjgl.opengl.GL30._
-
 import tower.util.Serialization.ByteBufferExtension
 import tower.Identifier
-
 import MeshPart._
+import tower.math.Matrix4
 
 object MeshPart {
   val VertexSizeBytes = 3*4 + 2*4 + 4 + 4 + 4
@@ -29,6 +28,7 @@ class MeshPart {
   var numBones: Int = 0
 
   var boneNames: Array[Identifier] = Array[Identifier]()
+  var boneMeshToBone: Array[Matrix4] = Array[Matrix4]()
 
   def load(buffer: ByteBuffer): Unit = {
 
@@ -46,8 +46,10 @@ class MeshPart {
 
     // Read bone names
     this.boneNames = new Array[Identifier](numBones)
+    this.boneMeshToBone = new Array[Matrix4](numBones)
     for (i <- 0 until numBones) {
       this.boneNames(i) = buffer.getIdentifier()
+      this.boneMeshToBone(i) = buffer.getMatrix4()
     }
 
     // Create the vertex and index buffers
@@ -83,10 +85,14 @@ class MeshPart {
     glBindVertexArray(vertexArray)
     glEnableVertexAttribArray(0)
     glEnableVertexAttribArray(1)
+    glEnableVertexAttribArray(2)
+    glEnableVertexAttribArray(3)
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer)
     glVertexAttribPointer(0, 4, GL_FLOAT, false, MeshPart.VertexSizeBytes, 0)
     glVertexAttribPointer(1, 4, GL_BYTE, true, MeshPart.VertexSizeBytes, 5 * 4)
+    glVertexAttribIPointer(2, 4, GL_UNSIGNED_BYTE, MeshPart.VertexSizeBytes, 6 * 4)
+    glVertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, true, MeshPart.VertexSizeBytes, 7 * 4)
 
   }
 

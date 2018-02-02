@@ -24,6 +24,13 @@ object ModelFile {
       val nodeIndex = nodes.length
       val flatNode = new FlatNode(parentIndex, node)
 
+      nodes += flatNode
+
+      for (mesh <- node.meshes) {
+        val flatMesh = FlatMesh(nodeIndex, mesh)
+        meshes += flatMesh
+      }
+
       for (child <- node.children)
         visitNode(child, nodeIndex)
     }
@@ -39,8 +46,30 @@ object ModelFile {
     buffer.putVersion(Version)
 
     buffer.putIdentifier(model.name)
+    buffer.putInt(nodes.length)
+    buffer.putInt(meshes.length)
+    buffer.putInt(model.animationResources.length)
+
+    for (node <- nodes) {
+      buffer.putIdentifier(node.node.name)
+      buffer.putMatrix4(node.node.transform)
+      buffer.putInt(node.parent)
+    }
+
+    for (mesh <- meshes) {
+      buffer.putInt(mesh.parent)
+      buffer.putIdentifier(mesh.mesh.meshResource)
+    }
+
+    for (anim <- model.animationResources) {
+      buffer.putIdentifier(anim)
+    }
 
     buffer.putMagic("E.md")
+
+    val output = new FileOutputStream(filename)
+    buffer.writeTo(output)
+    output.close()
 
     SharedByteBuffer.release(buffer)
   }

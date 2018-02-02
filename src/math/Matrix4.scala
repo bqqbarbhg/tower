@@ -1,5 +1,7 @@
 package tower.math
 
+import java.nio.FloatBuffer
+
 import Matrix4._
 
 object Matrix4 {
@@ -55,6 +57,15 @@ object Matrix4 {
     m.m13 = s
     m.m31 = -s
     m.m33 = c
+    m
+  }
+
+  def scale(amount: Double): Matrix4 = {
+    val m = new Matrix4()
+    m.m11 = amount
+    m.m22 = amount
+    m.m33 = amount
+    m.m44 = 1.0
     m
   }
 
@@ -263,14 +274,14 @@ class Matrix4 {
     m44 = a.m41*b.m14 + a.m42*b.m24 + a.m43*b.m34 + a.m44*b.m44
   }
 
-  def determinant: Double = {
+  def determinant: Double = (
     + m14*m23*m32*m41 - m13*m24*m32*m41 - m14*m22*m33*m41 + m12*m24*m33*m41
     + m13*m22*m34*m41 - m12*m23*m34*m41 - m14*m23*m31*m42 + m13*m24*m31*m42
     + m14*m21*m33*m42 - m11*m24*m33*m42 - m13*m21*m34*m42 + m11*m23*m34*m42
     + m14*m22*m31*m43 - m12*m24*m31*m43 - m14*m21*m32*m43 + m11*m24*m32*m43
     + m12*m21*m34*m43 - m11*m22*m34*m43 - m13*m22*m31*m44 + m12*m23*m31*m44
     + m13*m21*m32*m44 - m11*m23*m32*m44 - m12*m21*m33*m44 + m11*m22*m33*m44
-  }
+  )
 
   def inverse: Matrix4 = {
     val r = new Matrix4
@@ -296,23 +307,66 @@ class Matrix4 {
     r
   }
 
-  def store(array: Array[Float]): Unit = {
-    array(0)  = m11.toFloat
-    array(1)  = m21.toFloat
-    array(2)  = m31.toFloat
-    array(3)  = m41.toFloat
-    array(4)  = m12.toFloat
-    array(5)  = m22.toFloat
-    array(6)  = m32.toFloat
-    array(7)  = m42.toFloat
-    array(8)  = m13.toFloat
-    array(9)  = m23.toFloat
-    array(10) = m33.toFloat
-    array(11) = m43.toFloat
-    array(12) = m14.toFloat
-    array(13) = m24.toFloat
-    array(14) = m34.toFloat
-    array(15) = m44.toFloat
+  def store(array: Array[Float], offset: Int = 0): Unit = {
+    array(offset + 0)  = m11.toFloat
+    array(offset + 1)  = m21.toFloat
+    array(offset + 2)  = m31.toFloat
+    array(offset + 3)  = m41.toFloat
+    array(offset + 4)  = m12.toFloat
+    array(offset + 5)  = m22.toFloat
+    array(offset + 6)  = m32.toFloat
+    array(offset + 7)  = m42.toFloat
+    array(offset + 8)  = m13.toFloat
+    array(offset + 9)  = m23.toFloat
+    array(offset + 10) = m33.toFloat
+    array(offset + 11) = m43.toFloat
+    array(offset + 12) = m14.toFloat
+    array(offset + 13) = m24.toFloat
+    array(offset + 14) = m34.toFloat
+    array(offset + 15) = m44.toFloat
   }
+
+  def store(buf: FloatBuffer): Unit = {
+    buf.put(0, m11.toFloat)
+    buf.put(1, m21.toFloat)
+    buf.put(2, m31.toFloat)
+    buf.put(3, m41.toFloat)
+    buf.put(4, m12.toFloat)
+    buf.put(5, m22.toFloat)
+    buf.put(6, m32.toFloat)
+    buf.put(7, m42.toFloat)
+    buf.put(8, m13.toFloat)
+    buf.put(9, m23.toFloat)
+    buf.put(10, m33.toFloat)
+    buf.put(11, m43.toFloat)
+    buf.put(12, m14.toFloat)
+    buf.put(13, m24.toFloat)
+    buf.put(14, m34.toFloat)
+    buf.put(15, m44.toFloat)
+  }
+
+  def store(buf: FloatBuffer, offset: Int): Unit = {
+    buf.put(offset + 0, m11.toFloat)
+    buf.put(offset + 1, m21.toFloat)
+    buf.put(offset + 2, m31.toFloat)
+    buf.put(offset + 3, m41.toFloat)
+    buf.put(offset + 4, m12.toFloat)
+    buf.put(offset + 5, m22.toFloat)
+    buf.put(offset + 6, m32.toFloat)
+    buf.put(offset + 7, m42.toFloat)
+    buf.put(offset + 8, m13.toFloat)
+    buf.put(offset + 9, m23.toFloat)
+    buf.put(offset + 10, m33.toFloat)
+    buf.put(offset + 11, m43.toFloat)
+    buf.put(offset + 12, m14.toFloat)
+    buf.put(offset + 13, m24.toFloat)
+    buf.put(offset + 14, m34.toFloat)
+    buf.put(offset + 15, m44.toFloat)
+  }
+
+  def right: Vector3 = Vector3(m11, m12, m13)
+  def up: Vector3 = Vector3(m21, m22, m23)
+  def forward: Vector3 = Vector3(m31, m32, m33)
+  def translation: Vector3 = Vector3(m14, m24, m34)
 
 }

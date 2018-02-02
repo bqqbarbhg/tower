@@ -16,7 +16,7 @@ import tower.math._
 /**
   * Autodesk .fbx format file. Contains mesh, scene-graph and animation data.
   */
-class AssimpAsset(filename: String) extends Asset(filename) {
+class AssimpAsset(filename: String, baseName: String) extends Asset(filename, baseName) {
 
   /**
     * Helper function for converting PointerBuffers to typed arrays of structs
@@ -31,9 +31,25 @@ class AssimpAsset(filename: String) extends Asset(filename) {
   private def convertVec3(q: AIVector3D) = Vector3(q.x, q.y, q.z)
   private def convertQuatFrame(frame: AIQuatKey) = FrameQuat(frame.mTime, convertQuat(frame.mValue))
   private def convertVec3Frame(frame: AIVectorKey) = FrameVec3(frame.mTime, convertVec3(frame.mValue))
+  private def convertMat4(m: AIMatrix4x4) = {
+    val r = new Matrix4()
+    r.m11 = m.a1; r.m12 = m.a2; r.m13 = m.a3; r.m14 = m.a4
+    r.m21 = m.b1; r.m22 = m.b2; r.m23 = m.b3; r.m24 = m.b4
+    r.m31 = m.c1; r.m32 = m.c2; r.m33 = m.c3; r.m34 = m.c4
+    r.m41 = m.d1; r.m42 = m.d2; r.m43 = m.d3; r.m44 = m.d4
+
+    // Let's just make sure there's no surprises in these matrices!
+    assert(math.abs(r.m41 - 0.0) < 0.001, r.m41)
+    assert(math.abs(r.m42 - 0.0) < 0.001, r.m42)
+    assert(math.abs(r.m43 - 0.0) < 0.001, r.m43)
+    assert(math.abs(r.m44 - 1.0) < 0.001, r.m44)
+
+    r
+  }
 
   private val animations = new ArrayBuffer[AnimationResource]
   private val meshes = new ArrayBuffer[MeshResource]
+  private var model: ModelResource = new ModelResource(s"$baseName.s2md")
 
   {
     val flags = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_Debone | aiProcess_GenNormals | aiProcess_GenUVCoords | aiProcess_CalcTangentSpace
@@ -43,7 +59,7 @@ class AssimpAsset(filename: String) extends Asset(filename) {
 
     for (aAnim <- aAnims) {
       val name = aAnim.mName.dataString.split('|')(1)
-      val anim = new AnimationResource(name, aAnim.mDuration)
+      val anim = new AnimationResource(s"$baseName.$name.s2an", aAnim.mDuration)
 
       val aChans = collect(aAnim.mChannels, aAnim.mNumChannels, AINodeAnim.create)
       for (aChan <- aChans) {
@@ -59,7 +75,7 @@ class AssimpAsset(filename: String) extends Asset(filename) {
 
     for (aMesh <- aMeshes) {
       val name = aMesh.mName.dataString
-      val mesh = new MeshResource(name)
+      val mesh = new MeshResource(s"$baseName.$name.s2ms")
       meshes += mesh
 
       val numVerts = aMesh.mNumVertices
@@ -107,7 +123,10 @@ class AssimpAsset(filename: String) extends Asset(filename) {
 
       val aBones = collect(aMesh.mBones, aMesh.mNumBones, AIBone.create)
       for ((aBone, boneIndex) <- aBones.zipWithIndex) {
-        mesh.boneNames += aBone.mName.dataString
+        val bone = new MeshBone
+        bone.name = aBone.mName.dataString
+        bone.meshToBone = convertMat4(aBone.mOffsetMatrix)
+        mesh.bones += bone
         for (weightI <- 0 until aBone.mNumWeights) {
           val aWeight = aBone.mWeights.get(weightI)
           mesh.vertices(aWeight.mVertexId).bones += BoneWeight(boneIndex, aWeight.mWeight)
@@ -125,17 +144,27 @@ class AssimpAsset(filename: String) extends Asset(filename) {
 
     }
 
-    def processNode(aNode: AINode): Unit = {
+    def processNode(aNode: AINode): ModelNode = {
       val aChildren = collect(aNode.mChildren, aNode.mNumChildren, AINode.create)
-      for (aChild <- aChildren)
-        processNode(aChild)
+
+      val node = new ModelNode(aNode.mName.dataString)
+      node.transform = convertMat4(aNode.mTransformation)
+
+      for (i <- 0 until aNode.mNumMeshes) {
+        val meshIndex = aNode.mMeshes.get(i)
+        node.meshes += ModelMesh(meshes(i).name)
+      }
+
+      node.children = aChildren.map(processNode).to[ArrayBuffer]
+      node
     }
 
-    processNode(aScene.mRootNode)
+    model.root = processNode(aScene.mRootNode)
+    model.animationResources = animations.map(_.name)
 
     aiReleaseImport(aScene)
   }
 
-  def resources: Seq[Resource] = animations ++ meshes
+  def resources: Seq[Resource] = animations ++ meshes :+ model
 
 }

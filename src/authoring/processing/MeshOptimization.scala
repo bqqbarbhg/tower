@@ -28,7 +28,7 @@ object MeshOptimization {
   def splitMeshByBoneAmount(mesh: MeshResource, maxBonesPerMesh: Int): Seq[MeshResource] = {
 
     // Fast case: Already valid mesh
-    if (mesh.boneNames.length <= maxBonesPerMesh) {
+    if (mesh.bones.length <= maxBonesPerMesh) {
       return Array(mesh)
     }
 
@@ -90,11 +90,11 @@ object MeshOptimization {
       val vertexRemap = indices.toSet.toSeq.sorted.zipWithIndex.toMap
 
       meshPart.vertices = new Array[Vertex](vertexRemap.size)
-      meshPart.boneNames = mutable.ArrayBuffer.fill(boneRemap.size)("")
+      meshPart.bones = mutable.ArrayBuffer.fill(boneRemap.size)(null)
       meshPart.indices = indices.map(vertexRemap).toArray
 
       for ((src, dst) <- boneRemap) {
-        meshPart.boneNames(dst) = mesh.boneNames(src)
+        meshPart.bones(dst) = mesh.bones(src)
       }
 
       for ((src, dst) <- vertexRemap) {

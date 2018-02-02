@@ -9,10 +9,11 @@ object AnimationState {
 
   class AnimationLayer(val animation: Animation, val model: Model) {
 
-    val timelineToNode = model.resolveAnimationTimelineNodeIndices(animation)
-    val animationState = Array.fill(animation.timelines.length * Animation.Timeline.StateSize)(0)
+    private val timelineToNode = model.resolveAnimationTimelineNodeIndices(animation)
+    private val animationState = Array.fill(animation.timelines.length * Animation.Timeline.StateSize)(0)
+
     var time: Double = 0.0
-    var alpha: Double = 0.0
+    var alpha: Double = 1.0
 
     def apply(state: AnimationState): Unit = {
       var ix = 0
@@ -25,10 +26,10 @@ object AnimationState {
 
         if (alpha < 0.99) {
           val clampedAlpha = if (alpha >= 0.0) alpha else 0.0
-          val prev = state.composition(ix)
-          state.composition(ix) = Animation.Frame.lerp(prev, frame, clampedAlpha)
+          val prev = state.composition(node)
+          state.composition(node) = Animation.Frame.lerp(prev, frame, clampedAlpha)
         } else {
-          state.composition(ix) = frame
+          state.composition(node) = frame
         }
 
         ix += 1
@@ -46,7 +47,7 @@ class AnimationState(val model: Model) {
   val layers = new ArrayBuffer[AnimationLayer]()
   var worldTransform = Matrix4.Identity
 
-  var tmpMatrix = new Matrix4()
+  private var tmpMatrix = new Matrix4()
 
   // Temporary, contains valid frames only during `apply`. Otherwise identity.
   private val composition = Array.fill(model.numNodes)(Animation.Frame.Identity)
@@ -65,16 +66,22 @@ class AnimationState(val model: Model) {
     ix = 1
     while (ix < numTransform) {
       val parentIx = model.parentIndex(ix)
-      transform(ix).unsafeMul(model.transformToParent(ix), transform(parentIx))
+      transform(ix).unsafeMul(transform(parentIx), model.transformToParent(ix))
 
       val frame = composition(ix)
       Matrix4.unsafeWorldRot(tmpMatrix, frame.rotation, frame.scale, frame.position)
-      transform(ix).unsafeMulLeft(tmpMatrix)
+      transform(ix).unsafeMulRight(tmpMatrix)
 
       // Don't hang on to garbage
       composition(ix) = Animation.Frame.Identity
       ix += 1
     }
+  }
+
+  def addAnimation(anim: Animation): AnimationLayer = {
+    val layer = new AnimationLayer(anim, model)
+    layers += layer
+    layer
   }
 
 }
