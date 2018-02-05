@@ -25,6 +25,13 @@ object Serialization {
       if (ref.deep != chars.deep) throw SerializationException(s"Invalid magic, expected $magic!")
     }
 
+    /** Reads a 4-byte ASCII magic number */
+    def getMagic(): String = {
+      val chars = new Array[Byte](4)
+      buffer.get(chars)
+      new String(chars.map(_.toChar))
+    }
+
     /** Writes version number as 32-bit integer */
     def putVersion(version: Int): Unit = buffer.putInt(version)
 
@@ -183,6 +190,13 @@ object Serialization {
 
     /** For some reason JVM forgets byte order when duplicating !?! */
     def duplicateEx(): ByteBuffer = buffer.duplicate.order(buffer.order())
+
+    /** Advance the buffer position by some amount */
+    def advance(amount: Int): Unit = {
+      if (buffer.remaining < amount)
+        throw new RuntimeException("Trying to advance past the end of the buffer")
+      buffer.position(buffer.position + amount)
+    }
 
   }
 

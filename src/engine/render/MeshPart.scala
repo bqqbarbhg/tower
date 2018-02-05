@@ -87,12 +87,14 @@ class MeshPart {
     glEnableVertexAttribArray(1)
     glEnableVertexAttribArray(2)
     glEnableVertexAttribArray(3)
+    glEnableVertexAttribArray(4)
     glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer)
     glVertexAttribPointer(0, 4, GL_FLOAT, false, MeshPart.VertexSizeBytes, 0)
-    glVertexAttribPointer(1, 4, GL_BYTE, true, MeshPart.VertexSizeBytes, 5 * 4)
-    glVertexAttribIPointer(2, 4, GL_UNSIGNED_BYTE, MeshPart.VertexSizeBytes, 6 * 4)
-    glVertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, true, MeshPart.VertexSizeBytes, 7 * 4)
+    glVertexAttribPointer(1, 2, GL_FLOAT, false, MeshPart.VertexSizeBytes, 3 * 4)
+    glVertexAttribPointer(2, 4, GL_BYTE, true, MeshPart.VertexSizeBytes, 5 * 4)
+    glVertexAttribIPointer(3, 4, GL_UNSIGNED_BYTE, MeshPart.VertexSizeBytes, 6 * 4)
+    glVertexAttribPointer(4, 4, GL_UNSIGNED_BYTE, true, MeshPart.VertexSizeBytes, 7 * 4)
 
   }
 

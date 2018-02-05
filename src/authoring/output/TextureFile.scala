@@ -9,7 +9,7 @@ import tower.util.SharedByteBuffer
 
 object TextureFile {
 
-  def save(filename: String, texture: TextureResource): Unit = {
+  def save(filename: String, textureLevels: Seq[TextureResource]): Unit = {
 
     // @Serialize(s2tx)
 
@@ -19,14 +19,21 @@ object TextureFile {
     buffer.putMagic("s2tx")
     buffer.putVersion(Version)
 
-    buffer.putIdentifier(texture.name)
-    buffer.putInt(texture.width)
-    buffer.putInt(texture.height)
-    buffer.putInt(texture.data.remaining)
-    buffer.putMagic(texture.format)
+    val base = textureLevels.head
 
-    val dataToCopy = texture.data.duplicateEx
-    buffer.put(dataToCopy)
+    buffer.putIdentifier(base.name)
+    buffer.putInt(base.width)
+    buffer.putInt(base.height)
+    buffer.putInt(textureLevels.length)
+    buffer.putMagic(base.format)
+
+    for (level <- textureLevels) {
+      assert(level.format == base.format)
+
+      val dataToCopy = level.data.duplicateEx
+      buffer.putInt(level.data.remaining)
+      buffer.put(dataToCopy)
+    }
 
     buffer.putMagic("E.tx")
 

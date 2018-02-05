@@ -85,20 +85,33 @@ object GameMain extends App {
     model
   }
 
+  val texture = {
+    val texture = new Texture()
+    val buf = SharedByteBuffer.acquire()
+    val file = pack.get("test/grass.s2tx").get
+    val stream = file.read()
+    buf.readFrom(stream)
+    stream.close()
+    texture.load(buf)
+    SharedByteBuffer.release(buf)
+    texture
+  }
 
   val VertexShader =
     """
  #extension GL_ARB_explicit_attrib_location : enable
 
  layout(location = 0) in vec3 a_pos;
- layout(location = 1) in vec4 a_quat;
- layout(location = 2) in ivec4 a_bone;
- layout(location = 3) in vec4 a_weight;
+ layout(location = 1) in vec2 a_texCoord;
+ layout(location = 2) in vec4 a_quat;
+ layout(location = 3) in ivec4 a_bone;
+ layout(location = 4) in vec4 a_weight;
 
  uniform mat4 u_wvp;
  uniform mat4 u_bones[12];
 
  varying vec3 v_normal;
+ varying vec2 v_texCoord;
 
  void main() {
  #if 1
@@ -118,7 +131,8 @@ object GameMain extends App {
    normal.x = 2.0 * (q.x*q.z - q.y*q.w);
    normal.y = 2.0 * (q.y*q.z + q.x*q.w);
    normal.z = 1.0 - 2.0 * (q.x*q.x + q.y*q.y);
-   v_normal = (xform * vec4(normal, 0.0)).xyz;
+   v_normal = normalize((xform * vec4(normal, 0.0)).xyz);
+   v_texCoord = a_texCoord;
  }
 
     """
@@ -126,12 +140,15 @@ object GameMain extends App {
   val FragmentShader =
     """
       | varying vec3 v_normal;
+      | varying vec2 v_texCoord;
+      |
+      | uniform sampler2D u_texture;
       |
       | void main() {
       |   float l = dot(normalize(v_normal), normalize(vec3(-1.0, 1.0, -1.0)));
       |   float lc = clamp(l * 0.5 + 0.5, 0.0, 1.0);
-      |   float llc = length(v_normal) * 0.5;
-      |   gl_FragColor = vec4(vec3(lc), 1.0);
+      |   vec3 color = texture2D(u_texture, v_texCoord).rgb;
+      |   gl_FragColor = vec4(color * lc, 1.0);
       | }
       |
     """.stripMargin
@@ -160,6 +177,7 @@ object GameMain extends App {
 
   val u_wvp = glGetUniformLocation(prog, "u_wvp")
   val u_bones = glGetUniformLocation(prog, "u_bones")
+  val u_texture = glGetUniformLocation(prog, "u_texture")
 
   var time = 0.0
 
@@ -170,6 +188,7 @@ object GameMain extends App {
   // -- Main loop
   while ( !glfwWindowShouldClose(window) ) {
 
+
     time += 0.016
     animLayer.time = time % animation.duration
 
@@ -177,7 +196,7 @@ object GameMain extends App {
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
 
     val proj = Matrix4.perspective(1280.0/720.0, scala.math.Pi / 2.5, 0.01, 1000.0)
-    val world = Matrix43.rotateY(4.0 + time * 0.05)
+    val world = Matrix43.rotateY(4.0 + time * 0.05) * Matrix43.scale(0.01)
     val view = Matrix4.look(Vector3(0.0, 5.0, -10.0), Vector3(0.0, 0.0, 1.0))
 
     val wvp = proj * view
@@ -188,6 +207,10 @@ object GameMain extends App {
     for (part <- mesh.parts) {
 
       glUseProgram(prog)
+
+      glBindTexture(GL_TEXTURE_2D, texture.textureHandle)
+
+      glUniform1i(u_texture, 0)
 
       wvp.store(arr)
       if (u_wvp >= 0)

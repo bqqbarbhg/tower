@@ -7,16 +7,12 @@ import tower.authoring.resource._
 object DxtCompression {
 
   def compressDxt(image: ImageResource): TextureResource = {
-
-    if (image.width % 4 != 0 || image.height % 4 != 0)
-      throw new RuntimeException("Image size must be divisible by four for DXT compression")
-
     val src = BufferUtils.createByteBuffer(64)
 
     val hasAlpha = !image.pixels.forall(_.a >= 255)
 
-    val numBlocksX = image.width / 4
-    val numBlocksY = image.height / 4
+    val numBlocksX = (image.width + 3) / 4
+    val numBlocksY = (image.height + 3) / 4
 
     val blockSize = if (hasAlpha) 16 else 8
     val dstSize = numBlocksX * numBlocksY * blockSize
@@ -30,7 +26,9 @@ object DxtCompression {
         dy <- 0 until 4
         dx <- 0 until 4
       } {
-        val pixel = image.pixel(x * 4 + dx, y * 4 + dy)
+        val xx = math.min(x * 4 + dx, image.width - 1)
+        val yy = math.min(y * 4 + dy, image.height - 1)
+        val pixel = image.pixel(xx, yy)
         val base = (dy * 4 + dx) * 4
         src.put(base + 0, pixel.r.toByte)
         src.put(base + 1, pixel.g.toByte)

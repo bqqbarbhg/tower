@@ -109,11 +109,14 @@ object ResourceProcesser extends App {
 
             case img: ImageResource =>
               println(s"${img.width}x${img.height}")
-              val tex = DxtCompression.compressDxt(img)
 
-              val file = Paths.get(dataRootPath, tex.name).toFile
+              val levels = MipmapGeneration.generateMipmaps(img)
+
+              val file = Paths.get(dataRootPath, img.name).toFile
               file.getParentFile.mkdirs()
-              TextureFile.save(file.getAbsolutePath, tex)
+
+              val levelsDxt = for (level <- levels) yield DxtCompression.compressDxt(level)
+              TextureFile.save(file.getAbsolutePath, levelsDxt)
 
             case _ =>
           }

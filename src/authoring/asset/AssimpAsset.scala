@@ -91,7 +91,11 @@ class AssimpAsset(filename: String, baseName: String) extends Asset(filename, ba
 
         // If there's no tangents generate some dummy tangent space
         val (x, y) = if (aMesh.mTangents != null && aMesh.mBitangents != null) {
-          (convertVec3(aMesh.mTangents.get(i)).normalize, convertVec3(aMesh.mBitangents.get(i)).normalize)
+          val ref = convertVec3(aMesh.mTangents.get(i))
+          val yref = (z cross ref).normalize
+          val x = (z cross yref).normalize
+          val y = (z cross x).normalize
+          (x, y)
         } else {
           val ref = if (math.abs(z dot Vector3(0.0, 0.0, 1.0)) < 0.5) {
             Vector3(0.0, 0.0, 1.0)
@@ -108,9 +112,9 @@ class AssimpAsset(filename: String, baseName: String) extends Asset(filename, ba
         assert(math.abs(x.length - 1.0) < 0.001)
         assert(math.abs(y.length - 1.0) < 0.001)
         assert(math.abs(z.length - 1.0) < 0.001)
-        assert(math.abs(x dot y) < 0.001)
-        assert(math.abs(y dot z) < 0.001)
-        assert(math.abs(z dot x) < 0.001)
+        assert(math.abs(x dot y) < 0.001, (x dot y))
+        assert(math.abs(y dot z) < 0.001, (y dot z))
+        assert(math.abs(z dot x) < 0.001, (z dot x))
         val quat = Quaternion.fromAxes(x, y, z)
         assert(math.abs(quat.length - 1.0) < 0.001, s"Length should be 1, was ${quat.length} ($x $y $z)")
         mesh.vertices(i).tangentSpace = quat.normalize

@@ -26,5 +26,6 @@ class ImageResource(name: String) extends tower.authoring.Resource(name) {
   def pixel(x: Int, y: Int): Pixel = new Pixel(data(y * width + x))
   def pixels: Seq[Pixel] = (for (y <- 0 until height; x <- 0 until width) yield pixel(x, y)).toSeq
 
+  def setPixel(x: Int, y: Int, color: Pixel): Unit = { data(y * width + x) = color.bits }
 
 }
