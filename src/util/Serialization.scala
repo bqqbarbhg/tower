@@ -3,7 +3,6 @@ package tower.util
 import java.nio.{ByteBuffer, ByteOrder}
 import java.io.{InputStream, OutputStream}
 
-import tower.Identifier
 import tower.math.{Matrix4, Matrix43}
 
 case class SerializationException(msg: String) extends Exception(msg)

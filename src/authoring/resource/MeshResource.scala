@@ -1,9 +1,8 @@
 package tower.authoring.resource
 
 import scala.collection.mutable.ArrayBuffer
-
-import tower.Identifier
 import tower.math._
+import tower.util.Identifier
 
 case class BoneWeight(val index: Int, val weight: Double)
 

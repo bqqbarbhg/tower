@@ -8,9 +8,9 @@ import org.lwjgl.opengl.GL15._
 import org.lwjgl.opengl.GL20._
 import org.lwjgl.opengl.GL30._
 import tower.util.Serialization.ByteBufferExtension
-import tower.Identifier
 import MeshPart._
 import tower.math.Matrix43
+import tower.util.Identifier
 
 object MeshPart {
   val VertexSizeBytes = 3*4 + 2*4 + 4 + 4 + 4

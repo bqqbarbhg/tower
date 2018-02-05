@@ -3,9 +3,9 @@ package tower.engine.render
 import java.nio.ByteBuffer
 
 import Animation._
-import tower.Identifier
 import tower.math._
 import tower.util.Serialization.ByteBufferExtension
+import tower.util.Identifier
 
 object Animation {
 

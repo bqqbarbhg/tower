@@ -7,9 +7,8 @@ import org.lwjgl.opengl.GL11._
 import org.lwjgl.opengl.GL15._
 import org.lwjgl.opengl.GL20._
 import org.lwjgl.opengl.GL30._
-
 import tower.util.Serialization.ByteBufferExtension
-import tower.Identifier
+import tower.util.Identifier
 
 class Mesh {
 

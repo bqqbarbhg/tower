@@ -1,13 +1,11 @@
 package tower.engine.render
 
-import tower.Identifier
 import tower.math._
-
 import java.io.InputStream
 import java.nio.ByteBuffer
 
 import tower.util.Serialization.ByteBufferExtension
-import tower.Identifier
+import tower.util.Identifier
 
 class Model {
 

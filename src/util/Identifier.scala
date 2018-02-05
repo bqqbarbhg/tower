@@ -1,4 +1,4 @@
-package tower
+package tower.util
 
 import scala.collection.mutable.HashMap
 
