@@ -107,6 +107,14 @@ object ResourceProcesser extends App {
               file.getParentFile.mkdirs()
               ModelFile.save(file.getAbsolutePath, m)
 
+            case img: ImageResource =>
+              println(s"${img.width}x${img.height}")
+              val tex = DxtCompression.compressDxt(img)
+
+              val file = Paths.get(dataRootPath, tex.name).toFile
+              file.getParentFile.mkdirs()
+              TextureFile.save(file.getAbsolutePath, tex)
+
             case _ =>
           }
         }

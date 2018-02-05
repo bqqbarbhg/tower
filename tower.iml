@@ -97,5 +97,18 @@
       </library>
     </orderEntry>
     <orderEntry type="library" name="junit-4.12" level="project" />
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="file://$MODULE_DIR$/ext/lwjgl/lwjgl-stb" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="file://$MODULE_DIR$/ext/lwjgl/lwjgl-stb" />
+        </SOURCES>
+        <jarDirectory url="file://$MODULE_DIR$/ext/lwjgl/lwjgl-stb" recursive="false" />
+        <jarDirectory url="file://$MODULE_DIR$/ext/lwjgl/lwjgl-stb" recursive="false" type="SOURCES" />
+      </library>
+    </orderEntry>
   </component>
 </module>

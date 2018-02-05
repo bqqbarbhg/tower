@@ -9,6 +9,8 @@ object Asset {
 
     ext match {
       case "fbx" => Some(() => new asset.AssimpAsset(filename, baseName))
+      case "png" => Some(() => new asset.StbiAsset(filename, baseName))
+      case "jpg" => Some(() => new asset.StbiAsset(filename, baseName))
       case _ => None
     }
   }
