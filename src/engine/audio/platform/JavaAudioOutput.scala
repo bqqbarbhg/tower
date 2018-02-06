@@ -11,7 +11,7 @@ class JavaAudioOutput(val sampleRate: Int) extends AudioOutput {
   private val dataLineInfo: DataLine.Info = new DataLine.Info(classOf[SourceDataLine], Format)
   private val sourceDataLine = AudioSystem.getLine(dataLineInfo).asInstanceOf[SourceDataLine]
 
-  private val chunkBuffer = new Array[Byte](8 * 1024)
+  private val chunkBuffer = new Array[Byte](8*1024)
   private val samplesPerChunk = chunkBuffer.length / 2
 
   private var closed: Boolean = false
@@ -19,23 +19,27 @@ class JavaAudioOutput(val sampleRate: Int) extends AudioOutput {
   sourceDataLine.open(Format)
   sourceDataLine.start()
 
-  override def write(sampleData: Array[Short], numFrames: Int): Unit = this.synchronized {
+  override def write(sampleData: Array[Float], numFrames: Int): Unit = this.synchronized {
     if (closed) return
 
     val numSamples = numFrames * 2
     var position = 0
-    while (position < samplesToWrite) {
-      val toWrite = math.min(numSamples * 2 - position, samplesPerChunk)
+    while (position < numSamples) {
+      val toWrite = math.min(numSamples - position, samplesPerChunk)
       var offset = 0
       while (offset < toWrite) {
         val sample = sampleData(position + offset)
+        val sampleI = (sample * 32767.0f * 0.8f).toInt
         val base = offset << 1
-        chunkBuffer(base) = sample.toByte
-        chunkBuffer(base + 1) = (sample >> 8).toByte
+        chunkBuffer(base) = (sampleI & 0xFF).toByte
+        chunkBuffer(base + 1) = ((sampleI >> 8) & 0xFF).toByte
         offset += 1
       }
 
-      sourceDataLine.write(chunkBuffer, 0, toWrite * 2)
+      var bytesWritten = 0
+      do {
+        bytesWritten += sourceDataLine.write(chunkBuffer, bytesWritten, toWrite * 2 - bytesWritten)
+      } while (bytesWritten < toWrite)
 
       position += toWrite
     }

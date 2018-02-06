@@ -17,8 +17,8 @@ import org.lwjgl.opengl.GL15._
 import org.lwjgl.opengl.GL20._
 import org.lwjgl.opengl.GL30._
 import org.lwjgl.BufferUtils
-import tower.engine.audio.platform.JavaAudioOutput
-import tower.engine.audio.AudioOutput
+import tower.engine.audio.platform.{FileAudioOutput, JavaAudioOutput, MultiAudioOutput}
+import tower.engine.audio.{AudioEngine, AudioOutput, Sound}
 import tower.engine.render
 import tower.util.BufferUtils._
 import tower.util.Serialization.ByteBufferExtension
@@ -50,6 +50,17 @@ object GameMain extends App {
   val window = glfwCreateWindow(1280, 720, "Hello World!", NULL, NULL)
   glfwMakeContextCurrent(window)
   org.lwjgl.opengl.GL.createCapabilities()
+
+
+  val SampleRate = 44100
+  val Chunk = 80000
+  val audioOutput: AudioOutput = new MultiAudioOutput(Vector(
+    new JavaAudioOutput(SampleRate),
+    // new FileAudioOutput(SampleRate, "audiodump.bin"),
+  ))
+  val samples = new Array[Float](Chunk * 2)
+
+  val audioEngine = new AudioEngine(audioOutput)
 
   // -- Load content
   val animation = {
@@ -97,6 +108,18 @@ object GameMain extends App {
     texture.load(buf)
     SharedByteBuffer.release(buf)
     texture
+  }
+
+  val music = {
+    val sound = new Sound(audioEngine)
+    val buf = SharedByteBuffer.acquire()
+    val file = pack.get("test/music.s2au").get
+    val stream = file.read()
+    buf.readFrom(stream)
+    stream.close()
+    sound.load(buf)
+    SharedByteBuffer.release(buf)
+    sound
   }
 
   val VertexShader =
@@ -177,12 +200,8 @@ object GameMain extends App {
 
   glfwSwapInterval(1)
 
-  val SampleRate = 44200
-  val Chunk = 4000
-  val audioOutput: AudioOutput = new JavaAudioOutput(SampleRate)
-  val samples = new Array[Short](Chunk * 2)
-
   var runAudio: Boolean = true
+  val musicInstance = music.makeInstance()
 
   val audioThread = new Thread() {
     override def run(): Unit = {
@@ -192,17 +211,32 @@ object GameMain extends App {
         val realTime = ((System.currentTimeMillis() - begin).toDouble / 1000.0 * SampleRate).toInt
         val toWrite = math.min(realTime - soundTime, Chunk)
 
-        for (i <- 0 until toWrite) {
-          val t = (soundTime + i).toDouble / SampleRate
-          val s = math.sin(440.0 * math.Pi * 2.0 * t) * 0.1
-          val u = (s * Short.MaxValue.toDouble).toShort
-          samples(i * 2 + 0) = u
-          samples(i * 2 + 1) = u
+        if (toWrite > 0) {
+          java.util.Arrays.fill(samples, 0.0f)
+          musicInstance.advance(samples, toWrite)
+          soundTime += toWrite
+          audioOutput.write(samples, toWrite)
         }
-        soundTime += toWrite
 
-        audioOutput.write(samples, toWrite * 2)
+        Thread.sleep(1)
       }
+
+      // Fade (in the duration of milliseconds) the audio out on shutdown to prevent hard clip
+      {
+        val FadeoutLength = 1024
+        var ix = 0
+        java.util.Arrays.fill(samples, 0.0f)
+        musicInstance.advance(samples, FadeoutLength)
+        while (ix < FadeoutLength * 2) {
+          val factor = 1.0f - ix.toFloat / (FadeoutLength * 2).toFloat
+          samples(ix + 0) *= factor
+          samples(ix + 1) *= factor
+          ix += 2
+        }
+        audioOutput.write(samples, FadeoutLength)
+      }
+
+      audioOutput.close()
     }
   }
   audioThread.start()
@@ -270,7 +304,6 @@ object GameMain extends App {
   glfwDestroyWindow(window)
   glfwTerminate()
 
-  audioOutput.close()
   runAudio = false
   audioThread.join()
 }
