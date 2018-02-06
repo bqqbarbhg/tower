@@ -18,7 +18,6 @@ object JarPackage {
 
     val fs = FileSystems.newFileSystem(resourceUri, Collections.emptyMap[String, Object])
     val pack = new JarPackage(fs.getPath(path), folder)
-    fs.close()
 
     Some(pack)
   }

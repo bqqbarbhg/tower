@@ -112,11 +112,21 @@ object ResourceProcesser extends App {
 
               val levels = MipmapGeneration.generateMipmaps(img)
 
+              val levelsDxt = for (level <- levels) yield DxtCompression.compressDxt(level)
+
               val file = Paths.get(dataRootPath, img.name).toFile
               file.getParentFile.mkdirs()
-
-              val levelsDxt = for (level <- levels) yield DxtCompression.compressDxt(level)
               TextureFile.save(file.getAbsolutePath, levelsDxt)
+
+            case au: AudioResource =>
+
+              println(s"    Channels: ${au.numChannels}")
+              println(s"    Sample rate: ${au.sampleRate}")
+              println(f"    Length: ${au.numSamples.toDouble / au.sampleRate.toDouble}%.2fs (${au.numSamples}%d samples)")
+
+              val file = Paths.get(dataRootPath, au.name).toFile
+              file.getParentFile.mkdirs()
+              AudioFile.save(file.getAbsolutePath, au)
 
             case _ =>
           }

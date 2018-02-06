@@ -17,6 +17,8 @@ import org.lwjgl.opengl.GL15._
 import org.lwjgl.opengl.GL20._
 import org.lwjgl.opengl.GL30._
 import org.lwjgl.BufferUtils
+import tower.engine.audio.platform.JavaAudioOutput
+import tower.engine.audio.AudioOutput
 import tower.engine.render
 import tower.util.BufferUtils._
 import tower.util.Serialization.ByteBufferExtension
@@ -30,7 +32,7 @@ object GameMain extends App {
   // -- Setup packages
   val pack = new MultiPackage()
   pack.add(new DirectoryPackage("data"), 0)
-  pack.add(new ZipFilePackage("mods/wat.zip"), -1)
+  // pack.add(new ZipFilePackage("mods/wat.zip"), -1)
 
   JarPackage.create("data") match {
     case Some(jar) => pack.add(jar, 1)
@@ -175,6 +177,36 @@ object GameMain extends App {
 
   glfwSwapInterval(1)
 
+  val SampleRate = 44200
+  val Chunk = 4000
+  val audioOutput: AudioOutput = new JavaAudioOutput(SampleRate)
+  val samples = new Array[Short](Chunk * 2)
+
+  var runAudio: Boolean = true
+
+  val audioThread = new Thread() {
+    override def run(): Unit = {
+      val begin = System.currentTimeMillis()
+      var soundTime = 0
+      while (runAudio) {
+        val realTime = ((System.currentTimeMillis() - begin).toDouble / 1000.0 * SampleRate).toInt
+        val toWrite = math.min(realTime - soundTime, Chunk)
+
+        for (i <- 0 until toWrite) {
+          val t = (soundTime + i).toDouble / SampleRate
+          val s = math.sin(440.0 * math.Pi * 2.0 * t) * 0.1
+          val u = (s * Short.MaxValue.toDouble).toShort
+          samples(i * 2 + 0) = u
+          samples(i * 2 + 1) = u
+        }
+        soundTime += toWrite
+
+        audioOutput.write(samples, toWrite * 2)
+      }
+    }
+  }
+  audioThread.start()
+
   val u_wvp = glGetUniformLocation(prog, "u_wvp")
   val u_bones = glGetUniformLocation(prog, "u_bones")
   val u_texture = glGetUniformLocation(prog, "u_texture")
@@ -238,4 +270,7 @@ object GameMain extends App {
   glfwDestroyWindow(window)
   glfwTerminate()
 
+  audioOutput.close()
+  runAudio = false
+  audioThread.join()
 }
