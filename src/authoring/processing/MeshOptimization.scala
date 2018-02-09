@@ -70,7 +70,7 @@ object MeshOptimization {
           if (newBonesToSet == 0) {
             Double.PositiveInfinity
           } else {
-            newIndicesToSet.toDouble / newBonesToSet.toDouble
+            newIndicesToSet.toDouble / math.pow(newBonesToSet.toDouble, 2.0)
           }
         })
         boneMap.remove(bones2)

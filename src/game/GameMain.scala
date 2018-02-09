@@ -17,7 +17,7 @@ import org.lwjgl.opengl.GL15._
 import org.lwjgl.opengl.GL20._
 import org.lwjgl.opengl.GL30._
 import org.lwjgl.BufferUtils
-import tower.engine.audio.platform.{FileAudioOutput, JavaAudioOutput, MultiAudioOutput}
+import tower.engine.audio.platform._
 import tower.engine.audio.{AudioEngine, AudioOutput, Sound}
 import tower.engine.render
 import tower.util.BufferUtils._
@@ -55,8 +55,9 @@ object GameMain extends App {
   val SampleRate = 44100
   val Chunk = 80000
   val audioOutput: AudioOutput = new MultiAudioOutput(Vector(
-    new JavaAudioOutput(SampleRate),
-    new FileAudioOutput(SampleRate, "audiodump.bin"),
+    //new JavaAudioOutput(SampleRate),
+    //new FileAudioOutput(SampleRate, "audiodump.bin"),
+    new NullAudioOutput(SampleRate),
   ))
   val samples = new Array[Float](Chunk * 2)
 
@@ -66,7 +67,7 @@ object GameMain extends App {
   val animation = {
     val anim = new Animation()
     val buf = SharedByteBuffer.acquire()
-    val file = pack.get("test/sausageman.Walk.s2an").get
+    val file = pack.get("test/concept.ArmatureAction.004.s2an").get
     val stream = file.read()
     buf.readFrom(stream)
     stream.close()
@@ -77,7 +78,8 @@ object GameMain extends App {
   val mesh = {
     val mesh = new Mesh()
     val buf = SharedByteBuffer.acquire()
-    val file = pack.get("test/sausageman.Cube.000.s2ms").get
+    //val file = pack.get("test/sausageman.Cube.000.s2ms").get
+    val file = pack.get("test/concept.ThingMesh.001.s2ms").get
     val stream = file.read()
     buf.readFrom(stream)
     stream.close()
@@ -89,7 +91,7 @@ object GameMain extends App {
   val model = {
     val model = new Model()
     val buf = SharedByteBuffer.acquire()
-    val file = pack.get("test/sausageman.s2md").get
+    val file = pack.get("test/concept.s2md").get
     val stream = file.read()
     buf.readFrom(stream)
     stream.close()
@@ -145,7 +147,7 @@ object GameMain extends App {
  layout(location = 4) in vec4 a_weight;
 
  uniform mat4 u_wvp;
- uniform mat4 u_bones[12];
+ uniform mat4 u_bones[24];
 
  varying vec3 v_normal;
  varying vec2 v_texCoord;
@@ -261,7 +263,7 @@ object GameMain extends App {
 
   var time = 0.0
 
-  val arr = BufferUtils.createFloatBuffer(16 * 12)
+  val arr = BufferUtils.createFloatBuffer(16 * 24)
 
   val animLayer = animState.addAnimation(animation)
 
@@ -276,7 +278,7 @@ object GameMain extends App {
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
 
     val proj = Matrix4.perspective(1280.0/720.0, scala.math.Pi / 2.5, 0.01, 1000.0)
-    val world = Matrix43.rotateY(4.0 + time * 0.05) * Matrix43.scale(0.01)
+    val world = Matrix43.rotateY(4.0 + time * 0.05) * Matrix43.scale(0.03)
     val view = Matrix4.look(Vector3(0.0, 5.0, -10.0), Vector3(0.0, 0.0, 1.0))
 
     val wvp = proj * view

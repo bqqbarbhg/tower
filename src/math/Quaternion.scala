@@ -77,4 +77,5 @@ case class Quaternion(x: Double, y: Double, z: Double, w: Double) {
   def /(f: Double): Quaternion = this * (1.0 / f)
   def +(q: Quaternion): Quaternion = Quaternion(x + q.x, y + q.y, z + q.z, w + q.w)
   def -(q: Quaternion): Quaternion = Quaternion(x - q.x, y - q.y, z - q.z, w - q.w)
+  def unary_- = Quaternion(-x, -y, -z, -w)
 }

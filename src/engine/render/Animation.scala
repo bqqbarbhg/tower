@@ -70,7 +70,7 @@ object Animation {
       while (count > 0) {
         val step = count >> 1
         val it = first + step
-        if (time >= it) {
+        if (time >= data(dataOffset + it)) {
           first = it + 1
           count -= step + 1
         } else {

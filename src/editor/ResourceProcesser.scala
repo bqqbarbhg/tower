@@ -47,6 +47,8 @@ object ResourceProcesser extends App {
 
           res match {
             case a: AnimationResource =>
+              AnimationProcessing.flipQuaternions(a)
+
               a.timelines = a.timelines.map(timeline => {
                 println(s"  .. Optimizing timeline: ${timeline.boneName}")
                 val error = 0.01
@@ -60,13 +62,15 @@ object ResourceProcesser extends App {
                 siz
               })
 
+              AnimationProcessing.flipQuaternions(a)
+
               val file = Paths.get(dataRootPath, a.name).toFile
               file.getParentFile.mkdirs()
               AnimationFile.save(file.getAbsolutePath, a)
 
             case m: MeshResource =>
               val MaxBonesPerVert = 4
-              val MaxBonesPerDraw = 12
+              val MaxBonesPerDraw = 24
 
               MeshProcessing.sortBoneWeights(m)
               MeshOptimization.limitBoneAmountPerVertex(m, MaxBonesPerVert)
