@@ -56,7 +56,7 @@ object GameMain extends App {
   val Chunk = 80000
   val audioOutput: AudioOutput = new MultiAudioOutput(Vector(
     new JavaAudioOutput(SampleRate),
-    // new FileAudioOutput(SampleRate, "audiodump.bin"),
+    new FileAudioOutput(SampleRate, "audiodump.bin"),
   ))
   val samples = new Array[Float](Chunk * 2)
 
@@ -114,6 +114,18 @@ object GameMain extends App {
     val sound = new Sound(audioEngine)
     val buf = SharedByteBuffer.acquire()
     val file = pack.get("test/music.s2au").get
+    val stream = file.read()
+    buf.readFrom(stream)
+    stream.close()
+    sound.load(buf)
+    SharedByteBuffer.release(buf)
+    sound
+  }
+
+  val beep = {
+    val sound = new Sound(audioEngine)
+    val buf = SharedByteBuffer.acquire()
+    val file = pack.get("test/sine.s2au").get
     val stream = file.read()
     buf.readFrom(stream)
     stream.close()
@@ -202,6 +214,7 @@ object GameMain extends App {
 
   var runAudio: Boolean = true
   val musicInstance = music.makeInstance()
+  val beepInstance = beep.makeInstance()
 
   val audioThread = new Thread() {
     override def run(): Unit = {
@@ -214,6 +227,7 @@ object GameMain extends App {
         if (toWrite > 0) {
           java.util.Arrays.fill(samples, 0.0f)
           musicInstance.advance(samples, toWrite)
+          // beepInstance.advance(samples, toWrite)
           soundTime += toWrite
           audioOutput.write(samples, toWrite)
         }

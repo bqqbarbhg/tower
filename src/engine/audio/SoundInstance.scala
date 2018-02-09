@@ -2,10 +2,11 @@ package tower.engine.audio
 
 class SoundInstance(val sound: Sound) {
 
-  private val sampleRatio: Double = (sound.engine.sampleRate.toDouble / sound.sampleRate)
+  private val sampleRatio: Double = (sound.sampleRate / sound.engine.sampleRate.toDouble)
 
-  private var pitch: Double = 1.0
-  private var volume: Double = 0.0
+  private var pitch: Float = 1.0f
+  private var volumeLeft: Float = 1.0f
+  private var volumeRight: Float = 1.0f
 
   private val source = sound.sampleSource
   /** Stateful cursor to the sample source */
@@ -28,39 +29,40 @@ class SoundInstance(val sound: Sound) {
   /** Has the instance been recently created */
   private var atBeginning: Boolean = true
 
-  def advance(samples: Array[Float], num: Int): Unit = {
+  def advance(samples: Array[Float], num: Int, startIndex: Int = 0): Unit = {
 
-    var sampleIndex = 0
+    var sampleIndex = startIndex
     while (sampleIndex < num) {
       val time = timeInSourceSamples
-      timeInSourceSamples += 1.0
-
       val baseSample = time.toInt
 
       // After this `buffer` will be re-adjusted to contain the current sample
-      if (baseSample + 1 > bufferLastSample) {
-        if (baseSample + 1 < bufferLastSample + BufferSize - 1 && bufferNumSamples > 0) {
+      if (baseSample < bufferFirstSample || baseSample + 1 > bufferLastSample) {
+        if (baseSample + 1 < bufferLastSample + BufferSize - 1 && bufferNumSamples > 0 && baseSample >= bufferFirstSample) {
           // Easy case: Next sample is located in the next buffer that will be read
           // Move the last sample to the first in case it's needed for interpolation
           val base = (bufferNumSamples - 1) << 1
           buffer(0) = buffer(base + 0)
           buffer(1) = buffer(base + 1)
           bufferFirstSample = bufferLastSample
-          bufferNumSamples = math.min(sound.lengthInSamples - (bufferLastSample + 1), BufferSize - 1)
-          if (bufferNumSamples <= 0) return
-          cursor.read(buffer, 2, bufferNumSamples)
+          val toRead = math.min(sound.lengthInSamples - (bufferLastSample + 1), BufferSize - 1)
+          if (toRead <= 0) return
+          cursor.read(buffer, 2, toRead)
+          bufferNumSamples = toRead + 1
         } else {
           // Hard case: Need to seek to set the cursor position
-          if (!atBeginning || baseSample != 0) cursor.seek(baseSample)
           bufferFirstSample = baseSample
           bufferNumSamples = math.min(sound.lengthInSamples - bufferFirstSample, BufferSize)
           if (bufferNumSamples <= 0) return
+          if (!atBeginning || baseSample != 0) cursor.seek(baseSample)
           cursor.read(buffer, 0, bufferNumSamples)
         }
 
         atBeginning = false
         bufferLastSample = bufferFirstSample + bufferNumSamples - 1
       }
+
+      timeInSourceSamples += pitch * sampleRatio
 
       val offset = baseSample - bufferFirstSample
       val beta = (time - time.floor).toFloat
@@ -73,8 +75,8 @@ class SoundInstance(val sound: Sound) {
       val sl = al * alpha + bl * beta
       val sr = ar * alpha + br * beta
 
-      samples((sampleIndex << 1) + 0) += sl.toFloat
-      samples((sampleIndex << 1) + 1) += sr.toFloat
+      samples((sampleIndex << 1) + 0) += sl.toFloat * volumeLeft
+      samples((sampleIndex << 1) + 1) += sr.toFloat * volumeRight
       sampleIndex += 1
     }
   }

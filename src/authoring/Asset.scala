@@ -12,6 +12,7 @@ object Asset {
       case "png" => Some(() => new asset.StbiAsset(filename, baseName))
       case "jpg" => Some(() => new asset.StbiAsset(filename, baseName))
       case "ogg" => Some(() => new asset.VorbisAsset(filename, baseName))
+      case "wav" => Some(() => new asset.WavAsset(filename, baseName))
       case _ => None
     }
   }

@@ -1,8 +1,8 @@
 package tower.engine.audio
 
-import java.nio.ByteBuffer
+import java.nio.{ByteBuffer, ByteOrder}
 
-import tower.engine.audio.source.VorbisSource
+import tower.engine.audio.source._
 import tower.util.Serialization.ByteBufferExtension
 import tower.util.Identifier
 
@@ -29,16 +29,22 @@ class Sound(val engine: AudioEngine) {
     this.lengthInSamples = buffer.getInt()
 
     val dataSize = buffer.getInt()
-    val data = ByteBuffer.allocateDirect(dataSize)
 
     val src = buffer.duplicateEx
     src.limit(src.position + dataSize)
     buffer.position(buffer.position + dataSize)
-    data.put(src)
-    data.position(0)
 
     this.sampleSource = format match {
-      case "OGGV" => new VorbisSource(data)
+      case "OGGV" =>
+        val data = ByteBuffer.allocateDirect(dataSize)
+        data.order(ByteOrder.LITTLE_ENDIAN)
+        data.put(src)
+        data.position(0)
+        new VorbisSource(data)
+      case "PCMW" =>
+        val samples = new Array[Short](this.numChannels * this.lengthInSamples)
+        src.asShortBuffer.get(samples)
+        new PcmSource(samples, this.numChannels)
       case _ => throw new RuntimeException(s"Unexpected audio format $format")
     }
 

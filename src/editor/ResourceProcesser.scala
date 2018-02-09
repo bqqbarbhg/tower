@@ -128,6 +128,20 @@ object ResourceProcesser extends App {
               file.getParentFile.mkdirs()
               AudioFile.save(file.getAbsolutePath, au)
 
+            case pcm: PcmResource =>
+
+              println(s"    Channels: ${pcm.numChannels}")
+              println(s"    Sample rate: ${pcm.sampleRate}")
+              println(f"    Length: ${pcm.numSamples.toDouble / pcm.sampleRate.toDouble}%.2fs (${pcm.numSamples}%d samples)")
+
+              //val pcm2 = AudioProcessing.resample(pcm, 20000)
+              val pcm2 = pcm
+              val au = AudioProcessing.encodePcm(pcm2)
+
+              val file = Paths.get(dataRootPath, pcm.name).toFile
+              file.getParentFile.mkdirs()
+              AudioFile.save(file.getAbsolutePath, au)
+
             case _ =>
           }
         }

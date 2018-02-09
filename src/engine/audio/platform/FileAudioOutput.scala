@@ -28,7 +28,7 @@ class FileAudioOutput(val sampleRate: Int, val filename: String) extends AudioOu
         offset += 1
       }
 
-      exportStream.write(chunkBuffer, 0, toWrite)
+      exportStream.write(chunkBuffer, 0, toWrite * 2)
 
       position += toWrite
     }
