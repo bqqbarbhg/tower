@@ -54,9 +54,9 @@ object ResourceProcesser extends App {
                 val error = 0.01
                 val rot = AnimationOptimization.reduceRotationKeyframes(timeline, 0.005)
                 println(s"  .... Reduced rotation keyframes: ${timeline.rot.length} -> ${rot.rot.length} (max error ${0.005})")
-                val pos = AnimationOptimization.reducePositionKeyframes(rot, 0.1)
+                val pos = AnimationOptimization.reducePositionKeyframes(rot, 0.001)
                 println(s"  .... Reduced position keyframes: ${rot.pos.length} -> ${pos.pos.length} (max error ${0.1})")
-                val siz = AnimationOptimization.reduceSizeKeyframes(pos, 0.05)
+                val siz = AnimationOptimization.reduceSizeKeyframes(pos, 0.001)
                 println(s"  .... Reduced size     keyframes: ${rot.pos.length} -> ${pos.pos.length} (max error ${0.05})")
 
                 siz

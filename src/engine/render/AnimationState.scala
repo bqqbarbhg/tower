@@ -67,6 +67,7 @@ class AnimationState(val model: Model) {
       val frame = composition(0)
       Matrix43.unsafeWorldRot(tmpMatrix, frame.rotation.normalize, frame.scale, frame.position)
       transform(0).unsafeMul(worldTransform, tmpMatrix)
+      composition(0) = Animation.Frame.Identity
     }
 
     ix = 1
