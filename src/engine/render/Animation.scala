@@ -47,8 +47,6 @@ object Animation {
     private var constPos: Vector3 = null
     private var constSiz: Vector3 = null
 
-    println(f"flags: $flags%02x")
-
     /**
       * This will be called when the data for the animation has been loaded.
       */

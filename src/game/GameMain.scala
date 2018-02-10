@@ -68,7 +68,7 @@ object GameMain extends App {
   val animation = {
     val anim = new Animation()
     val buf = SharedByteBuffer.acquire()
-    val file = pack.get("test/concept.ArmatureAction.004.s2an").get
+    val file = pack.get("test/leapy.Leap.s2an").get
     val stream = file.read()
     buf.readFrom(stream)
     stream.close()
