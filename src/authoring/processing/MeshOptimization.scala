@@ -18,6 +18,16 @@ object MeshOptimization {
     }
   }
 
+  /**
+    * Removes bone weights that have influence lower than some minimum value. This should be done
+    * before splitting the mesh into chunks as it can improve the chunk efficiency.
+    */
+  def cullBoneWeightsWithLowInfluence(mesh: MeshResource, minimumInfluence: Double): Unit = {
+    for (vert <- mesh.vertices) {
+      vert.bones = vert.bones.filter(_.weight >= minimumInfluence)
+    }
+  }
+
   private type BoneSet = immutable.Set[Int]
   private type IndexList = immutable.Vector[Int]
   private type BoneMap = mutable.HashMap[BoneSet, IndexList]

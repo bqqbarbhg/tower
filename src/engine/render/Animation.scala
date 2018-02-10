@@ -33,7 +33,7 @@ object Animation {
     * @param numPosKeys Number of keys for position
     * @param numSizKeys Number of keys for size
     */
-  class Timeline(val anim: Animation, val bone: Identifier, val baseOffset: Int, val numRotKeys: Int, val numPosKeys: Int, val numSizKeys: Int) {
+  class Timeline(val anim: Animation, val bone: Identifier, val baseOffset: Int, val numRotKeys: Int, val numPosKeys: Int, val numSizKeys: Int, val flags: Int) {
 
     // Offsets into the data buffer
     val rotTimeIndex: Int = baseOffset
@@ -42,6 +42,32 @@ object Animation {
     val rotValueIndex: Int = rotTimeIndex + numRotKeys
     val posValueIndex: Int = posTimeIndex + numPosKeys
     val sizValueIndex: Int = sizTimeIndex + numSizKeys
+
+    private var constRot: Quaternion = null
+    private var constPos: Vector3 = null
+    private var constSiz: Vector3 = null
+
+    println(f"flags: $flags%02x")
+
+    /**
+      * This will be called when the data for the animation has been loaded.
+      */
+    def animationDataLoaded(): Unit = {
+      if ((flags & 0x01) != 0) {
+        val (b, d) = (rotValueIndex, anim.data)
+        constRot = Quaternion(d(b + 0), d(b + 1), d(b + 2), d(b + 3))
+      }
+
+      if ((flags & 0x02) != 0) {
+        val (b, d) = (posValueIndex, anim.data)
+        constPos = Vector3(d(b + 0), d(b + 1), d(b + 2))
+      }
+
+      if ((flags & 0x04) != 0) {
+        val (b, d) = (sizValueIndex, anim.data)
+        constSiz = Vector3(d(b + 0), d(b + 1), d(b + 2))
+      }
+    }
 
     /**
       * Find a keyframe which time is lower than or equal to `time`.
@@ -99,7 +125,7 @@ object Animation {
       val timeF = clamp(time.toFloat, 0.0f, anim.duration.toFloat)
       val data = anim.data
 
-      val rotation = {
+      val rotation = if (constRot != null) constRot else {
         val frame = findKeyframe(timeF, rotTimeIndex, numRotKeys, state, stateOffset + 0)
         val nextFrame = frame + 1
         val begin = data(rotTimeIndex + frame)
@@ -115,7 +141,7 @@ object Animation {
         Quaternion(x, y, z, w)
       }
 
-      val position = {
+      val position = if (constPos != null) constPos else {
         val frame = findKeyframe(timeF, posTimeIndex, numPosKeys, state, stateOffset + 1)
         val nextFrame = frame + 1
         val begin = data(posTimeIndex + frame)
@@ -130,7 +156,7 @@ object Animation {
         Vector3(x, y, z)
       }
 
-      val scale = {
+      val scale = if (constSiz != null) constSiz else {
         val frame = findKeyframe(timeF, sizTimeIndex, numSizKeys, state, stateOffset + 2)
         val nextFrame = frame + 1
         val begin = data(sizTimeIndex + frame)
@@ -180,7 +206,7 @@ class Animation {
 
     // File header
     buffer.verifyMagic("s2an")
-    val MaxVersion = 1
+    val MaxVersion = 2
     val version = buffer.getVersion(MaxVersion)
 
     // Animation header
@@ -196,7 +222,9 @@ class Animation {
       val numRotKeys = buffer.getInt()
       val numPosKeys = buffer.getInt()
       val numSizKeys = buffer.getInt()
-      timelines(i) = new Timeline(this, bone, baseOffset, numRotKeys, numPosKeys, numSizKeys)
+      val flags = if (version >= 2) buffer.getInt() else 0x00
+
+      timelines(i) = new Timeline(this, bone, baseOffset, numRotKeys, numPosKeys, numSizKeys, flags)
     }
 
     // Data
@@ -206,5 +234,9 @@ class Animation {
     buffer.position(buffer.position + dataSize * 4)
 
     buffer.verifyMagic("E.an")
+
+    for (timeline <- timelines) {
+      timeline.animationDataLoaded()
+    }
   }
 }

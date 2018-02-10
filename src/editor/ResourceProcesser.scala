@@ -75,6 +75,12 @@ object ResourceProcesser extends App {
               MeshProcessing.sortBoneWeights(m)
               MeshOptimization.limitBoneAmountPerVertex(m, MaxBonesPerVert)
               MeshProcessing.normalizeBoneWeights(m)
+              val preWeights = m.vertices.map(_.bones.length).sum
+              MeshOptimization.cullBoneWeightsWithLowInfluence(m, 1 / 256.0)
+              val postWeights = m.vertices.map(_.bones.length).sum
+              MeshProcessing.normalizeBoneWeights(m)
+
+              println(s"  Culled bone weights: $preWeights -> $postWeights")
 
               val parts = MeshOptimization.splitMeshByBoneAmount(m, MaxBonesPerDraw)
               println(s"  Parts: ${parts.length}")

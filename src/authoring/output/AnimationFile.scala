@@ -16,7 +16,7 @@ object AnimationFile {
 
     val buffer = SharedByteBuffer.acquire()
 
-    val Version = 1
+    val Version = 2
 
     val data = new ArrayBuffer[Float]()
 
@@ -35,6 +35,19 @@ object AnimationFile {
       buffer.putInt(tl.rot.length)
       buffer.putInt(tl.pos.length)
       buffer.putInt(tl.size.length)
+
+      var flags = 0
+      if (tl.rot.length == 2 && (tl.rot(0).value - tl.rot(1).value).length < 0.00001) {
+        flags |= 0x01
+      }
+      if (tl.pos.length == 2 && (tl.pos(0).value - tl.pos(1).value).length < 0.00001) {
+        flags |= 0x02
+      }
+      if (tl.size.length == 2 && (tl.size(0).value - tl.size(1).value).length < 0.00001) {
+        flags |= 0x04
+      }
+
+      buffer.putInt(flags)
 
       for (rot <- tl.rot) data += rot.time.toFloat
       for (rot <- tl.rot) {
