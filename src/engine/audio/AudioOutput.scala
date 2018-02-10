@@ -11,6 +11,11 @@ trait AudioOutput {
   def sampleRate: Int
 
   /**
+    * Perform initialization _on the audio thread_.
+    */
+  def initialize(): Unit = { }
+
+  /**
     * Add audio data to output. May block if outputting too fast but that is not guaranteed.
     *
     * @param sampleData Interleaved stereo 16-bit PCM audio data

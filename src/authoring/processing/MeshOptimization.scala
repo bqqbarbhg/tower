@@ -3,6 +3,7 @@ package tower.authoring.processing
 import scala.collection.immutable
 import scala.collection.mutable
 import tower.authoring.resource._
+import scala.math.Ordering.Implicits._
 
 import scala.collection.mutable.ArrayBuffer
 

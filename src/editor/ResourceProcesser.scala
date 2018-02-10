@@ -89,6 +89,9 @@ object ResourceProcesser extends App {
                 println(s"    Vertices: ${part.vertices.length}")
                 println(s"    Indices:  ${part.indices.length}")
                 println(s"    Bones:  ${part.bones.length}")
+
+                VertexCacheOptimization.optimizeVertexPostTransformCache(part)
+                VertexCacheOptimization.optimizeVertexBufferIndex(part)
               }
 
               val file = Paths.get(dataRootPath, m.name).toFile

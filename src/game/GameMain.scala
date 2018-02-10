@@ -54,10 +54,11 @@ object GameMain extends App {
 
 
   val SampleRate = 44100
-  val Chunk = 80000
+  val Chunk = 1024
   val audioOutput: AudioOutput = new MultiAudioOutput(Vector(
-    //new JavaAudioOutput(SampleRate),
-    //new FileAudioOutput(SampleRate, "audiodump.bin"),
+    // new JavaAudioOutput(SampleRate),
+    // new FileAudioOutput(SampleRate, "audiodump.bin"),
+    new OpenAlOutput(SampleRate),
     new NullAudioOutput(SampleRate),
   ))
   val samples = new Array[Float](Chunk * 2)
@@ -80,7 +81,7 @@ object GameMain extends App {
     val mesh = new Mesh()
     val buf = SharedByteBuffer.acquire()
     //val file = pack.get("test/sausageman.Cube.000.s2ms").get
-    val file = pack.get("test/concept.ThingMesh.001.s2ms").get
+    val file = pack.get("test/smoothy.ThingMesh.001.s2ms").get
     val stream = file.read()
     buf.readFrom(stream)
     stream.close()
@@ -217,15 +218,19 @@ object GameMain extends App {
 
   var runAudio: Boolean = true
   val musicInstance = music.makeInstance()
-  val beepInstance = beep.makeInstance()
+  var beepInstance = beep.makeInstance()
 
   val audioThread = new Thread() {
     override def run(): Unit = {
       val begin = System.currentTimeMillis()
-      var soundTime = 0
+      var soundTime: Long = 0
+
+      audioOutput.initialize()
+
       while (runAudio) {
+        soundTime = audioOutput.currentFrame
         val realTime = ((System.currentTimeMillis() - begin).toDouble / 1000.0 * SampleRate).toInt
-        val toWrite = math.min(realTime - soundTime, Chunk)
+        val toWrite = math.min(realTime - soundTime, Chunk).toInt
 
         if (toWrite > 0) {
           java.util.Arrays.fill(samples, 0.0f)
@@ -256,6 +261,7 @@ object GameMain extends App {
       audioOutput.close()
     }
   }
+  audioThread.setName("AudioThread")
   audioThread.start()
 
   val u_wvp = glGetUniformLocation(prog, "u_wvp")
@@ -268,18 +274,27 @@ object GameMain extends App {
 
   val animLayer = animState.addAnimation(animation)
 
+  var timer = 0.0
+
   // -- Main loop
   while ( !glfwWindowShouldClose(window) ) {
-
 
     time += 0.016
     animLayer.time = time % animation.duration
 
+    timer += 0.016
+    if (timer > 2.0) {
+      beepInstance = beep.makeInstance()
+      timer = 0.0
+    }
+
+    val f = (math.max(1.0 - timer * 5.0, 0.0)).toFloat
     glClearColor(0x64 / 255.0f, 0x95 / 255.0f, 0xED / 255.0f, 1.0f)
+    // glClearColor(f, f, f, 1.0f)
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
 
     val proj = Matrix4.perspective(1280.0/720.0, scala.math.Pi / 2.5, 0.01, 1000.0)
-    val world = Matrix43.rotateY(4.0 + time * 0.05) * Matrix43.scale(0.03)
+    val world = Matrix43.rotateY(4.0 + time * 0.05) * Matrix43.scale(0.07)
     val view = Matrix4.look(Vector3(0.0, 5.0, -10.0), Vector3(0.0, 0.0, 1.0))
 
     val wvp = proj * view
