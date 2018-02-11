@@ -58,7 +58,7 @@ object GameMain extends App {
   val audioOutput: AudioOutput = new MultiAudioOutput(Vector(
     // new JavaAudioOutput(SampleRate),
     // new FileAudioOutput(SampleRate, "audiodump.bin"),
-    new OpenAlOutput(SampleRate),
+    //new OpenAlOutput(SampleRate),
     new NullAudioOutput(SampleRate),
   ))
   val samples = new Array[Float](Chunk * 2)
@@ -294,7 +294,7 @@ object GameMain extends App {
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
 
     val proj = Matrix4.perspective(1280.0/720.0, scala.math.Pi / 2.5, 0.01, 1000.0)
-    val world = Matrix43.rotateY(4.0 + time * 0.05) * Matrix43.scale(0.07)
+    val world = Matrix43.rotateY(4.0 + time * 0.05) * Matrix43.scale(0.05)
     val view = Matrix4.look(Vector3(0.0, 5.0, -10.0), Vector3(0.0, 0.0, 1.0))
 
     val wvp = proj * view

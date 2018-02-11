@@ -37,15 +37,13 @@ object MipmapGeneration {
       } {
         val bx = x * 2
         val by = y * 2
-        val s0 = samplePrev(bx + 0, by + 0)
-        val s1 = samplePrev(bx + 1, by + 0)
-        val s2 = samplePrev(bx + 0, by + 1)
-        val s3 = samplePrev(bx + 1, by + 1)
+        val s0 = samplePrev(bx + 0, by + 0).asSrgb
+        val s1 = samplePrev(bx + 1, by + 0).asSrgb
+        val s2 = samplePrev(bx + 0, by + 1).asSrgb
+        val s3 = samplePrev(bx + 1, by + 1).asSrgb
 
-        val r = math.min((s0.r + s1.r + s2.r + s3.r) / 4, 255)
-        val g = math.min((s0.g + s1.g + s2.g + s3.g) / 4, 255)
-        val b = math.min((s0.b + s1.b + s2.b + s3.b) / 4, 255)
-        val a = math.min((s0.a + s1.a + s2.a + s3.a) / 4, 255)
+        val sum = (s0 + s1 + s2 + s3) / 4.0
+        val (r, g, b, a) = sum.toSrgb
 
         mip.setPixel(x, y, Pixel(r, g, b, a))
       }

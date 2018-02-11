@@ -1,5 +1,7 @@
 package tower.authoring.resource
 
+import tower.util.Color
+
 object Pixel {
   def apply(r: Int, g: Int, b: Int, a: Int): Pixel = new Pixel(
       (r & 0xFF) <<  0 |
@@ -8,12 +10,15 @@ object Pixel {
       (a & 0xFF) << 24 )
 }
 
+/** Represents a 32-bit RGBA pixel. Without any color-space information. */
 class Pixel(val bits: Int) extends AnyVal {
 
   def r: Int = (bits >>>  0) & 0xFF
   def g: Int = (bits >>>  8) & 0xFF
   def b: Int = (bits >>> 16) & 0xFF
   def a: Int = (bits >>> 24) & 0xFF
+
+  def asSrgb: Color = Color.fromSrgb(r, g, b, a)
 
 }
 
