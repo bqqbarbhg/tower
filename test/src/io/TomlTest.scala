@@ -54,12 +54,17 @@ class TomlTest extends FlatSpec with Matchers {
   it should "support nested keys in context" in {
     val fixture =
       """
-        |[map.foo]
+        |[map.foo] # Comment
         |thing = 10
+        |[[some.list]]
+        |thing = 15
       """.stripMargin
 
     val v = Toml.parse(fixture, "test")
+    val arr = v("some.list").asInstanceOf[SArray]
     assert(v("map.foo.thing") === SInt(10))
+    assert(arr(0).asInstanceOf[SMap]("thing") === SInt(15))
+    assert(arr.length === 1)
   }
 
   it should "support arrays of tables" in {
