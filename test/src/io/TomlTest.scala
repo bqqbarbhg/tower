@@ -85,4 +85,55 @@ class TomlTest extends FlatSpec with Matchers {
     assert(arr.length === 2)
   }
 
+  class Test {
+    var foo = 0
+    var bar = ""
+  }
+
+  class Nested {
+    val test = new Test()
+    var flag = false
+  }
+
+  class Numbers {
+    var int: Int = 0
+    var long: Long = 0
+    var float: Float = 0
+    var double: Double = 0
+  }
+
+  "SimpleSerialization" should "copy data to simple struct" in {
+    val s = SMap(Map("foo" -> SInt(3), "bar" -> SString("Hello")))
+    val t = new Test()
+    s.write(t)
+    assert(t.foo === 3)
+    assert(t.bar === "Hello")
+  }
+
+  it should "copy data to nested struct" in {
+    val inner = SMap(Map("foo" -> SInt(3), "bar" -> SString("Hello")))
+    val outer = SMap(Map("test" -> inner, "flag" -> SBool(true)))
+    val n = new Nested()
+    outer.write(n)
+    assert(n.test.foo === 3)
+    assert(n.test.bar === "Hello")
+    assert(n.flag === true)
+  }
+
+  it should "cast integer values to int/long/float/double" in {
+    val s = SMap(Map(
+      "int" -> SInt(1),
+      "long" -> SInt(2),
+      "float" -> SInt(3),
+      "double" -> SInt(4),
+    ))
+
+    val n = new Numbers()
+    s.write(n)
+    assert(n.int === 1)
+    assert(n.long === 2)
+    assert(n.float === 3)
+    assert(n.double === 4)
+  }
+
 }
