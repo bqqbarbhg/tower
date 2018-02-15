@@ -4,34 +4,34 @@ import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
 trait SimpleVisitor {
-  def field(v: SimpleVisitor, name: String, value: Int): Int
-  def field(v: SimpleVisitor, name: String, value: Long): Long
-  def field(v: SimpleVisitor, name: String, value: Float): Float
-  def field(v: SimpleVisitor, name: String, value: Double): Double
-  def field(v: SimpleVisitor, name: String, value: String): String
-  def field(v: SimpleVisitor, name: String, value: Boolean): Boolean
-  def field[T <: SimpleSerializable : ClassTag](v: SimpleVisitor, name: String, value: T): T
-  def field[T <: SimpleSerializable : ClassTag](v: SimpleVisitor, name: String, value: ArrayBuffer[T], ctor: => T): ArrayBuffer[T]
+  def field(name: String, value: Int): Int
+  def field(name: String, value: Long): Long
+  def field(name: String, value: Float): Float
+  def field(name: String, value: Double): Double
+  def field(name: String, value: String): String
+  def field(name: String, value: Boolean): Boolean
+  def field[T <: SimpleSerializable : ClassTag](name: String, value: T): T
+  def field[T <: SimpleSerializable : ClassTag](name: String, value: ArrayBuffer[T], ctor: => T): ArrayBuffer[T]
 }
 
 abstract class SimpleReadVisitor extends SimpleVisitor {
-  def readField(v: SimpleVisitor, name: String, value: Int): Unit
-  def readField(v: SimpleVisitor, name: String, value: Long): Unit
-  def readField(v: SimpleVisitor, name: String, value: Float): Unit
-  def readField(v: SimpleVisitor, name: String, value: Double): Unit
-  def readField(v: SimpleVisitor, name: String, value: String): Unit
-  def readField(v: SimpleVisitor, name: String, value: Boolean): Unit
-  def readField[T <: SimpleSerializable : ClassTag](v: SimpleVisitor, name: String, value: T): Unit
-  def readField[T <: SimpleSerializable : ClassTag](v: SimpleVisitor, name: String, value: ArrayBuffer[T], ctor: => T): Unit
+  def readField(name: String, value: Int): Unit
+  def readField(name: String, value: Long): Unit
+  def readField(name: String, value: Float): Unit
+  def readField(name: String, value: Double): Unit
+  def readField(name: String, value: String): Unit
+  def readField(name: String, value: Boolean): Unit
+  def readField[T <: SimpleSerializable : ClassTag](name: String, value: T): Unit
+  def readField[T <: SimpleSerializable : ClassTag](name: String, value: ArrayBuffer[T], ctor: => T): Unit
 
-  def field(v: SimpleVisitor, name: String, value: Int): Int = { readField(v, name, value); value }
-  def field(v: SimpleVisitor, name: String, value: Long): Long = { readField(v, name, value); value }
-  def field(v: SimpleVisitor, name: String, value: Float): Float = { readField(v, name, value); value }
-  def field(v: SimpleVisitor, name: String, value: Double): Double = { readField(v, name, value); value }
-  def field(v: SimpleVisitor, name: String, value: String): String = { readField(v, name, value); value }
-  def field(v: SimpleVisitor, name: String, value: Boolean): Boolean = { readField(v, name, value); value }
-  def field[T <: SimpleSerializable : ClassTag](v: SimpleVisitor, name: String, value: T): T = { readField(v, name, value); value }
-  def field[T <: SimpleSerializable : ClassTag](v: SimpleVisitor, name: String, value: ArrayBuffer[T], ctor: => T): ArrayBuffer[T] = { readField(v, name, value, ctor); value }
+  def field(name: String, value: Int): Int = { readField(name, value); value }
+  def field(name: String, value: Long): Long = { readField(name, value); value }
+  def field(name: String, value: Float): Float = { readField(name, value); value }
+  def field(name: String, value: Double): Double = { readField(name, value); value }
+  def field(name: String, value: String): String = { readField(name, value); value }
+  def field(name: String, value: Boolean): Boolean = { readField(name, value); value }
+  def field[T <: SimpleSerializable : ClassTag](name: String, value: T): T = { readField(name, value); value }
+  def field[T <: SimpleSerializable : ClassTag](name: String, value: ArrayBuffer[T], ctor: => T): ArrayBuffer[T] = { readField(name, value, ctor); value }
 }
 
 trait SimpleSerializable {

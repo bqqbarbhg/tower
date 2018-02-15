@@ -16,8 +16,8 @@ class SimpleSerializationTest extends FlatSpec with Matchers {
     var bar = ""
 
     def visit(v: SimpleVisitor): Unit = {
-      foo = v.field(v, "foo", foo)
-      bar = v.field(v, "bar", bar)
+      foo = v.field("foo", foo)
+      bar = v.field("bar", bar)
     }
   }
 
@@ -26,8 +26,8 @@ class SimpleSerializationTest extends FlatSpec with Matchers {
     var flag = false
 
     def visit(v: SimpleVisitor): Unit = {
-      test = v.field(v, "test", test)
-      flag = v.field(v, "flag", flag)
+      test = v.field("test", test)
+      flag = v.field("flag", flag)
     }
   }
 
@@ -38,10 +38,10 @@ class SimpleSerializationTest extends FlatSpec with Matchers {
     var double: Double = 0
 
     def visit(v: SimpleVisitor): Unit = {
-      int = v.field(v, "int", int)
-      long = v.field(v, "long", long)
-      float = v.field(v, "float", float)
-      double = v.field(v, "double", double)
+      int = v.field("int", int)
+      long = v.field("long", long)
+      float = v.field("float", float)
+      double = v.field("double", double)
     }
   }
 
@@ -49,7 +49,7 @@ class SimpleSerializationTest extends FlatSpec with Matchers {
     var buffer = new ArrayBuffer[Test]()
 
     def visit(v: SimpleVisitor): Unit = {
-      buffer = v.field(v, "buffer", buffer, new Test)
+      buffer = v.field("buffer", buffer, new Test)
     }
   }
 

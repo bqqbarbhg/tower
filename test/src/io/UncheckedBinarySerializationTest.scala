@@ -20,11 +20,11 @@ class UncheckedBinarySerializationTest extends FlatSpec with Matchers {
     var e: Boolean = false
 
     def visit(v: SimpleVisitor): Unit = {
-      a = v.field(v, "a", a)
-      b = v.field(v, "b", b)
-      c = v.field(v, "c", c)
-      d = v.field(v, "d", d)
-      e = v.field(v, "e", e)
+      a = v.field("a", a)
+      b = v.field("b", b)
+      c = v.field("c", c)
+      d = v.field("d", d)
+      e = v.field("e", e)
     }
   }
 
@@ -32,7 +32,7 @@ class UncheckedBinarySerializationTest extends FlatSpec with Matchers {
     var str: String = ""
 
     def visit(v: SimpleVisitor): Unit = {
-      str = v.field(v, "str", str)
+      str = v.field("str", str)
     }
   }
 
