@@ -134,13 +134,13 @@ object SimpleSerialization {
       }
     }
 
-    def field[T <: SimpleSerializable : ClassTag](v: SimpleVisitor, name: String, value: ArrayBuffer[T]): ArrayBuffer[T] = {
+    def field[T <: SimpleSerializable : ClassTag](v: SimpleVisitor, name: String, value: ArrayBuffer[T], ctor: => T): ArrayBuffer[T] = {
       get(name) match {
         case SArray(arr) =>
           for (v <- arr) {
             v match {
               case child: SMap =>
-                val inst = implicitly[ClassTag[T]].runtimeClass.getConstructor().newInstance().asInstanceOf[T]
+                val inst = ctor
                 inst.visit(SMapWrite(child, eh))
                 value += inst
               case other => eh.wrongType(name, "map inside array", other.kind); value

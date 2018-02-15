@@ -4,8 +4,9 @@ import org.scalatest._
 import org.scalatest.junit.JUnitRunner
 import org.junit.runner.RunWith
 import org.scalactic.TolerantNumerics
-
 import io.SimpleSerialization._
+
+import scala.collection.mutable.ArrayBuffer
 
 @RunWith(classOf[JUnitRunner])
 class TomlTest extends FlatSpec with Matchers {
@@ -119,6 +120,14 @@ class TomlTest extends FlatSpec with Matchers {
     }
   }
 
+  class ListOfTest extends SimpleSerializable {
+    var buffer = new ArrayBuffer[Test]()
+
+    def visit(v: SimpleVisitor): Unit = {
+      buffer = v.field(v, "buffer", buffer, new Test)
+    }
+  }
+
   "SimpleSerialization" should "copy data to simple struct" in {
     val s = SMap(Map("foo" -> SInt(3), "bar" -> SString("Hello")))
     val t = new Test()
@@ -151,6 +160,22 @@ class TomlTest extends FlatSpec with Matchers {
     assert(n.long === 2)
     assert(n.float === 3)
     assert(n.double === 4)
+  }
+
+  it should "read arrays of stuff" in {
+    val s = SMap(Map(
+      "buffer" -> SArray(Vector(
+      SMap(Map("foo" -> SInt(12), "bar" -> SString("Hello"))),
+      SMap(Map("foo" -> SInt(34), "bar" -> SString("world"))),
+    ))))
+
+    val n = new ListOfTest()
+    s.write(n)
+    assert(n.buffer.length === 2)
+    assert(n.buffer(0).foo === 12)
+    assert(n.buffer(0).bar === "Hello")
+    assert(n.buffer(1).foo === 34)
+    assert(n.buffer(1).bar === "world")
   }
 
 }

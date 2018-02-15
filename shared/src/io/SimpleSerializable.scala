@@ -11,7 +11,7 @@ trait SimpleVisitor {
   def field(v: SimpleVisitor, name: String, value: String): String
   def field(v: SimpleVisitor, name: String, value: Boolean): Boolean
   def field[T <: SimpleSerializable : ClassTag](v: SimpleVisitor, name: String, value: T): T
-  def field[T <: SimpleSerializable : ClassTag](v: SimpleVisitor, name: String, value: ArrayBuffer[T]): ArrayBuffer[T]
+  def field[T <: SimpleSerializable : ClassTag](v: SimpleVisitor, name: String, value: ArrayBuffer[T], ctor: => T): ArrayBuffer[T]
 }
 
 trait SimpleSerializable {
