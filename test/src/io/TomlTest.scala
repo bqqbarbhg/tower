@@ -85,21 +85,38 @@ class TomlTest extends FlatSpec with Matchers {
     assert(arr.length === 2)
   }
 
-  class Test {
+  class Test extends SimpleSerializable {
     var foo = 0
     var bar = ""
+
+    def visit(v: SimpleVisitor): Unit = {
+      foo = v.field(v, "foo", foo)
+      bar = v.field(v, "bar", bar)
+    }
   }
 
-  class Nested {
-    val test = new Test()
+  class Nested extends SimpleSerializable {
+    var test = new Test()
     var flag = false
+
+    def visit(v: SimpleVisitor): Unit = {
+      test = v.field(v, "test", test)
+      flag = v.field(v, "flag", flag)
+    }
   }
 
-  class Numbers {
+  class Numbers extends SimpleSerializable {
     var int: Int = 0
     var long: Long = 0
     var float: Float = 0
     var double: Double = 0
+
+    def visit(v: SimpleVisitor): Unit = {
+      int = v.field(v, "int", int)
+      long = v.field(v, "long", long)
+      float = v.field(v, "float", float)
+      double = v.field(v, "double", double)
+    }
   }
 
   "SimpleSerialization" should "copy data to simple struct" in {
