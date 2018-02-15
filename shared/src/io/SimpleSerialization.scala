@@ -1,6 +1,8 @@
 package io
 
 import java.lang.reflect.Method
+
+import scala.collection.mutable
 import scala.reflect.ClassTag
 import scala.collection.mutable.ArrayBuffer
 
@@ -69,7 +71,7 @@ object SimpleSerialization {
     }
   }
 
-  case class SMapWrite(m: SMap, eh:  ErrorHandler) extends SimpleVisitor {
+  class SMapWrite(m: SMap, eh: ErrorHandler) extends SimpleVisitor {
     private def get(key: String): SValue = m.v.getOrElse(key, SNotDefined)
 
     def field(v: SimpleVisitor, name: String, value: Int): Int = {
@@ -127,7 +129,7 @@ object SimpleSerialization {
     def field[T <: SimpleSerializable : ClassTag](v: SimpleVisitor, name: String, value: T): T = {
       get(name) match {
         case child: SMap =>
-          value.visit(SMapWrite(child, eh))
+          value.visit(new SMapWrite(child, eh))
           value
         case SNotDefined => eh.notFound(name, "map"); value
         case other => eh.wrongType(name, "map", other.kind); value
@@ -141,7 +143,7 @@ object SimpleSerialization {
             v match {
               case child: SMap =>
                 val inst = ctor
-                inst.visit(SMapWrite(child, eh))
+                inst.visit(new SMapWrite(child, eh))
                 value += inst
               case other => eh.wrongType(name, "map inside array", other.kind); value
             }
@@ -151,6 +153,31 @@ object SimpleSerialization {
         case other => eh.wrongType(name, "array", other.kind); value
       }
     }
+  }
 
+  class SMapRead extends SimpleReadVisitor {
+    private val fields = mutable.HashMap[String, SValue]()
+
+    def map: SMap = new SMap(fields.toMap)
+
+    def readField(v: SimpleVisitor, name: String, value: Int): Unit = { fields(name) = SInt(value) }
+    def readField(v: SimpleVisitor, name: String, value: Long): Unit = { fields(name) = SInt(value) }
+    def readField(v: SimpleVisitor, name: String, value: Float): Unit = { fields(name) = SFloat(value) }
+    def readField(v: SimpleVisitor, name: String, value: Double): Unit = { fields(name) = SFloat(value) }
+    def readField(v: SimpleVisitor, name: String, value: String): Unit = { fields(name) = SString(value) }
+    def readField(v: SimpleVisitor, name: String, value: Boolean): Unit = { fields(name) = SBool(value) }
+    def readField[T <: SimpleSerializable : ClassTag](v: SimpleVisitor, name: String, value: T): Unit = {
+      val child = new SMapRead()
+      value.visit(child)
+      fields(name) = child.map
+    }
+    def readField[T <: SimpleSerializable : ClassTag](v: SimpleVisitor, name: String, value: ArrayBuffer[T], ctor: => T): Unit = {
+      val maps = for (v <- value) yield {
+        val child = new SMapRead()
+        v.visit(child)
+        child.map
+      }
+      fields(name) = SArray(maps.toSeq)
+    }
   }
 }

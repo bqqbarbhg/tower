@@ -128,7 +128,7 @@ class TomlTest extends FlatSpec with Matchers {
     }
   }
 
-  "SimpleSerialization" should "copy data to simple struct" in {
+  "SimpleSerialization write" should "copy data to simple struct" in {
     val s = SMap(Map("foo" -> SInt(3), "bar" -> SString("Hello")))
     val t = new Test()
     s.write(t)
