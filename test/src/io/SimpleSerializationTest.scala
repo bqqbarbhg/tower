@@ -54,7 +54,7 @@ class SimpleSerializationTest extends FlatSpec with Matchers {
   }
 
   "SMap.write" should "copy data to simple struct" in {
-    val s = SMap(Map("foo" -> SInt(3), "bar" -> SString("Hello")))
+    val s = SMap("foo" -> SInt(3), "bar" -> SString("Hello"))
     val t = new Test()
     s.write(t)
     assert(t.foo === 3)
@@ -62,8 +62,8 @@ class SimpleSerializationTest extends FlatSpec with Matchers {
   }
 
   it should "copy data to nested struct" in {
-    val inner = SMap(Map("foo" -> SInt(3), "bar" -> SString("Hello")))
-    val outer = SMap(Map("test" -> inner, "flag" -> SBool(true)))
+    val inner = SMap("foo" -> SInt(3), "bar" -> SString("Hello"))
+    val outer = SMap("test" -> inner, "flag" -> SBool(true))
     val n = new Nested()
     outer.write(n)
     assert(n.test.foo === 3)
@@ -72,12 +72,12 @@ class SimpleSerializationTest extends FlatSpec with Matchers {
   }
 
   it should "cast integer values to int/long/float/double" in {
-    val s = SMap(Map(
+    val s = SMap(
       "int" -> SInt(1),
       "long" -> SInt(2),
       "float" -> SInt(3),
       "double" -> SInt(4),
-    ))
+    )
 
     val n = new Numbers()
     s.write(n)
@@ -88,12 +88,12 @@ class SimpleSerializationTest extends FlatSpec with Matchers {
   }
 
   it should "cast float values to int/long/float/double" in {
-    val s = SMap(Map(
+    val s = SMap(
       "int" -> SFloat(1),
       "long" -> SFloat(2),
       "float" -> SFloat(3),
       "double" -> SFloat(4),
-    ))
+    )
 
     val n = new Numbers()
     s.write(n)
@@ -104,11 +104,11 @@ class SimpleSerializationTest extends FlatSpec with Matchers {
   }
 
   it should "read arrays of stuff" in {
-    val s = SMap(Map(
-      "buffer" -> SArray(Vector(
-        SMap(Map("foo" -> SInt(12), "bar" -> SString("Hello"))),
-        SMap(Map("foo" -> SInt(34), "bar" -> SString("world"))),
-      ))))
+    val s = SMap(
+      "buffer" -> SArray(
+        SMap("foo" -> SInt(12), "bar" -> SString("Hello")),
+        SMap("foo" -> SInt(34), "bar" -> SString("world")),
+      ))
 
     val n = new ListOfTest()
     s.write(n)
@@ -136,9 +136,9 @@ class SimpleSerializationTest extends FlatSpec with Matchers {
     nested.flag = true
 
     val m = SMap.read(nested)
-    assert(m("test.foo") === SInt(3))
-    assert(m("test.bar") === SString("Hello"))
-    assert(m("flag") === SBool(true))
+    assert(m.find("test.foo") === SInt(3))
+    assert(m.find("test.bar") === SString("Hello"))
+    assert(m.find("flag") === SBool(true))
   }
 
   it should "read integer/float values from int/long/float/double" in {

@@ -49,7 +49,7 @@ class TomlTest extends FlatSpec with Matchers {
       """.stripMargin
 
     val v = Toml.parse(fixture, "test")
-    assert(v("map.foo.thing") === SInt(10))
+    assert(v.find("map.foo.thing") === SInt(10))
   }
 
   it should "support nested keys in context" in {
@@ -62,8 +62,8 @@ class TomlTest extends FlatSpec with Matchers {
       """.stripMargin
 
     val v = Toml.parse(fixture, "test")
-    val arr = v("some.list").asInstanceOf[SArray]
-    assert(v("map.foo.thing") === SInt(10))
+    val arr = v.find("some.list").asInstanceOf[SArray]
+    assert(v.find("map.foo.thing") === SInt(10))
     assert(arr(0).asInstanceOf[SMap]("thing") === SInt(15))
     assert(arr.length === 1)
   }
@@ -82,36 +82,36 @@ class TomlTest extends FlatSpec with Matchers {
     val arr = v("things").asInstanceOf[SArray]
     assert(arr(0).asInstanceOf[SMap]("value") === SInt(5))
     assert(arr(1).asInstanceOf[SMap]("value") === SInt(10))
-    assert(arr(1).asInstanceOf[SMap]("other.value") === SInt(15))
+    assert(arr(1).asInstanceOf[SMap].find("other.value") === SInt(15))
     assert(arr.length === 2)
   }
 
-  "Toml.format" should "format simple toplevel table" in {
-    val fixture = SMap(Map(
+  "Toml.format" should "format simple toplevel table maintaining order" in {
+    val fixture = SMap(
       "str" -> SString("Hello world!"),
       "int" -> SInt(10),
       "float" -> SFloat(1.0),
       "yes" -> SBool(true),
       "no" -> SBool(false),
-    ))
+    )
 
     val s = Toml.format(fixture)
     val lines = s.split("\n")
     assert(lines.length === 5)
-    assert(lines(0) === "float = 1.0")
+    assert(lines(0) === "str = \"Hello world!\"")
     assert(lines(1) === "int = 10")
-    assert(lines(2) === "no = false")
-    assert(lines(3) === "str = \"Hello world!\"")
-    assert(lines(4) === "yes = true")
+    assert(lines(2) === "float = 1.0")
+    assert(lines(3) === "yes = true")
+    assert(lines(4) === "no = false")
   }
 
   it should "support nested properties" in {
-    val fixture = SMap(Map(
+    val fixture = SMap(
       "toplevel" -> SBool(true),
-      "nested" -> SMap(Map(
+      "nested" -> SMap(
         "thing" -> SInt(10),
-        "inner" -> SMap(Map(
-          "value" -> SInt(1234)))))))
+        "inner" -> SMap(
+          "value" -> SInt(1234))))
 
     val s = Toml.format(fixture)
     val lines = s.split("\n")
@@ -126,11 +126,11 @@ class TomlTest extends FlatSpec with Matchers {
   }
 
   it should "omit unnecessary objects" in {
-    val fixture = SMap(Map(
+    val fixture = SMap(
       "toplevel" -> SBool(true),
-      "nested" -> SMap(Map(
-        "inner" -> SMap(Map(
-          "value" -> SInt(1234)))))))
+      "nested" -> SMap(
+        "inner" -> SMap(
+          "value" -> SInt(1234))))
 
     val s = Toml.format(fixture)
     val lines = s.split("\n")
@@ -142,11 +142,11 @@ class TomlTest extends FlatSpec with Matchers {
   }
 
   it should "support arrays of objects" in {
-    val fixture = SMap(Map(
-      "array" -> SArray(Vector(
-        SMap(Map("value" -> SInt(10))),
-        SMap(Map("value" -> SInt(20))),
-      ))))
+    val fixture = SMap(
+      "array" -> SArray(
+        SMap("value" -> SInt(10)),
+        SMap("value" -> SInt(20)),
+      ))
 
     val s = Toml.format(fixture)
     val lines = s.split("\n")
@@ -160,12 +160,12 @@ class TomlTest extends FlatSpec with Matchers {
   }
 
   it should "make nested keys inline inside an array" in {
-    val fixture = SMap(Map(
-      "array" -> SArray(Vector(
-        SMap(Map("value" -> SInt(10))),
-        SMap(Map("value" -> SInt(20),
-          "nested" -> SMap(Map("thing" -> SInt(30)))),
-      )))))
+    val fixture = SMap(
+      "array" -> SArray(
+        SMap("value" -> SInt(10)),
+        SMap("value" -> SInt(20),
+          "nested" -> SMap("thing" -> SInt(30)),
+      )))
 
     val s = Toml.format(fixture)
     val lines = s.split("\n")

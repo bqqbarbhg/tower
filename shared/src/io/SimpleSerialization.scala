@@ -9,53 +9,77 @@ import scala.collection.mutable.ArrayBuffer
 class SimpleSerializeException(message: String) extends RuntimeException(message)
 
 object SimpleSerialization {
+
   sealed abstract class SValue {
+    /** Textual description of the type of data */
     def kind: String
   }
-  case class SString(v: String) extends SValue {
-    def kind: String = "string"
-  }
-  case class SInt(v: Long) extends SValue {
-    def kind: String = "integer"
-  }
-  case class SFloat(v: Double) extends SValue {
-    def kind: String = "floating point"
-  }
-  case class SBool(v: Boolean) extends SValue {
-    def kind: String = "boolean"
-  }
-  case object SNotDefined extends SValue {
-    def kind: String = "not defined"
-  }
+
+  case class  SString(v: String)  extends SValue { def kind: String = "string"         }
+  case class  SInt   (v: Long)    extends SValue { def kind: String = "integer"        }
+  case class  SFloat (v: Double)  extends SValue { def kind: String = "floating point" }
+  case class  SBool  (v: Boolean) extends SValue { def kind: String = "boolean"        }
+  case object SNotDefined         extends SValue { def kind: String = "not defined"    }
 
   object SMap {
+
+    /** Read a serializable object into a `SMap` */
     def read(target: SimpleSerializable): SMap = {
       val state = new SMapRead()
       target.visit(state)
       state.map
     }
+
+    /** Construct an `SMap` from pairs maintaining the order */
+    def apply(pairs: (String, SValue)*): SMap = new SMap(pairs)
   }
 
-  case class SMap(v: Map[String, SValue]) extends SValue {
+  case class SMap(data: Map[String, SValue], order: Vector[String]) extends SValue {
     def kind: String = "map"
-    def apply(key: String): SValue = {
-      val parts = key.split('.')
-      parts.foldLeft[SValue](this)((v, p) => v.asInstanceOf[SMap].v(p))
+
+    /** Construct an `SMap` from pairs maintaining the order */
+    def this(pairs: Iterable[(String, SValue)]) = this(pairs.toMap, pairs.map(_._1).toVector)
+
+    /** Returns all the key/value pairs in order */
+    def pairs: Vector[(String, SValue)] = order.map(key => (key, data(key)))
+
+    /** Returns a property with the name `key` */
+    def apply(key: String): SValue = data.getOrElse(key, SNotDefined)
+
+    /** Returns a nested property with dot seprated keys */
+    def find(keys: String): SValue = {
+      val parts = keys.split('.')
+      var node = this
+      for (part <- parts.dropRight(1)) {
+        node(part) match {
+          case child: SMap => node = child
+          case _ => return SNotDefined
+        }
+      }
+      node(parts.last)
     }
 
+    /** Write the contents of this map to a serializable object, ignores missing keys */
     def write(target: SimpleSerializable, errorHandler: ErrorHandler = StrictPartialErrorHandler): Unit = {
       target.visit(new SMapWrite(this, errorHandler))
     }
 
+    /** Write the contents of this map to a serializable object, throws an error on missing keys */
     def writeAll(target: SimpleSerializable, errorHandler: ErrorHandler = StrictErrorHandler): Unit = {
       target.visit(new SMapWrite(this, errorHandler))
     }
   }
 
-  case class SArray(v: Seq[SValue]) extends SValue {
+  object SArray {
+    def apply(data: SValue*): SArray = new SArray(data)
+  }
+
+  case class SArray(data: Vector[SValue]) extends SValue {
+    def this(data: Iterable[SValue]) = this(data.toVector)
+
     def kind: String = "array"
-    def apply(index: Int): SValue = v.apply(index)
-    def length: Int = v.length
+    def apply(index: Int): SValue = data.lift(index).getOrElse(SNotDefined)
+    def length: Int = data.length
   }
 
   trait ErrorHandler {
@@ -80,7 +104,7 @@ object SimpleSerialization {
   }
 
   private class SMapWrite(m: SMap, eh: ErrorHandler) extends SimpleVisitor {
-    private def get(key: String): SValue = m.v.getOrElse(key, SNotDefined)
+    private def get(key: String): SValue = m(key)
 
     def field(v: SimpleVisitor, name: String, value: Int): Int = {
       get(name) match {
@@ -185,7 +209,7 @@ object SimpleSerialization {
         v.visit(child)
         child.map
       }
-      fields(name) = SArray(maps.toSeq)
+      fields(name) = SArray(maps.toVector)
     }
   }
 }

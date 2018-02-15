@@ -198,8 +198,8 @@ object Toml {
 
     def convertValue(v: Any): SValue = {
       v match {
-        case t: mutable.HashMap[_, _] => SMap(t.asInstanceOf[Table].mapValues(convertValue).toMap)
-        case t: mutable.ArrayBuffer[_] => SArray(t.asInstanceOf[TableArray].map(convertValue).toSeq)
+        case t: mutable.HashMap[_, _] => new SMap(t.asInstanceOf[Table].mapValues(convertValue).toIterable)
+        case t: mutable.ArrayBuffer[_] => new SArray(t.asInstanceOf[TableArray].map(convertValue).toVector)
         case v: SValue => v
         case _ => error("Internal error: Something weird got into the data")
       }
@@ -221,26 +221,26 @@ object Toml {
   }
 
   private def formatImpl(builder: mutable.StringBuilder, context: String, map: SMap, inArray: Boolean, arrayContext: String): Unit = {
-    val all = map.v.toSeq
+    val all = map.pairs
     val simple = all.filter({ case (k, v) =>
         v match {
           case _: SMap => false
           case _: SArray => false
           case _ => true
         }
-    }).sortBy(_._1)
+    })
     val maps = all.filter({ case (k, v) =>
       v match {
         case _: SMap => true
         case _ => false
       }
-    }).sortBy(_._1)
+    })
     val arrays = all.filter({ case (k, v) =>
       v match {
         case _: SArray => true
         case _ => false
       }
-    }).sortBy(_._1)
+    })
 
     if (simple.nonEmpty && context.nonEmpty && !inArray) {
       builder ++= s"\n[${context.dropRight(1)}]\n"
@@ -271,7 +271,7 @@ object Toml {
     for ((k, vs) <- arrays) {
       assert(!inArray, "Nested arrays not supported")
       val vvs = vs.asInstanceOf[SArray]
-      for (v <- vvs.v) {
+      for (v <- vvs.data) {
         builder ++= s"\n[[$context$k]]\n"
         val newCtx = s"$context$k."
         formatImpl(builder, newCtx, v.asInstanceOf[SMap], true, "")
