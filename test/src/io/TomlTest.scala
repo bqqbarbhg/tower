@@ -202,7 +202,6 @@ class TomlTest extends FlatSpec with Matchers {
         )))
 
     val formatted = Toml.format(fixture)
-    println(formatted)
     val parsed = Toml.parse(formatted, "roundtrip")
     assert(fixture === parsed)
   }
