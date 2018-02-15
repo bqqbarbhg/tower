@@ -1,41 +1,23 @@
 package res
 
-class RunOptions extends io.SimpleSerializable {
+import java.io.File
 
-  /** Number of threads to process with, 0 for automatic */
-  var numThreads: Int = 0
+import collection.mutable.ArrayBuffer
+import Runner._
+import io.SimpleSerialization.SMap
 
-  /** Asset input directory */
-  var assetRoot: String = "asset/"
+object Runner {
+  case class ConfigFile(file: File, config: Config, root: SMap)
+  case class AssetFile(file: File, config: Config)
 
-  /** Data output directory */
-  var dataRoot: String = "data/"
-
-  /** Directory to store temporary files in, such as output file hashes */
-  var tempRoot: String = "temp/"
-
-  /** Skip processing files if the timestamps of the source files are older
-    * than the destination files. Note: this is not reliable and should not
-    * be used outside of developer environment. */
-  var skipOnTimestamp: Boolean = false
-
-  /** Skip processing files if the hashes of the source files haven't changed.
-    * More heavy than `skipOnTimestamp`, but more reliable. */
-  var skipOnHash: Boolean = true
-
-  /** Skip writing output files if the hash differs from the _output_ file hash.
-    * Saves SSD:s from wear, but should be disabled if you want to be 100% sure
-    * that the new contents are saved. */
-  var skipWriteOnHash: Boolean = true
-
-  def visit(v: io.SimpleVisitor): Unit = {
-    numThreads = v.field("numThreads", numThreads)
-    assetRoot = v.field("assetRoot", assetRoot)
-    dataRoot = v.field("dataRoot", dataRoot)
-    tempRoot = v.field("tempRoot", tempRoot)
-    skipOnTimestamp = v.field("skipOnTimestamp", skipOnTimestamp)
-    skipOnHash = v.field("skipOnHash", skipOnHash)
-    skipWriteOnHash = v.field("skipWriteOnHash", skipWriteOnHash)
+  /** Apply configs successively in priority order */
+  def mergeConfigs(configs: Vector[ConfigFile]): Config = {
+    val sorted = configs.sortBy(-_.config.priority)
+    val merged = new Config()
+    for (conf <- sorted) {
+      conf.root.write(merged)
+    }
+    merged
   }
 }
 
@@ -43,4 +25,99 @@ class RunOptions extends io.SimpleSerializable {
   * The main resource processing runner.
   */
 class Runner(val opts: RunOptions) {
+  print(s"Listing all files in '${opts.assetRoot}'...")
+  Console.flush()
+  val assetRoot = new File(opts.assetRoot).getCanonicalFile
+  val sourceFiles = io.PathUtil.listFilesRecursive(assetRoot).sortBy(_.getAbsolutePath).toVector
+  println(s" ${sourceFiles.length} found")
+
+  val absoluteAssetPath = assetRoot.getAbsolutePath
+  def assetRelative(file: File): String = {
+    val absolute = file.getAbsolutePath
+    absolute.drop(absoluteAssetPath.length + 1).replace('\\', '/')
+  }
+
+  val configs = new ArrayBuffer[ConfigFile]()
+  val assets = new ArrayBuffer[AssetFile]()
+
+  /**
+    * Apply all the configs that are relevant to `file`
+    */
+  def getConfigs(file: File): Vector[ConfigFile] = {
+    val fileRel = assetRelative(file)
+    configs.filter(config => {
+      val configRel = assetRelative(config.file)
+      // /config/ folder applies to everyone
+      configRel.startsWith("config/") || {
+        // Otherwise only ones which are lower in the hierarchy
+        val lastSep = configRel.lastIndexOf('/')
+        val configDir = if (lastSep >= 0) configRel.take(lastSep + 1) else ""
+        fileRel.startsWith(configDir)
+      }
+    }).filter(config => {
+      // Check for filename filters
+      val configRel = assetRelative(config.file)
+      val filenameFilters = (for {
+        filt <- config.config.filter
+        regex <- filt.filenameRegex
+      } yield regex)
+      filenameFilters.isEmpty || filenameFilters.exists(_.findFirstIn(fileRel).isDefined)
+    }).filter(config => {
+      // Check for name filters
+      val name = file.getName
+      val lastDot = name.lastIndexOf('.')
+      val nameNoExt = if (lastDot >= 0) name.take(lastDot) else name
+      val nameFilters = (for {
+        filt <- config.config.filter
+        regex <- filt.nameRegex
+      } yield regex)
+      nameFilters.isEmpty || nameFilters.exists(_.findFirstIn(nameNoExt).isDefined)
+    }).toVector
+  }
+
+  def run(): Unit = {
+
+    // Load configurations
+    {
+      val tomlFiles = sourceFiles.filter(_.getName().endsWith(".toml"))
+      println(s"Parsing config .toml files... ${tomlFiles.length} found")
+      for (tomlFile <- tomlFiles) {
+        if (opts.verbose) println(s"> ${assetRelative(tomlFile)}")
+        try {
+          val root = io.Toml.parseFile(tomlFile.getAbsolutePath)
+          val config = new Config()
+          root.write(config)
+          configs += ConfigFile(tomlFile, config, root)
+        } catch {
+          case e: io.TomlParseException => println(e.getMessage)
+          case e: io.SimpleSerializeException => println(e.getMessage)
+        }
+      }
+    }
+
+    // Resolve assets
+    {
+      val assetFiles = sourceFiles.filterNot(_.getName().endsWith(".toml"))
+      println(s"Resolving assets... ${assetFiles.length} found")
+      for (assetFile <- assetFiles) {
+        val configs = getConfigs(assetFile)
+        for (config <- configs) {
+          if (opts.debug) println(s"  - ${assetRelative(config.file)}")
+        }
+
+        val config = mergeConfigs(configs)
+        if (opts.verbose) println(s"> ${assetRelative(assetFile)} [${config.importer.name}]")
+
+        if (config.importer.name.nonEmpty) {
+          assets += AssetFile(assetFile, config)
+        }
+      }
+    }
+
+    // Process assets
+    {
+      println(s"Processing assets... ${assets.length} found")
+    }
+  }
+
 }

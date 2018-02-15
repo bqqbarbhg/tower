@@ -9,17 +9,17 @@ object CliMain extends App {
   val arg = util.ArgumentParser.parse(args)
 
   // Read config from command line argument
-  arg.positional.headOption match {
-    case Some(configFile) =>
-      val config = io.Toml.parseFile(configFile)
-      config.write(opts)
-    case None =>
+  for (configFile <- arg.positional.headOption) {
+    val config = io.Toml.parseFile(configFile)
+    config.write(opts)
   }
 
   // Command line options for changing the settings. Overrides file config.
   if (arg.flag("fast")) opts.skipOnTimestamp = true
   if (arg.flag("all")) opts.skipOnHash = false
   if (arg.flag("force")) opts.skipWriteOnHash = false
+  if (arg.flag("verbose")) opts.verbose = true
 
   val runner = new res.Runner(opts)
+  runner.run()
 }
