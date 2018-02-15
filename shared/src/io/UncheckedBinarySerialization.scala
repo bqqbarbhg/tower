@@ -4,6 +4,11 @@ import java.nio.ByteBuffer
 import collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
+/**
+  * _Unchecked_ binary serialization reader, depends on all fields being the same
+  * and in the same order as they were when serializing. Use external check to see
+  * if data is valid.
+  */
 class UncheckedBinaryReader(buf: ByteBuffer) extends SimpleVisitor {
   def field(v: SimpleVisitor, name: String, value: Int): Int =  buf.getInt()
   def field(v: SimpleVisitor, name: String, value: Long): Long = buf.getLong()
@@ -33,6 +38,11 @@ class UncheckedBinaryReader(buf: ByteBuffer) extends SimpleVisitor {
   }
 }
 
+/**
+  * _Unchecked_ binary serialization writer, writes the field contents directly
+  * to memory without any metadata or field names. Use external validation to
+  * make sure no invalid data is read.
+  */
 class UncheckedBinaryWriter(buf: ByteBuffer) extends SimpleReadVisitor {
   def readField(v: SimpleVisitor, name: String, value: Int): Unit = buf.putInt(value)
   def readField(v: SimpleVisitor, name: String, value: Long): Unit = buf.putLong(value)
