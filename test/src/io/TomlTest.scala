@@ -42,6 +42,18 @@ class TomlTest extends FlatSpec with Matchers {
     assert(v("b") === SInt(1234))
   }
 
+  it should "should handle negative numbers" in {
+    val fixture =
+      """
+        |a = -10
+        |b = -10.0
+      """.stripMargin
+
+    val v = Toml.parse(fixture, "test")
+    assert(v("a") === SInt(-10))
+    assert(v("b") === SFloat(-10.0))
+  }
+
   it should "support nested keys" in {
     val fixture =
       """
@@ -177,6 +189,22 @@ class TomlTest extends FlatSpec with Matchers {
     assert(lines(4) === "[[array]]")
     assert(lines(5) === "value = 20")
     assert(lines(6) === "nested.thing = 30")
+  }
+
+  "Toml.parse(Toml.format)" should "roundtrip data with difficult fixture" in {
+    val fixture = SMap(
+      "thing" -> SBool(true),
+      "float" -> SFloat(-3.0),
+      "array" -> SArray(
+        SMap("value" -> SInt(10), "other" -> SBool(false)),
+        SMap("value" -> SInt(20),
+          "nested" -> SMap("thing" -> SInt(30)),
+        )))
+
+    val formatted = Toml.format(fixture)
+    println(formatted)
+    val parsed = Toml.parse(formatted, "roundtrip")
+    assert(fixture === parsed)
   }
 
 }

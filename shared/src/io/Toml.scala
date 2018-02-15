@@ -25,7 +25,17 @@ object Toml {
   private val TokInt = raw"[+-]?[0-9_]+".r
   private val TokFloat = raw"[+-]?[0-9_]*\.[0-9_]+([eE][+-][0-9]+)?".r
 
-  private type Table = mutable.HashMap[String, Any]
+  private case class Table(data: mutable.HashMap[String, Any] = new mutable.HashMap[String, Any](),
+                           order: mutable.ArrayBuffer[String] = new mutable.ArrayBuffer[String]()) {
+
+    def getOrElseUpdate(key: String, value: => Any): Any = {
+      data.getOrElseUpdate(key, {
+        order += key
+        value
+      })
+    }
+
+  }
   private type TableArray = mutable.ArrayBuffer[Table]
 
   private class Parser(source: String, filename: String) {
@@ -141,16 +151,17 @@ object Toml {
       for (k <- key.dropRight(1)) {
         val child = map.getOrElseUpdate(k, new Table())
         map = child match {
-          case t: mutable.HashMap[_, _] => t.asInstanceOf[Table]
+          case t: Table => t
           case _ => error(s"Expected a table for key '${key.mkString(".")}'")
         }
       }
 
       val ret = {
         if (force) {
-          if (map.contains(key.last)) error(s"Key '${key.mkString(".")} is defined already")
+          if (map.data.contains(key.last)) error(s"Key '${key.mkString(".")} is defined already")
           val v = value
-          map(key.last) = v
+          map.data(key.last) = v
+          map.order += key.last
           v
         } else {
           map.getOrElseUpdate(key.last, value)
@@ -198,7 +209,7 @@ object Toml {
 
     def convertValue(v: Any): SValue = {
       v match {
-        case t: mutable.HashMap[_, _] => new SMap(t.asInstanceOf[Table].mapValues(convertValue).toIterable)
+        case t: Table => new SMap(t.data.mapValues(convertValue).toMap, t.order.toVector)
         case t: mutable.ArrayBuffer[_] => new SArray(t.asInstanceOf[TableArray].map(convertValue).toVector)
         case v: SValue => v
         case _ => error("Internal error: Something weird got into the data")
