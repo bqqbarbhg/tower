@@ -1,0 +1,4 @@
+assetRoot = "../tower-data/asset/"
+dataRoot = "../tower-data/data/"
+tempRoot = "../tower-data/temp/"
+numThreads = 10

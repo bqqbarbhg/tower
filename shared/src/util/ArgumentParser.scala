@@ -15,7 +15,12 @@ object ArgumentParser {
     * @param keywords Flags with values, in example: [num -> 10, o -> thing.out]
     * @param flags Set of enabled flags, in example: [standalone, i]
     */
-  case class Args(positional: Vector[String], keywords: Map[String, String], flags: Set[String])
+  case class Args(positional: Vector[String], keywords: Map[String, String], flags: Set[String]) {
+
+    /** Returns whether a flag is set */
+    def flag(flag: String): Boolean = flags.contains(flag)
+
+  }
 
   /**
     * Parse arguments supplied to a command-line program.
