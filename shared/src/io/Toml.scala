@@ -219,4 +219,69 @@ object Toml {
     source.close
     parse(str, filename)
   }
+
+  private def formatImpl(builder: mutable.StringBuilder, context: String, map: SMap, inArray: Boolean, arrayContext: String): Unit = {
+    val all = map.v.toSeq
+    val simple = all.filter({ case (k, v) =>
+        v match {
+          case _: SMap => false
+          case _: SArray => false
+          case _ => true
+        }
+    }).sortBy(_._1)
+    val maps = all.filter({ case (k, v) =>
+      v match {
+        case _: SMap => true
+        case _ => false
+      }
+    }).sortBy(_._1)
+    val arrays = all.filter({ case (k, v) =>
+      v match {
+        case _: SArray => true
+        case _ => false
+      }
+    }).sortBy(_._1)
+
+    if (simple.nonEmpty && context.nonEmpty && !inArray) {
+      builder ++= s"\n[${context.dropRight(1)}]\n"
+    }
+
+    for ((k, v) <- simple) {
+      builder ++= s"$arrayContext$k = "
+      builder ++= (v match {
+        case SString(s) => s""""$s""""
+        case SInt(i) => i.toString
+        case SFloat(f) => f.toString
+        case SBool(b) => if (b) "true" else "false"
+        case _ => throw new AssertionError("Type not in expected set")
+      })
+      builder ++= "\n"
+    }
+
+    for ((k, v) <- maps) {
+      if (!inArray) {
+        val newCtx = s"$context$k."
+        formatImpl(builder, newCtx, v.asInstanceOf[SMap], false, "")
+      } else {
+        val arrayCtx = s"$arrayContext$k."
+        formatImpl(builder, context, v.asInstanceOf[SMap], true, arrayCtx)
+      }
+    }
+
+    for ((k, vs) <- arrays) {
+      assert(!inArray, "Nested arrays not supported")
+      val vvs = vs.asInstanceOf[SArray]
+      for (v <- vvs.v) {
+        builder ++= s"\n[[$context$k]]\n"
+        val newCtx = s"$context$k."
+        formatImpl(builder, newCtx, v.asInstanceOf[SMap], true, "")
+      }
+    }
+  }
+
+  def format(root: SMap): String = {
+    val builder = new mutable.StringBuilder()
+    formatImpl(builder, "", root, false, "")
+    builder.mkString
+  }
 }

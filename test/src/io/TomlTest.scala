@@ -11,7 +11,7 @@ import scala.collection.mutable.ArrayBuffer
 @RunWith(classOf[JUnitRunner])
 class TomlTest extends FlatSpec with Matchers {
 
-  "Toml" should "parse simple toplevel table" in {
+  "Toml.parse" should "parse simple toplevel table" in {
     val fixture =
       """
         |# Comment
@@ -86,172 +86,97 @@ class TomlTest extends FlatSpec with Matchers {
     assert(arr.length === 2)
   }
 
-  class Test extends SimpleSerializable {
-    var foo = 0
-    var bar = ""
-
-    def visit(v: SimpleVisitor): Unit = {
-      foo = v.field(v, "foo", foo)
-      bar = v.field(v, "bar", bar)
-    }
-  }
-
-  class Nested extends SimpleSerializable {
-    var test = new Test()
-    var flag = false
-
-    def visit(v: SimpleVisitor): Unit = {
-      test = v.field(v, "test", test)
-      flag = v.field(v, "flag", flag)
-    }
-  }
-
-  class Numbers extends SimpleSerializable {
-    var int: Int = 0
-    var long: Long = 0
-    var float: Float = 0
-    var double: Double = 0
-
-    def visit(v: SimpleVisitor): Unit = {
-      int = v.field(v, "int", int)
-      long = v.field(v, "long", long)
-      float = v.field(v, "float", float)
-      double = v.field(v, "double", double)
-    }
-  }
-
-  class ListOfTest extends SimpleSerializable {
-    var buffer = new ArrayBuffer[Test]()
-
-    def visit(v: SimpleVisitor): Unit = {
-      buffer = v.field(v, "buffer", buffer, new Test)
-    }
-  }
-
-  "SimpleSerialization write" should "copy data to simple struct" in {
-    val s = SMap(Map("foo" -> SInt(3), "bar" -> SString("Hello")))
-    val t = new Test()
-    s.write(t)
-    assert(t.foo === 3)
-    assert(t.bar === "Hello")
-  }
-
-  it should "copy data to nested struct" in {
-    val inner = SMap(Map("foo" -> SInt(3), "bar" -> SString("Hello")))
-    val outer = SMap(Map("test" -> inner, "flag" -> SBool(true)))
-    val n = new Nested()
-    outer.write(n)
-    assert(n.test.foo === 3)
-    assert(n.test.bar === "Hello")
-    assert(n.flag === true)
-  }
-
-  it should "cast integer values to int/long/float/double" in {
-    val s = SMap(Map(
-      "int" -> SInt(1),
-      "long" -> SInt(2),
-      "float" -> SInt(3),
-      "double" -> SInt(4),
+  "Toml.format" should "format simple toplevel table" in {
+    val fixture = SMap(Map(
+      "str" -> SString("Hello world!"),
+      "int" -> SInt(10),
+      "float" -> SFloat(1.0),
+      "yes" -> SBool(true),
+      "no" -> SBool(false),
     ))
 
-    val n = new Numbers()
-    s.write(n)
-    assert(n.int === 1)
-    assert(n.long === 2)
-    assert(n.float === 3)
-    assert(n.double === 4)
+    val s = Toml.format(fixture)
+    val lines = s.split("\n")
+    assert(lines.length === 5)
+    assert(lines(0) === "float = 1.0")
+    assert(lines(1) === "int = 10")
+    assert(lines(2) === "no = false")
+    assert(lines(3) === "str = \"Hello world!\"")
+    assert(lines(4) === "yes = true")
   }
 
-  it should "cast float values to int/long/float/double" in {
-    val s = SMap(Map(
-      "int" -> SFloat(1),
-      "long" -> SFloat(2),
-      "float" -> SFloat(3),
-      "double" -> SFloat(4),
-    ))
+  it should "support nested properties" in {
+    val fixture = SMap(Map(
+      "toplevel" -> SBool(true),
+      "nested" -> SMap(Map(
+        "thing" -> SInt(10),
+        "inner" -> SMap(Map(
+          "value" -> SInt(1234)))))))
 
-    val n = new Numbers()
-    s.write(n)
-    assert(n.int === 1)
-    assert(n.long === 2)
-    assert(n.float === 3)
-    assert(n.double === 4)
+    val s = Toml.format(fixture)
+    val lines = s.split("\n")
+    assert(lines.length === 7)
+    assert(lines(0) === "toplevel = true")
+    assert(lines(1) === "")
+    assert(lines(2) === "[nested]")
+    assert(lines(3) === "thing = 10")
+    assert(lines(4) === "")
+    assert(lines(5) === "[nested.inner]")
+    assert(lines(6) === "value = 1234")
   }
 
-  it should "read arrays of stuff" in {
-    val s = SMap(Map(
-      "buffer" -> SArray(Vector(
-      SMap(Map("foo" -> SInt(12), "bar" -> SString("Hello"))),
-      SMap(Map("foo" -> SInt(34), "bar" -> SString("world"))),
-    ))))
+  it should "omit unnecessary objects" in {
+    val fixture = SMap(Map(
+      "toplevel" -> SBool(true),
+      "nested" -> SMap(Map(
+        "inner" -> SMap(Map(
+          "value" -> SInt(1234)))))))
 
-    val n = new ListOfTest()
-    s.write(n)
-    assert(n.buffer.length === 2)
-    assert(n.buffer(0).foo === 12)
-    assert(n.buffer(0).bar === "Hello")
-    assert(n.buffer(1).foo === 34)
-    assert(n.buffer(1).bar === "world")
+    val s = Toml.format(fixture)
+    val lines = s.split("\n")
+    assert(lines.length === 4)
+    assert(lines(0) === "toplevel = true")
+    assert(lines(1) === "")
+    assert(lines(2) === "[nested.inner]")
+    assert(lines(3) === "value = 1234")
   }
 
-  "SimpleSerialization read" should "read data from simple struct" in {
-    val test = new Test()
-    test.foo = 12
-    test.bar = "Hello"
+  it should "support arrays of objects" in {
+    val fixture = SMap(Map(
+      "array" -> SArray(Vector(
+        SMap(Map("value" -> SInt(10))),
+        SMap(Map("value" -> SInt(20))),
+      ))))
 
-    val m = SMap.read(test)
-    assert(m("foo") === SInt(12))
-    assert(m("bar") === SString("Hello"))
+    val s = Toml.format(fixture)
+    val lines = s.split("\n")
+    assert(lines.length === 6)
+    assert(lines(0) === "")
+    assert(lines(1) === "[[array]]")
+    assert(lines(2) === "value = 10")
+    assert(lines(3) === "")
+    assert(lines(4) === "[[array]]")
+    assert(lines(5) === "value = 20")
   }
 
-  it should "read data from a nested struct" in {
-    val nested = new Nested()
-    nested.test.foo = 3
-    nested.test.bar = "Hello"
-    nested.flag = true
+  it should "make nested keys inline inside an array" in {
+    val fixture = SMap(Map(
+      "array" -> SArray(Vector(
+        SMap(Map("value" -> SInt(10))),
+        SMap(Map("value" -> SInt(20),
+          "nested" -> SMap(Map("thing" -> SInt(30)))),
+      )))))
 
-    val m = SMap.read(nested)
-    assert(m("test.foo") === SInt(3))
-    assert(m("test.bar") === SString("Hello"))
-    assert(m("flag") === SBool(true))
-  }
-
-  it should "read integer/float values from int/long/float/double" in {
-    val n = new Numbers()
-    n.int = 1
-    n.long = 2
-    n.float = 3
-    n.double = 4
-
-    val m = SMap.read(n)
-    assert(m("int") === SInt(1))
-    assert(m("long") === SInt(2))
-    assert(m("float") === SFloat(3))
-    assert(m("double") === SFloat(4))
-  }
-
-  it should "write arrays of stuff" in {
-    val l = new ListOfTest()
-    l.buffer += {
-      val t = new Test()
-      t.foo = 12
-      t.bar = "Hello"
-      t
-    }
-    l.buffer += {
-      val t = new Test()
-      t.foo = 34
-      t.bar = "world"
-      t
-    }
-
-    val m = SMap.read(l)
-    val buf = m("buffer").asInstanceOf[SArray]
-    assert(buf.length === 2)
-    assert(buf(0).asInstanceOf[SMap]("foo") === SInt(12))
-    assert(buf(0).asInstanceOf[SMap]("bar") === SString("Hello"))
-    assert(buf(1).asInstanceOf[SMap]("foo") === SInt(34))
-    assert(buf(1).asInstanceOf[SMap]("bar") === SString("world"))
+    val s = Toml.format(fixture)
+    val lines = s.split("\n")
+    assert(lines.length === 7)
+    assert(lines(0) === "")
+    assert(lines(1) === "[[array]]")
+    assert(lines(2) === "value = 10")
+    assert(lines(3) === "")
+    assert(lines(4) === "[[array]]")
+    assert(lines(5) === "value = 20")
+    assert(lines(6) === "nested.thing = 30")
   }
 
 }
