@@ -178,4 +178,14 @@ class TomlTest extends FlatSpec with Matchers {
     assert(n.buffer(1).bar === "world")
   }
 
+  "SimpleSerialization read" should "read data from simple struct" in {
+    val test = new Test()
+    test.foo = 12
+    test.bar = "Hello"
+
+    val m = SMap.read(test)
+    assert(m("foo") === SInt(12))
+    assert(m("bar") === SString("Hello"))
+  }
+
 }

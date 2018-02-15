@@ -28,6 +28,14 @@ object SimpleSerialization {
     def kind: String = "not defined"
   }
 
+  object SMap {
+    def read(target: SimpleSerializable): SMap = {
+      val state = new SMapRead()
+      target.visit(state)
+      state.map
+    }
+  }
+
   case class SMap(v: Map[String, SValue]) extends SValue {
     def kind: String = "map"
     def apply(key: String): SValue = {
@@ -35,12 +43,12 @@ object SimpleSerialization {
       parts.foldLeft[SValue](this)((v, p) => v.asInstanceOf[SMap].v(p))
     }
 
-    def write(target: SimpleSerializable): Unit = {
-      target.visit(new SMapWrite(this, StrictPartialErrorHandler))
+    def write(target: SimpleSerializable, errorHandler: ErrorHandler = StrictPartialErrorHandler): Unit = {
+      target.visit(new SMapWrite(this, errorHandler))
     }
 
-    def writeAll(target: SimpleSerializable): Unit = {
-      target.visit(new SMapWrite(this, StrictErrorHandler))
+    def writeAll(target: SimpleSerializable, errorHandler: ErrorHandler = StrictErrorHandler): Unit = {
+      target.visit(new SMapWrite(this, errorHandler))
     }
   }
 
@@ -71,7 +79,7 @@ object SimpleSerialization {
     }
   }
 
-  class SMapWrite(m: SMap, eh: ErrorHandler) extends SimpleVisitor {
+  private class SMapWrite(m: SMap, eh: ErrorHandler) extends SimpleVisitor {
     private def get(key: String): SValue = m.v.getOrElse(key, SNotDefined)
 
     def field(v: SimpleVisitor, name: String, value: Int): Int = {
@@ -155,7 +163,7 @@ object SimpleSerialization {
     }
   }
 
-  class SMapRead extends SimpleReadVisitor {
+  private class SMapRead extends SimpleReadVisitor {
     private val fields = mutable.HashMap[String, SValue]()
 
     def map: SMap = new SMap(fields.toMap)
