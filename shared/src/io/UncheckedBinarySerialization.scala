@@ -15,7 +15,7 @@ object UncheckedUtil {
     hh + 0xe6546b64
   }
 
-  class UncheckedHashVisitor extends SimpleReadVisitor {
+  private class UncheckedHashVisitor extends SimpleReadVisitor {
     private var s: Long = 0x012345678abcdefL
 
     def hash: Long = s
