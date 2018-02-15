@@ -162,6 +162,22 @@ class TomlTest extends FlatSpec with Matchers {
     assert(n.double === 4)
   }
 
+  it should "cast float values to int/long/float/double" in {
+    val s = SMap(Map(
+      "int" -> SFloat(1),
+      "long" -> SFloat(2),
+      "float" -> SFloat(3),
+      "double" -> SFloat(4),
+    ))
+
+    val n = new Numbers()
+    s.write(n)
+    assert(n.int === 1)
+    assert(n.long === 2)
+    assert(n.float === 3)
+    assert(n.double === 4)
+  }
+
   it should "read arrays of stuff" in {
     val s = SMap(Map(
       "buffer" -> SArray(Vector(
@@ -186,6 +202,56 @@ class TomlTest extends FlatSpec with Matchers {
     val m = SMap.read(test)
     assert(m("foo") === SInt(12))
     assert(m("bar") === SString("Hello"))
+  }
+
+  it should "read data from a nested struct" in {
+    val nested = new Nested()
+    nested.test.foo = 3
+    nested.test.bar = "Hello"
+    nested.flag = true
+
+    val m = SMap.read(nested)
+    assert(m("test.foo") === SInt(3))
+    assert(m("test.bar") === SString("Hello"))
+    assert(m("flag") === SBool(true))
+  }
+
+  it should "read integer/float values from int/long/float/double" in {
+    val n = new Numbers()
+    n.int = 1
+    n.long = 2
+    n.float = 3
+    n.double = 4
+
+    val m = SMap.read(n)
+    assert(m("int") === SInt(1))
+    assert(m("long") === SInt(2))
+    assert(m("float") === SFloat(3))
+    assert(m("double") === SFloat(4))
+  }
+
+  it should "write arrays of stuff" in {
+    val l = new ListOfTest()
+    l.buffer += {
+      val t = new Test()
+      t.foo = 12
+      t.bar = "Hello"
+      t
+    }
+    l.buffer += {
+      val t = new Test()
+      t.foo = 34
+      t.bar = "world"
+      t
+    }
+
+    val m = SMap.read(l)
+    val buf = m("buffer").asInstanceOf[SArray]
+    assert(buf.length === 2)
+    assert(buf(0).asInstanceOf[SMap]("foo") === SInt(12))
+    assert(buf(0).asInstanceOf[SMap]("bar") === SString("Hello"))
+    assert(buf(1).asInstanceOf[SMap]("foo") === SInt(34))
+    assert(buf(1).asInstanceOf[SMap]("bar") === SString("world"))
   }
 
 }
