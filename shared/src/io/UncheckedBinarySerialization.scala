@@ -41,6 +41,18 @@ object UncheckedUtil {
     t.visit(vis)
     vis.hash
   }
+
+  /** See `UncheckedBinaryReader` */
+  def readFromBytes(buf: ByteBuffer, obj: SimpleSerializable): Unit = {
+    val reader = new UncheckedBinaryReader(buf)
+    obj.visit(reader)
+  }
+
+  /** See `UncheckedBinaryWriter` */
+  def writeToBytes(buf: ByteBuffer, obj: SimpleSerializable): Unit = {
+    val writer = new UncheckedBinaryWriter(buf)
+    obj.visit(writer)
+  }
 }
 
 /**

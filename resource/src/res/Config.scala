@@ -4,7 +4,6 @@ import io.{SimpleSerializable, SimpleVisitor}
 
 import scala.collection.mutable.ArrayBuffer
 import Config._
-import res.Config.Res.Texture
 
 import scala.util.matching.Regex
 
@@ -78,6 +77,15 @@ object Config {
 
   object Res {
 
+    class Image extends SimpleSerializable {
+      /** How should this image be processed (texture or sprite) */
+      var ttype: String = ""
+
+      override def visit(v: SimpleVisitor): Unit = {
+        ttype = v.field("type", ttype)
+      }
+    }
+
     class Texture extends SimpleSerializable {
       /** What is this texture used for */
       var semantic: String = "color"
@@ -95,7 +103,8 @@ object Config {
 
   /** Resource type specific settings */
   class Res extends SimpleSerializable {
-    var texture = new Texture()
+    var texture = new Res.Texture()
+    var image = new Res.Image()
 
     override def visit(v: SimpleVisitor): Unit = {
       texture = v.field("texture", texture)
