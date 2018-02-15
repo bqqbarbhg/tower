@@ -4,6 +4,45 @@ import java.nio.ByteBuffer
 import collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
+object UncheckedUtil {
+
+  private def hashCombine(h: Long, k: Long): Long = {
+    val m = 0xc6a4a7935bd1e995L
+    val r = 47
+    val km = k * m;
+    val kk = (km ^ (km >> r)) * m
+    val hh = (h ^ km) * m
+    hh + 0xe6546b64
+  }
+
+  class UncheckedHashVisitor extends SimpleReadVisitor {
+    private var s: Long = 0x012345678abcdefL
+
+    def hash: Long = s
+
+    def readField(name: String, value: Int): Unit = { s = hashCombine(s, name.hashCode | (1L << 32)) }
+    def readField(name: String, value: Long): Unit = { s = hashCombine(s, name.hashCode | (2L << 32)) }
+    def readField(name: String, value: Float): Unit = { s = hashCombine(s, name.hashCode | (3L << 32)) }
+    def readField(name: String, value: Double): Unit = { s = hashCombine(s, name.hashCode | (4L << 32)) }
+    def readField(name: String, value: String): Unit = { s = hashCombine(s, name.hashCode | (5L << 32)) }
+    def readField(name: String, value: Boolean): Unit = { s = hashCombine(s, name.hashCode | (6L << 32)) }
+    def readField[T <: SimpleSerializable : ClassTag](name: String, value: T): Unit = {
+      s = hashCombine(s, name.hashCode | (7L << 32)) }
+    def readField[T <: SimpleSerializable : ClassTag](name: String, value: ArrayBuffer[T], ctor: => T): Unit = {
+      s = hashCombine(s, name.hashCode | (8L << 32)) }
+  }
+
+  /**
+    * Returns a hash of all the field names in order, can be used to determine
+    * if unchecked binary serialization outputs are (most likely) compatible.
+    */
+  def fieldHash(t: SimpleSerializable): Long = {
+    val vis = new UncheckedHashVisitor()
+    t.visit(vis)
+    vis.hash
+  }
+}
+
 /**
   * _Unchecked_ binary serialization reader, depends on all fields being the same
   * and in the same order as they were when serializing. Use external check to see

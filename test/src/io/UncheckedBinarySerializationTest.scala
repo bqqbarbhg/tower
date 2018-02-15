@@ -36,6 +36,22 @@ class UncheckedBinarySerializationTest extends FlatSpec with Matchers {
     }
   }
 
+  class RenamedStringContainer extends SimpleSerializable {
+    var notStr: String = ""
+
+    def visit(v: SimpleVisitor): Unit = {
+      notStr = v.field("notStr", notStr)
+    }
+  }
+
+  class BadlyNamedIntContainer extends SimpleSerializable {
+    var str: Int = 0
+
+    def visit(v: SimpleVisitor): Unit = {
+      str = v.field("str", str)
+    }
+  }
+
   "UncheckedBinaryWriter" should "blit integer data directly" in {
     val t = new Test()
     t.a = 1; t.b = 2; t.c = 3.0f; t.d = 4.0; t.e = true;
@@ -66,6 +82,24 @@ class UncheckedBinarySerializationTest extends FlatSpec with Matchers {
     assert(buf.getChar() === '!')
     assert(buf.getChar() === '\0')
     assert(buf.position === wbuf.position)
+  }
+
+  "UncheckedUtil.fieldHash" should "should be unique for different classes" in {
+    val t = new Test()
+    val sc = new StringContainer()
+    assert(UncheckedUtil.fieldHash(t) !== UncheckedUtil.fieldHash(sc))
+  }
+
+  it should "should be unique for different field names" in {
+    val t = new RenamedStringContainer()
+    val sc = new StringContainer()
+    assert(UncheckedUtil.fieldHash(t) !== UncheckedUtil.fieldHash(sc))
+  }
+
+  it should "should be unique for different field types" in {
+    val t = new BadlyNamedIntContainer()
+    val sc = new StringContainer()
+    assert(UncheckedUtil.fieldHash(t) !== UncheckedUtil.fieldHash(sc))
   }
 
 }
