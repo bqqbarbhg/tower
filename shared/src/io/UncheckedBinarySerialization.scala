@@ -27,9 +27,13 @@ object UncheckedUtil {
     def readField(name: String, value: String): Unit = { s = hashCombine(s, name.hashCode | (5L << 32)) }
     def readField(name: String, value: Boolean): Unit = { s = hashCombine(s, name.hashCode | (6L << 32)) }
     def readField[T <: SimpleSerializable : ClassTag](name: String, value: T): Unit = {
-      s = hashCombine(s, name.hashCode | (7L << 32)) }
+      s = hashCombine(s, name.hashCode | (7L << 32))
+      value.visit(this)
+    }
     def readField[T <: SimpleSerializable : ClassTag](name: String, value: ArrayBuffer[T], ctor: => T): Unit = {
-      s = hashCombine(s, name.hashCode | (8L << 32)) }
+      s = hashCombine(s, name.hashCode | (8L << 32))
+      ctor.visit(this)
+    }
   }
 
   /**

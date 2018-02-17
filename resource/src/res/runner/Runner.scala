@@ -8,8 +8,14 @@ import org.lwjgl.BufferUtils
 import res.runner.Runner._
 import util.BufferUtils._
 import util.{BufferHash, BufferIntegrityException}
-import core._
+import res.importer.Importer
+import res.intermediate.{AssetFile, Config, ConfigFile}
 
+import core._
+import res.intermediate._
+import res.process._
+
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 
@@ -44,7 +50,8 @@ class Runner(val opts: RunOptions) {
 
   val configs = new ArrayBuffer[ConfigFile]()
   val allAssets = new ArrayBuffer[AssetFile]()
-  var assetsToProcess = Vector[AssetFile]()
+
+  val atlases = new mutable.HashMap[String, Atlas]()
 
   val configFormatHash = UncheckedUtil.fieldHash(new Config)
 
@@ -118,7 +125,7 @@ class Runner(val opts: RunOptions) {
     }
 
     if (cache.configFormatHash != configFormatHash) {
-      if (opts.verbose) println(s"> $relPath: Config _format_ hash changed")
+      if (opts.verbose) println(s"> $relPath: Config format hash changed")
       return true
     }
 
@@ -181,8 +188,16 @@ class Runner(val opts: RunOptions) {
         if (opts.verbose && config.importer.name.nonEmpty)
           println(s"> ${assetRelative(assetFile)} [${config.importer.name}]")
 
-        if (config.importer.name.nonEmpty) {
-          allAssets += new AssetFile(assetFile, config, configs)
+        val importerName = config.importer.name
+        if (importerName.nonEmpty) {
+          Importer.get(importerName) match {
+            case Some(importer) =>
+              importer.importType.maskConfig(config)
+              allAssets += new AssetFile(assetFile, config, configs)
+            case None =>
+              println(s"${assetRelative(assetFile)} ERROR: Importer not found: '$importerName'")
+          }
+
         }
       }
     }
@@ -190,13 +205,62 @@ class Runner(val opts: RunOptions) {
     // Find the assets that have changed
     {
       println(s"Determining assets to process... ${allAssets.length} found")
-      val dirtyAssets = allAssets.filter(isAssetDirty).toVector
+      for (dirtyAsset <- allAssets.filter(isAssetDirty)) {
+        dirtyAsset.hasChanged = true
+      }
+    }
+
+    // Collect atlases
+    {
+      for (asset <- allAssets.filter(_.config.res.image.ttype == "sprite")) {
+        val atlasName = asset.config.res.sprite.atlas
+        if (atlasName.isEmpty) {
+          println(s"${assetRelative(asset.file)} ERROR: Sprite has no atlas set")
+        } else {
+          val atlas = atlases.getOrElseUpdate(atlasName, new Atlas(atlasName))
+          atlas.sprites += asset
+          if (asset.hasChanged) atlas.hasChanged = true
+          if (opts.debug) println(s"Sprite ${assetRelative(asset.file)} -> $atlasName")
+        }
+      }
+    }
+
+    // Process atlases
+    {
+      val dirtyAtlases = atlases.values.filter(_.hasChanged)
+      println(s"Processing atlases... ${dirtyAtlases.size} found")
+      for (atlas <- dirtyAtlases) {
+        if (opts.verbose) println(s"> ${atlas.name} (${atlas.sprites.length} sprites)")
+        val sprites = atlas.sprites.flatMap(_.importAsset())
+        val images = sprites.map(_.asInstanceOf[Image])
+        assert(images.nonEmpty && images.size == atlas.sprites.size)
+
+        val config = atlas.sprites.head.config
+        if (GenerateAtlas.generateAtlas(atlas, images, config)) {
+          for ((page, index) <- atlas.pages.zipWithIndex) {
+            val name = s"${atlas.name}_$index.png"
+            val file = Paths.get(opts.tempRoot, "atlas", name).toFile
+            file.getAbsoluteFile.getParentFile.getCanonicalFile.mkdirs()
+            SaveDebugImage.saveImage(file, page)
+          }
+
+        } else {
+          println(s"Atlas ${atlas.name} ERROR: Failed to pack")
+        }
+
+        for (page <- atlas.pages) {
+        }
+
+        sprites.foreach(_.unload())
+        atlas.unload()
+      }
     }
 
     // Process the assets!
     {
-      println(s"Processing assets... ${assetsToProcess.length} found")
-      for (asset <- assetsToProcess) {
+      val updated = allAssets.filter(_.hasChanged)
+      println(s"Updating asset cache... ${updated.length} found")
+      for (asset <- updated) {
         val cache = new AssetCacheFile()
         cache.configFormatHash = configFormatHash
 

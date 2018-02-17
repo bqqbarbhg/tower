@@ -1,6 +1,8 @@
-package res.runner
+package res.intermediate
 
 import java.io.File
+
+import res.importer.Importer
 
 /**
   * Represents an asset source file that has its configuration resolved.
@@ -11,8 +13,13 @@ import java.io.File
   */
 class AssetFile(val file: File, val config: Config, val configSources: Vector[ConfigFile]) {
 
-  /** Does this asset need to be processed? */
-  var needsProcessing: Boolean = false
+  /** Has the asset changed since the last processing time? */
+  var hasChanged: Boolean = false
 
+  /** Import this asset */
+  def importAsset(): Iterable[Resource] = {
+    val importer = Importer.get(config.importer.name)
+    importer.toIterable.flatMap(_.importAsset(this))
+  }
 }
 

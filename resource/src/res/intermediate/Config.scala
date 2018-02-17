@@ -1,14 +1,14 @@
-package res.runner
-
-import io.{SimpleSerializable, SimpleVisitor}
-import res.runner.Config._
-import core._
+package res.intermediate
 
 import java.io.File
+
+import core._
+import io.SimpleSerialization.SMap
+import io.{SimpleSerializable, SimpleVisitor}
+import res.intermediate.Config._
+
 import scala.collection.mutable.ArrayBuffer
 import scala.util.matching.Regex
-import io.SimpleSerialization.SMap
-import org.lwjgl.system.MemoryStack
 
 object Config {
 
@@ -84,8 +84,46 @@ object Config {
       /** How should this image be processed (texture or sprite) */
       var ttype: String = ""
 
+      /** Is the image sRGB data */
+      var srgb: Boolean = true
+
       override def visit(v: SimpleVisitor): Unit = {
         ttype = v.field("type", ttype)
+        srgb = v.field("srgb", srgb)
+      }
+    }
+
+    class Sprite extends SimpleSerializable {
+      /** Name of the atlas this sprite belongs to */
+      var atlas: String = ""
+
+      override def visit(v: SimpleVisitor): Unit = {
+        atlas = v.field("atlas", atlas)
+      }
+    }
+
+    class Atlas extends SimpleSerializable {
+      /** Which packing algorithm to use */
+      var packingAlgorithm: String = "lightmap"
+
+      /** Amount of padding per pixel */
+      var padding: Int = 4
+
+      /** Maximum number of pages in the atlas */
+      var maxPages: Int = 10
+
+      /** Maximum size of a page in the atlas */
+      var maxPageSize: Int = 2048
+
+      /** How to process the page textures */
+      var texture = new Texture()
+
+      override def visit(v: SimpleVisitor): Unit = {
+        packingAlgorithm = v.field("packingAlgorithm", packingAlgorithm)
+        padding = v.field("padding", padding)
+        maxPages = v.field("maxPages", maxPages)
+        maxPageSize = v.field("maxPageSize", maxPageSize)
+        texture = v.field("texture", texture)
       }
     }
 
@@ -102,15 +140,30 @@ object Config {
       }
     }
 
+    class Animation extends SimpleSerializable {
+      /** Maximum error value for the rotation keyframe compression */
+      var rotationMaxError: Double = 0.01
+
+      override def visit(v: SimpleVisitor): Unit = {
+        rotationMaxError = v.field("rotationMaxError", rotationMaxError)
+      }
+    }
+
   }
 
   /** Resource type specific settings */
   class Res extends SimpleSerializable {
     var texture = new Res.Texture()
     var image = new Res.Image()
+    var sprite = new Res.Sprite()
+    var atlas = new Res.Atlas()
+    var animation = new Res.Animation()
 
     override def visit(v: SimpleVisitor): Unit = {
       texture = v.field("texture", texture)
+      image = v.field("image", image)
+      sprite = v.field("sprite", sprite)
+      animation = v.field("animation", animation)
     }
   }
 
