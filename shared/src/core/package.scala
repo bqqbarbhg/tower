@@ -23,10 +23,14 @@ package object core {
     /** For some reason JVM forgets byte order when duplicating !?! */
     def duplicateEx: ByteBuffer = buffer.duplicate.order(buffer.order)
 
+    /** For some reason JVM forgets byte order when duplicating !?! */
+    def sliceEx: ByteBuffer = buffer.slice.order(buffer.order)
+
     /** Set the limit to be current position and rewind to beginning */
     def finish(): Unit = {
       buffer.limit(buffer.position)
       buffer.position(0)
     }
+
   }
 }

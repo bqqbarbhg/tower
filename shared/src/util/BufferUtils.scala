@@ -43,7 +43,9 @@ object BufferUtils {
 
     /** Read the contents from a stream at the current position */
     def readFrom(stream: InputStream): Unit = {
-      val chunk = new Array[Byte](4096)
+      val left = buffer.remaining
+      assert(left > 0)
+      val chunk = new Array[Byte](math.min(4096, left))
 
       var num = stream.read(chunk, 0, chunk.length)
       while (num > 0) {
@@ -64,7 +66,9 @@ object BufferUtils {
 
     /** Write the contents from position to limit to stream */
     def writeTo(stream: OutputStream): Unit = {
-      val chunk = new Array[Byte](4096)
+      val left = buffer.remaining
+      assert(left > 0)
+      val chunk = new Array[Byte](math.min(4096, left))
       val begin = buffer.position
 
       var num = buffer.limit - buffer.position

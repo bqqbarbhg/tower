@@ -1,7 +1,9 @@
 package res.runner
 
 import java.nio.ByteBuffer
+import java.io.File
 
+import core._
 import util.BufferUtils._
 
 /**
@@ -33,5 +35,21 @@ class AssetCacheFile {
     sourceHash = buf.getLong()
     sourceTimestamp = buf.getLong()
     buf.verifyMagic("E.ac")
+  }
+
+  /** Load a cache file */
+  def load(file: File): Unit = withStack {
+    val buf = alloca(1024)
+    buf.readFromFile(file)
+    buf.finish()
+    this.read(buf)
+  }
+
+  /** Save a cache file */
+  def save(file: File): Unit = withStack {
+    val buf = alloca(1024)
+    this.write(buf)
+    buf.finish()
+    buf.writeToFile(file)
   }
 }

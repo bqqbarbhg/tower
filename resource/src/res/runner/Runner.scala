@@ -46,8 +46,6 @@ class Runner(val opts: RunOptions) {
   val allAssets = new ArrayBuffer[AssetFile]()
   var assetsToProcess = Vector[AssetFile]()
 
-  val byteBuffer = BufferUtils.createByteBuffer(1024*1024*128)
-
   val configFormatHash = UncheckedUtil.fieldHash(new Config)
 
   /**
@@ -112,10 +110,7 @@ class Runner(val opts: RunOptions) {
 
     val cache = new AssetCacheFile()
     try {
-      val buf = byteBuffer.duplicateEx
-      buf.readFromFile(temp)
-      buf.finish()
-      cache.read(buf)
+      cache.load(temp)
     } catch {
       case e: BufferIntegrityException =>
         if (opts.verbose) println(s"> $relPath: Cache integrity fail: ${e.getMessage}")
@@ -213,10 +208,7 @@ class Runner(val opts: RunOptions) {
           val relPath = assetRelative(asset.file)
           val cacheFile = Paths.get(opts.tempRoot, relPath + ".s2ac").toFile
           cacheFile.getParentFile.mkdirs()
-          val buf = byteBuffer.duplicateEx
-          cache.write(buf)
-          buf.finish()
-          buf.writeToFile(cacheFile)
+          cache.save(cacheFile)
         }
       }
     }

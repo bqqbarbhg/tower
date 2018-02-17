@@ -85,8 +85,8 @@ class StackAllocator(val backingStorage: ByteBuffer) {
       throw new RuntimeException(s"Stack has no space for allocation of size: $numBytes bytes")
 
     // Setup the resulting buffer
-    val buf = backingStorage.duplicateEx
-    buf.position(top)
+    backingStorage.position(top)
+    val buf = backingStorage.sliceEx
     buf.limit(numBytes)
 
     top += alignedBytes
