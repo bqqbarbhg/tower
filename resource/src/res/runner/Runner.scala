@@ -240,24 +240,18 @@ class Runner(val opts: RunOptions) {
 
         val config = atlas.sprites.head.config
         if (GenerateAtlas.generateAtlas(atlas, images, config.res.atlas)) {
+
           for ((page, index) <- atlas.pages.zipWithIndex) {
-            val name = s"${atlas.name}_$index.png"
-            val file = Paths.get(opts.tempRoot, "atlas", name).toFile
-            file.getAbsoluteFile.getParentFile.getCanonicalFile.mkdirs()
-            SaveDebugImage.saveImage(file, page)
+            val texture = CreateTexture.createTexture(page, config.res.atlas.texture)
+            val filename = Paths.get(opts.dataRoot, "atlas", s"${atlas.name}_$index.s2tx").toFile
+            val file = filename.getCanonicalFile.getAbsoluteFile
+            file.getParentFile.mkdirs()
+            TextureFile.save(writer, filename, texture)
+            texture.unload()
           }
 
         } else {
           println(s"Atlas ${atlas.name} ERROR: Failed to pack")
-        }
-
-        for ((page, index) <- atlas.pages.zipWithIndex) {
-          val texture = CreateTexture.createTexture(page, config.res.atlas.texture)
-          val filename = Paths.get(opts.dataRoot, "atlas", s"${atlas.name}_$index.s2tx").toFile
-          val file = filename.getCanonicalFile.getAbsoluteFile
-          file.getParentFile.mkdirs()
-          TextureFile.save(writer, filename, texture)
-          texture.unload()
         }
 
         sprites.foreach(_.unload())
