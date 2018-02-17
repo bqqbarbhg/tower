@@ -3,10 +3,11 @@ package util
 import java.io.{InputStream, FileInputStream, File}
 import java.nio.ByteBuffer
 
-import org.lwjgl.BufferUtils
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.util.xxhash._
 import org.lwjgl.util.xxhash.XXHash._
+
+import core._
 
 object BufferHash {
 
@@ -23,11 +24,10 @@ object BufferHash {
     hash
   }
 
-  def hashStream(stream: InputStream): Long = {
+  def hashStream(stream: InputStream): Long = withStack {
     val ChunkSize = 4096
     val array = new Array[Byte](ChunkSize)
-    val stack = MemoryStack.stackPush()
-    val buffer = stack.malloc(ChunkSize)
+    val buffer = alloca(ChunkSize)
 
     val state = XXH64State.callocStack()
     XXH64_reset(state, 1)
@@ -45,9 +45,7 @@ object BufferHash {
       num = stream.read(array)
     }
 
-    val hash = XXH64_digest(state)
-    stack.pop()
-    hash
+    XXH64_digest(state)
   }
 
   def hashFile(file: File): Long = {

@@ -1,21 +1,19 @@
-package res
+package res.runner
 
 import java.io.File
 import java.nio.file.Paths
-import java.nio.ByteBuffer
 
-import collection.mutable.ArrayBuffer
-import org.lwjgl.BufferUtils
-import io.SimpleSerialization.SMap
 import io.UncheckedUtil
-import util.{BufferHash, BufferIntegrityException}
+import org.lwjgl.BufferUtils
+import res.runner.Runner._
 import util.BufferUtils._
-import Runner._
+import util.{BufferHash, BufferIntegrityException}
+import core._
+
+import scala.collection.mutable.ArrayBuffer
 
 
 object Runner {
-  case class ConfigFile(file: File, config: Config, root: SMap)
-  case class AssetFile(file: File, config: Config, configSources: Vector[ConfigFile])
 
   /** Apply configs successively in priority order */
   def mergeConfigs(configs: Vector[ConfigFile]): Config = {
@@ -87,14 +85,11 @@ class Runner(val opts: RunOptions) {
     }).toVector
   }
 
-  /** Calculate the hash of a config */
-  def calculateConfigHash(config: Config): Long = {
-    val buf = byteBuffer.duplicateEx
-    UncheckedUtil.writeToBytes(buf, config)
-    buf.finish()
-    BufferHash.hashBuffer(buf)
-  }
-
+  /**
+    * Checks whether an `AssetFile` needs to be processed depending on the current settings.
+    * Note: Even if the asset is not dirty it may need to be reprocessed if some asset depends
+    * on it is dirty.
+    */
   def isAssetDirty(asset: AssetFile): Boolean = {
     val relPath = assetRelative(asset.file)
     if (!opts.skipOnTimestamp && !opts.skipOnHash) {
@@ -115,7 +110,7 @@ class Runner(val opts: RunOptions) {
       return true
     }
 
-    val cache = new AssetCache()
+    val cache = new AssetCacheFile()
     try {
       val buf = byteBuffer.duplicateEx
       buf.readFromFile(temp)
@@ -132,7 +127,7 @@ class Runner(val opts: RunOptions) {
       return true
     }
 
-    val configHash = calculateConfigHash(asset.config)
+    val configHash = asset.config.calculateHash
     if (cache.configHash != configHash) {
       if (opts.verbose) println(s"> $relPath: Config hash changed")
       return true
@@ -192,7 +187,7 @@ class Runner(val opts: RunOptions) {
           println(s"> ${assetRelative(assetFile)} [${config.importer.name}]")
 
         if (config.importer.name.nonEmpty) {
-          allAssets += AssetFile(assetFile, config, configs)
+          allAssets += new AssetFile(assetFile, config, configs)
         }
       }
     }
@@ -200,17 +195,17 @@ class Runner(val opts: RunOptions) {
     // Find the assets that have changed
     {
       println(s"Determining assets to process... ${allAssets.length} found")
-      assetsToProcess = allAssets.filter(isAssetDirty).toVector
+      val dirtyAssets = allAssets.filter(isAssetDirty).toVector
     }
 
     // Process the assets!
     {
       println(s"Processing assets... ${assetsToProcess.length} found")
       for (asset <- assetsToProcess) {
-        val cache = new AssetCache()
+        val cache = new AssetCacheFile()
         cache.configFormatHash = configFormatHash
 
-        cache.configHash = calculateConfigHash(asset.config)
+        cache.configHash = asset.config.calculateHash
         cache.sourceHash = BufferHash.hashFile(asset.file)
         cache.sourceTimestamp = asset.file.lastModified()
 

@@ -1,4 +1,4 @@
-package res
+package res.runner
 
 class RunOptions extends io.SimpleSerializable {
 

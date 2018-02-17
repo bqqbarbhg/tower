@@ -8,5 +8,18 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="scala-sdk-2.12.3" level="application" />
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="file://$MODULE_DIR$/../external/lwjgl/lwjgl" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="file://$MODULE_DIR$/../external/lwjgl/lwjgl" />
+        </SOURCES>
+        <jarDirectory url="file://$MODULE_DIR$/../external/lwjgl/lwjgl" recursive="false" />
+        <jarDirectory url="file://$MODULE_DIR$/../external/lwjgl/lwjgl" recursive="false" type="SOURCES" />
+      </library>
+    </orderEntry>
   </component>
 </module>

@@ -1,11 +1,13 @@
-package res
+package res.runner
 
 import java.nio.ByteBuffer
 
-import util.BufferIntegrityException
 import util.BufferUtils._
 
-class AssetCache {
+/**
+  * A file containing caching information about an asset source file.
+  */
+class AssetCacheFile {
   var configFormatHash: Long = 0
   var configHash: Long = 0
   var sourceHash: Long = 0

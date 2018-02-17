@@ -1,11 +1,14 @@
-package res
+package res.runner
 
 import io.{SimpleSerializable, SimpleVisitor}
+import res.runner.Config._
+import core._
 
+import java.io.File
 import scala.collection.mutable.ArrayBuffer
-import Config._
-
 import scala.util.matching.Regex
+import io.SimpleSerialization.SMap
+import org.lwjgl.system.MemoryStack
 
 object Config {
 
@@ -120,6 +123,14 @@ class Config extends SimpleSerializable {
   var res = new Res()
   var priority = 0.0
 
+  /** Hash value of this configuration */
+  def calculateHash: Long = withStack {
+    val buf = alloca(16 * 1024)
+    io.UncheckedUtil.writeToBytes(buf, this)
+    buf.finish()
+    util.BufferHash.hashBuffer(buf)
+  }
+
   override def visit(v: SimpleVisitor): Unit = {
     filter = v.field("filter", filter, new Filter)
     importer = v.field("importer", importer)
@@ -127,3 +138,12 @@ class Config extends SimpleSerializable {
     priority = v.field("priority", priority)
   }
 }
+
+/**
+  * A .toml config file.
+  *
+  * @param file Source .toml file
+  * @param config Deserialized configuration for _this_ config
+  * @param root Serialized version of the config, required for merging multiple configs
+  */
+case class ConfigFile(file: File, config: Config, root: SMap)

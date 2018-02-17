@@ -41,15 +41,6 @@ object BufferUtils {
       version
     }
 
-    /** For some reason JVM forgets byte order when duplicating !?! */
-    def duplicateEx: ByteBuffer = buffer.duplicate.order(buffer.order())
-
-    /** Set the limit to be current position and rewind to beginning */
-    def finish(): Unit = {
-      buffer.limit(buffer.position)
-      buffer.position(0)
-    }
-
     /** Read the contents from a stream at the current position */
     def readFrom(stream: InputStream): Unit = {
       val chunk = new Array[Byte](4096)

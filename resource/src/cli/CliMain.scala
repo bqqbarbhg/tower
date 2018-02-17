@@ -1,11 +1,14 @@
 package cli
 
+import core.StackAllocator
+import res.runner.{RunOptions, Runner}
+
 /**
   * Main entry-point of the resource processer program.
   */
 object CliMain extends App {
 
-  val opts = new res.RunOptions()
+  val opts = new RunOptions()
   val arg = util.ArgumentParser.parse(args)
 
   // Read config from command line argument
@@ -20,6 +23,9 @@ object CliMain extends App {
   if (arg.flag("force")) opts.skipWriteOnHash = false
   if (arg.flag("verbose")) opts.verbose = true
 
-  val runner = new res.Runner(opts)
+  // Initialize 64MB stack
+  StackAllocator.createCurrentThread(64 * 1024 * 1024)
+
+  val runner = new Runner(opts)
   runner.run()
 }
