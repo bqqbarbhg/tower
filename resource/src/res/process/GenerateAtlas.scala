@@ -45,8 +45,7 @@ object GenerateAtlas {
   }
 
   /** Returns required page sizes */
-  private def packAtlas(atlas: Atlas, images: Seq[Image], config: Config): Seq[Extents] = {
-    val cfg = config.res.atlas
+  private def packAtlas(atlas: Atlas, images: Seq[Image], cfg: Config.Res.Atlas): Seq[Extents] = {
 
     val packer = RectanglePacker.get(cfg.packingAlgorithm).getOrElse {
       println(s"ERROR: Packing algorithm not found: ${cfg.packingAlgorithm}, falling back to lightmap")
@@ -83,7 +82,7 @@ object GenerateAtlas {
   }
 
   /** Try to generate an atlas, returns true on success */
-  def generateAtlas(atlas: Atlas, images: Iterable[Image], config: Config): Boolean = {
+  def generateAtlas(atlas: Atlas, images: Iterable[Image], config: Config.Res.Atlas): Boolean = {
     val imageSeq = images.toSeq
     val pageSizes = packAtlas(atlas, imageSeq, config)
     if (pageSizes.isEmpty) return false

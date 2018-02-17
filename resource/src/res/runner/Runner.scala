@@ -236,7 +236,7 @@ class Runner(val opts: RunOptions) {
         assert(images.nonEmpty && images.size == atlas.sprites.size)
 
         val config = atlas.sprites.head.config
-        if (GenerateAtlas.generateAtlas(atlas, images, config)) {
+        if (GenerateAtlas.generateAtlas(atlas, images, config.res.atlas)) {
           for ((page, index) <- atlas.pages.zipWithIndex) {
             val name = s"${atlas.name}_$index.png"
             val file = Paths.get(opts.tempRoot, "atlas", name).toFile
