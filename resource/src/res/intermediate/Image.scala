@@ -31,7 +31,7 @@ object Image {
     * @param data Pointer to data allocated with `MemoryUtil.memAlloc`
     * @param srgb Is the data stored in an sRGB format?
     */
-  private class Image32(width: Int, height: Int, data: ByteBuffer, srgb: Boolean) extends Image(width, height) {
+  private class Image32(width: Int, height: Int, data: ByteBuffer, srgb: Boolean) extends Image(width, height, srgb) {
 
     def getPixel(x: Int, y: Int): Color = {
       val base = (y * width + x) * 4
@@ -63,14 +63,26 @@ object Image {
     def unload(): Unit = {
       MemoryUtil.memFree(data)
     }
+
+    override def createCompatible(width: Int, height: Int): Image = Image.create32(width, height, this.srgb)
   }
 
 }
 
 /** A 2D bitmap image */
-abstract class Image(val width: Int, val height: Int) extends Resource {
+abstract class Image(val width: Int, val height: Int, val srgb: Boolean) extends Resource {
 
   def getPixel(x: Int, y: Int): Color
   def setPixel(x: Int, y: Int, color: Color): Unit
+
+  /** Like `getPixel()` but clamped to image area */
+  def getPixelClamp(x: Int, y: Int): Color = {
+    val xc = clamp(x, 0, width - 1)
+    val yc = clamp(y, 0, height - 1)
+    getPixel(xc, yc)
+  }
+
+  /** Create a new image of the same format of this image */
+  def createCompatible(width: Int, height: Int): Image
 
 }

@@ -6,6 +6,9 @@ import org.lwjgl.stb.STBImageWrite._
 import org.lwjgl.system.MemoryUtil
 import res.intermediate._
 
+/**
+  * Saves an image as a png-file for debugging purposes.
+  */
 object SaveDebugImage {
 
   def saveImage(file: File, image: Image): Unit = {

@@ -7,6 +7,11 @@ import util.{Extents, Rectangle, RectanglePacker}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
+/**
+  * Packs multiple sprite-images into an atlas. One atlas consists of one or more
+  * page-images which the sprites are pasted on and a mapping between the sprites
+  * and their locations in the atlas.
+  */
 object GenerateAtlas {
 
   /** Generates increasing atlas page sizes */

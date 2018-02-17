@@ -134,9 +134,13 @@ object Config {
       /** Should the texture be compressed */
       var compressed: Boolean = false
 
+      /** Should the texture have mipmaps generated */
+      var hasMipmaps: Boolean = true
+
       override def visit(v: SimpleVisitor): Unit = {
         semantic = v.field("semantic", semantic)
         compressed = v.field("compressed", compressed)
+        hasMipmaps = v.field("hasMipmaps", hasMipmaps)
       }
     }
 

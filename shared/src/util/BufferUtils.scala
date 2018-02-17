@@ -3,6 +3,8 @@ package util
 import java.io.{File, FileInputStream, FileOutputStream, InputStream, OutputStream}
 import java.nio.ByteBuffer
 
+import core._
+
 case class BufferIntegrityException(val message: String) extends RuntimeException(message)
 
 /** Contains nice-to-have things for manipulating ByteBuffers */
@@ -73,8 +75,9 @@ object BufferUtils {
 
       var num = buffer.limit - buffer.position
       while (num > 0) {
-        buffer.get(chunk, 0, num)
-        stream.write(chunk, 0, num)
+        val toWrite = math.min(chunk.length, num)
+        buffer.get(chunk, 0, toWrite)
+        stream.write(chunk, 0, toWrite)
         num = buffer.limit - buffer.position
       }
 
@@ -89,6 +92,29 @@ object BufferUtils {
 
     /** Write the contents (up to the limit) to a file */
     def writeToFile(file: String): Unit = writeToFile(new File(file))
+
+    /** Writes a string with leading size and UTF-8 encoded content padded to 4-byte boundary */
+    def putString(str: String): Unit = {
+      val utf8 = str.getBytes("UTF-8")
+      val pad = (4 - (utf8.length + 2) % 4) % 4
+      buffer.putShort(str.length.toShort)
+      buffer.put(utf8)
+      for (p <- 0 until pad) buffer.put(0.toByte)
+    }
+
+    /** Reads a string with leading size and UTF-8 encoded content padded to 4-byte boundary */
+    def getString(): String = {
+      val length = buffer.getShort()
+      val pad = (4 - (length + 2) % 4) % 4
+      val utf8 = new Array[Byte](length + pad)
+      buffer.get(utf8)
+      new String(utf8, 0, length, "UTF-8")
+    }
+
+    /** Writes a identifier with leading size and UTF-8 encoded content padded to 4-byte boundary */
+    def putIdentifier(str: String): Unit = putString(str)
+    /** Reads a identifier with leading size and UTF-8 encoded content padded to 4-byte boundary */
+    def getIdentifier(): Identifier = Identifier(buffer.getString())
 
   }
 }

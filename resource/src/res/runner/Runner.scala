@@ -10,9 +10,10 @@ import util.BufferUtils._
 import util.{BufferHash, BufferIntegrityException}
 import res.importer.Importer
 import res.intermediate.{AssetFile, Config, ConfigFile}
-
 import core._
+
 import res.intermediate._
+import res.output._
 import res.process._
 
 import scala.collection.mutable
@@ -54,6 +55,8 @@ class Runner(val opts: RunOptions) {
   val atlases = new mutable.HashMap[String, Atlas]()
 
   val configFormatHash = UncheckedUtil.fieldHash(new Config)
+
+  val writer = new OutputFileWriter(opts)
 
   /**
     * Apply all the configs that are relevant to `file`
@@ -248,7 +251,13 @@ class Runner(val opts: RunOptions) {
           println(s"Atlas ${atlas.name} ERROR: Failed to pack")
         }
 
-        for (page <- atlas.pages) {
+        for ((page, index) <- atlas.pages.zipWithIndex) {
+          val texture = CreateTexture.createTexture(page, config.res.atlas.texture)
+          val filename = Paths.get(opts.dataRoot, "atlas", s"${atlas.name}_$index.s2tx").toFile
+          val file = filename.getCanonicalFile.getAbsoluteFile
+          file.getParentFile.mkdirs()
+          TextureFile.save(writer, filename, texture)
+          texture.unload()
         }
 
         sprites.foreach(_.unload())
