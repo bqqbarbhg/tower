@@ -51,6 +51,7 @@ class Runner(val opts: RunOptions) {
 
   val configs = new ArrayBuffer[ConfigFile]()
   val allAssets = new ArrayBuffer[AssetFile]()
+  val dirtyAssets = new ArrayBuffer[AssetFile]()
 
   val atlases = new mutable.HashMap[String, Atlas]()
 
@@ -210,6 +211,7 @@ class Runner(val opts: RunOptions) {
       println(s"Determining assets to process... ${allAssets.length} found")
       for (dirtyAsset <- allAssets.filter(isAssetDirty)) {
         dirtyAsset.hasChanged = true
+        dirtyAssets += dirtyAsset
       }
     }
 
@@ -256,6 +258,25 @@ class Runner(val opts: RunOptions) {
 
         sprites.foreach(_.unload())
         atlas.unload()
+      }
+    }
+
+    // Process textures
+    {
+      val dirtyTextures = dirtyAssets.filter(_.config.res.image.ttype == "texture")
+      println(s"Processing textures... ${dirtyTextures.size} found")
+      for (asset <- dirtyTextures) {
+        val resources = asset.importAsset()
+        assert(resources.size == 1)
+        val image = resources.head.asInstanceOf[Image]
+
+        val texture = CreateTexture.createTexture(image, asset.config.res.texture)
+        val relPath = assetRelative(asset.file)
+        val filename = Paths.get(opts.dataRoot, relPath + ".s2tx").toFile
+        val file = filename.getCanonicalFile.getAbsoluteFile
+        file.getParentFile.mkdirs()
+        TextureFile.save(writer, filename, texture)
+        texture.unload()
       }
     }
 
