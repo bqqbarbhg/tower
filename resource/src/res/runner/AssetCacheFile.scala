@@ -13,27 +13,33 @@ class AssetCacheFile {
   var configFormatHash: Long = 0
   var configHash: Long = 0
   var sourceHash: Long = 0
+  var sourceSize: Long = 0
   var sourceTimestamp: Long = 0
+  var importerVersion: Int = 0
 
   def write(buf: ByteBuffer): Unit = {
-    val Version = 1
+    val Version = 2
     buf.putMagic("s2ac")
     buf.putVersion(Version)
     buf.putLong(configFormatHash)
     buf.putLong(configHash)
     buf.putLong(sourceHash)
+    buf.putLong(sourceSize)
     buf.putLong(sourceTimestamp)
+    buf.putInt(importerVersion)
     buf.putMagic("E.ac")
   }
 
   def read(buf: ByteBuffer): Unit = {
     buf.verifyMagic("s2ac")
-    val MaxVersion = 1
-    val version = buf.getVersion(MaxVersion)
+    val MaxVersion = 2
+    val version = buf.getVersion(MaxVersion, minVersion = 2)
     configFormatHash = buf.getLong()
     configHash = buf.getLong()
     sourceHash = buf.getLong()
+    sourceSize = buf.getLong()
     sourceTimestamp = buf.getLong()
+    importerVersion = buf.getInt()
     buf.verifyMagic("E.ac")
   }
 

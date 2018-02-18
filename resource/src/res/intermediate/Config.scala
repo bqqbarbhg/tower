@@ -153,6 +153,23 @@ object Config {
       }
     }
 
+    class Sound extends SimpleSerializable {
+      /** The sound is downsampled if it's sample rate is greater than this */
+      var maxSampleRate: Int = 44100
+
+      /** Forced resampling */
+      var sampleRate: Int = 0
+
+      /** Force to be mono */
+      var mono: Boolean = false
+
+      override def visit(v: SimpleVisitor): Unit = {
+        maxSampleRate = v.field("maxSampleRate", maxSampleRate)
+        sampleRate = v.field("sampleRate", sampleRate)
+        mono = v.field("mono", mono)
+      }
+    }
+
   }
 
   /** Resource type specific settings */
@@ -162,6 +179,7 @@ object Config {
     var sprite = new Res.Sprite()
     var atlas = new Res.Atlas()
     var animation = new Res.Animation()
+    var sound = new Res.Sound()
 
     override def visit(v: SimpleVisitor): Unit = {
       texture = v.field("texture", texture)

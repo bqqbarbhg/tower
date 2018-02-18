@@ -2,7 +2,7 @@ package res.intermediate
 
 import java.io.File
 
-import res.importer.Importer
+import res.importer.{ImportFileNone, ImportFileType, Importer}
 
 /**
   * Represents an asset source file that has its configuration resolved.
@@ -20,6 +20,12 @@ class AssetFile(val file: File, val config: Config, val configSources: Vector[Co
   def importAsset(): Iterable[Resource] = {
     val importer = Importer.get(config.importer.name)
     importer.toIterable.flatMap(_.importAsset(this))
+  }
+
+  /** What kind of type is this asset */
+  def fileType: ImportFileType = {
+    val importer = Importer.get(config.importer.name)
+    importer.map(_.importType).getOrElse(ImportFileNone)
   }
 }
 

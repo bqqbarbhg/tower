@@ -5,6 +5,9 @@ import res.intermediate._
 /** What kind of resources are found in this file type? */
 sealed abstract class ImportFileType {
 
+  /** If the version is updated it forces a re-processing of assets of this type */
+  def version: Int
+
   /**
     * Clear out the parts of the config that are not relevant for this file type.
     * Allows for more sloppy handling of configration, for example setting all the
@@ -13,21 +16,59 @@ sealed abstract class ImportFileType {
     * This also improves caching efficency as unrelated config changes don't
     * cause assets to be re-processed.
     */
-  def maskConfig(config: Config): Unit
+  def maskConfig(config: Config): Unit = {
+    val res = new Config.Res()
+    copyRelevant(res, config.res)
+    config.res = res
+  }
+
+  protected def copyRelevant(dst: Config.Res, src: Config.Res)
 
 }
 
 object ImportFileImage extends ImportFileType {
-  def maskConfig(config: Config): Unit = {
-    config.res.animation = new Config.Res.Animation()
+  def version = 1
+
+  def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
+    dst.image = src.image
+    if (src.image.ttype == "sprite") {
+      dst.atlas = src.atlas
+      dst.sprite = src.sprite
+    } else if (src.image.ttype == "texture") {
+      dst.texture = src.texture
+    }
   }
 }
 
 object ImportFileModel extends ImportFileType {
-  def maskConfig(config: Config): Unit = {
-    config.res.image = new Config.Res.Image()
-    config.res.texture = new Config.Res.Texture()
-    config.res.sprite = new Config.Res.Sprite()
-    config.res.atlas = new Config.Res.Atlas()
+  def version = 1
+
+  def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
+    dst.animation = src.animation
+  }
+}
+
+object ImportFilePcm extends ImportFileType {
+  def version = 2
+
+  def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
+    dst.sound = src.sound
+  }
+}
+
+object ImportFileAudio extends ImportFileType {
+  def version = 1
+
+  def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
+    // No options
+  }
+}
+
+/** Used when no importer is found */
+object ImportFileNone extends ImportFileType {
+  def version = 1
+
+  def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
+    // No options
   }
 }

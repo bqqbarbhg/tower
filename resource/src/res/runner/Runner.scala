@@ -8,10 +8,10 @@ import org.lwjgl.BufferUtils
 import res.runner.Runner._
 import util.BufferUtils._
 import util.{BufferHash, BufferIntegrityException}
-import res.importer.Importer
 import res.intermediate.{AssetFile, Config, ConfigFile}
 import core._
 
+import res.importer._
 import res.intermediate._
 import res.output._
 import res.process._
@@ -136,6 +136,18 @@ class Runner(val opts: RunOptions) {
     val configHash = asset.config.calculateHash
     if (cache.configHash != configHash) {
       if (opts.verbose) println(s"> $relPath: Config hash changed")
+      return true
+    }
+
+    val fileSize = asset.file.length()
+    if (cache.sourceSize != fileSize) {
+      if (opts.verbose) println(s"> $relPath: File size changed")
+      return true
+    }
+
+    val importerVersion = asset.fileType.version
+    if (cache.importerVersion != importerVersion) {
+      if (opts.verbose) println(s"> $relPath: Importer version changed ${cache.importerVersion} -> $importerVersion")
       return true
     }
 
@@ -280,6 +292,26 @@ class Runner(val opts: RunOptions) {
       }
     }
 
+    // Process PCM sounds
+    {
+      val dirtyPcms = dirtyAssets.filter(_.fileType == ImportFilePcm)
+      println(s"Processing PCM sounds... ${dirtyPcms.size} found")
+      for (asset <- dirtyPcms) {
+        val resources = asset.importAsset()
+        assert(resources.size == 1)
+        val pcm = resources.head.asInstanceOf[PcmSound]
+        val sound = PcmProcess.processPcm(pcm, asset.config.res.sound)
+        pcm.unload()
+
+        val relPath = assetRelative(asset.file)
+        val filename = Paths.get(opts.dataRoot, relPath + ".s2au").toFile
+        val file = filename.getCanonicalFile.getAbsoluteFile
+        file.getParentFile.mkdirs()
+        AudioFile.save(writer, filename, sound)
+        sound.unload()
+      }
+    }
+
     // Process the assets!
     {
       val updated = allAssets.filter(_.hasChanged)
@@ -290,7 +322,9 @@ class Runner(val opts: RunOptions) {
 
         cache.configHash = asset.config.calculateHash
         cache.sourceHash = BufferHash.hashFile(asset.file)
+        cache.sourceSize = asset.file.length
         cache.sourceTimestamp = asset.file.lastModified()
+        cache.importerVersion = asset.fileType.version
 
         {
           val relPath = assetRelative(asset.file)
