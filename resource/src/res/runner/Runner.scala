@@ -328,9 +328,44 @@ class Runner(val opts: RunOptions) {
         AudioFile.save(writer, filename, sound)
         sound.unload()
       }
-  }
+    }
 
-    // Process the assets!
+    // Process fonts
+    {
+      def validFont(asset: AssetFile): Boolean = {
+        val cfg = asset.config.res.font
+        cfg.charSet.nonEmpty && cfg.variant.nonEmpty
+      }
+      val dirtyFonts = dirtyAssets.filter(validFont)
+      println(s"Processing fonts... ${dirtyFonts.size} found")
+      for (asset <- dirtyFonts) {
+        val relPath = assetRelative(asset.file)
+        val resources = asset.importAsset()
+        assert(resources.size == 1)
+        val font = resources.head.asInstanceOf[Font]
+
+        val bakedFont = BakeFont.bakeFont(font, asset.config.res.font)
+
+        for ((chan, index) <- "rgba".zipWithIndex) {
+          val filename = Paths.get(opts.tempRoot, relPath + s"_$chan.png").toFile
+          val file = filename.getCanonicalFile.getAbsoluteFile
+          file.getParentFile.mkdirs()
+          SaveDebugImage.saveImageChannel(file, bakedFont.image, index)
+        }
+
+        val texture = CreateTexture.createTexture(bakedFont.image, asset.config.res.font.texture)
+        val filename = Paths.get(opts.dataRoot, relPath + ".s2tx").toFile
+        val file = filename.getCanonicalFile.getAbsoluteFile
+        file.getParentFile.mkdirs()
+        TextureFile.save(writer, filename, texture)
+
+        texture.unload()
+        bakedFont.unload()
+        font.unload()
+      }
+    }
+
+    // Update the asset cache
     {
       val updated = allAssets.filter(_.hasChanged)
       println(s"Updating asset cache... ${updated.length} found")

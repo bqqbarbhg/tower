@@ -64,6 +64,14 @@ object ImportFileAudio extends ImportFileType {
   }
 }
 
+object ImportFileFont extends ImportFileType {
+  def version = 8
+
+  def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
+    dst.font = src.font
+  }
+}
+
 /** Used when no importer is found */
 object ImportFileNone extends ImportFileType {
   def version = 1

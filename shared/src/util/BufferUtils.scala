@@ -45,13 +45,13 @@ object BufferUtils {
 
     /** Read the contents from a stream at the current position */
     def readFrom(stream: InputStream): Unit = {
-      val left = buffer.remaining
-      assert(left > 0)
-      val chunk = new Array[Byte](math.min(4096, left))
+      val chunk = new Array[Byte](4096)
 
-      var num = stream.read(chunk, 0, chunk.length)
+      var toRead = math.min(chunk.length, math.max(buffer.remaining, 1))
+      var num = stream.read(chunk, 0, toRead)
       while (num > 0) {
-        buffer.put(chunk, 0, chunk.length)
+        buffer.put(chunk, 0, toRead)
+        toRead = math.min(chunk.length, math.max(buffer.remaining, 1))
         num = stream.read(chunk, 0, chunk.length)
       }
     }

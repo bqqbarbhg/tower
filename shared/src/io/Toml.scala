@@ -158,7 +158,7 @@ object Toml {
 
       val ret = {
         if (force) {
-          if (map.data.contains(key.last)) error(s"Key '${key.mkString(".")} is defined already")
+          if (map.data.contains(key.last)) error(s"Key '${key.mkString(".")}' is already defined")
           val v = value
           map.data(key.last) = v
           map.order += key.last

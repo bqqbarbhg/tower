@@ -170,6 +170,84 @@ object Config {
       }
     }
 
+    object Font {
+
+      class Variant extends SimpleSerializable {
+
+        /** Height of the variant (single) */
+        var height: Int = 0
+
+        /** Generate multiple sizes (minimum) */
+        var heightMin: Int = 0
+        /** Generate multiple sizes (maximum) */
+        var heightMax: Int = 0
+        /** Generate multiple sizes (step between sizes) */
+        var heightInterval: Int = 1
+
+        /** Amount to oversample in horizontal direction */
+        var oversampleX: Int = 1
+
+        /** Amount to oversample in vertical direction */
+        var oversampleY: Int = 1
+
+        /** Render the font into a signed distance field */
+        var signedDistanceField: Boolean = false
+
+        override def visit(v: SimpleVisitor): Unit = {
+          height = v.field("height", height)
+          heightMin = v.field("heightMin", heightMin)
+          heightMax = v.field("heightMax", heightMax)
+          heightInterval = v.field("heightInterval", heightInterval)
+          oversampleX = v.field("oversampleX", oversampleX)
+          oversampleY = v.field("oversampleY", oversampleY)
+          signedDistanceField = v.field("signedDistanceField", signedDistanceField)
+        }
+
+      }
+
+      class CharSet extends SimpleSerializable {
+
+        /** Minimum unicode codepoint to process */
+        var codepointMin: Int = 0
+
+        /** Maximum unicode codepoint to process */
+        var codepointMax: Int = 0
+
+        override def visit(v: SimpleVisitor): Unit = {
+          codepointMin = v.field("codepointMin", codepointMin)
+          codepointMax = v.field("codepointMax", codepointMax)
+        }
+      }
+
+    }
+
+    class Font extends SimpleSerializable {
+
+      /** Sizes and types to cook for the font */
+      var variant = new ArrayBuffer[Font.Variant]()
+
+      /** Ranges of characters to include */
+      var charSet = new ArrayBuffer[Font.CharSet]()
+
+      /** What algorithm to use to pack the characters */
+      var packingAlgorithm: String = "lightmap"
+
+      /** Maximum size of the texture */
+      var maxSize: Int = 2048
+
+      /** Texture options */
+      var texture = new Texture()
+      texture.hasMipmaps = false
+
+      override def visit(v: SimpleVisitor): Unit = {
+        variant = v.field("variant", variant, new Font.Variant)
+        charSet = v.field("charSet", charSet, new Font.CharSet)
+        packingAlgorithm = v.field("packingAlgorithm", packingAlgorithm)
+        maxSize = v.field("maxSize", maxSize)
+        texture = v.field("texture", texture)
+      }
+    }
+
   }
 
   /** Resource type specific settings */
@@ -180,12 +258,16 @@ object Config {
     var atlas = new Res.Atlas()
     var animation = new Res.Animation()
     var sound = new Res.Sound()
+    var font = new Res.Font()
 
     override def visit(v: SimpleVisitor): Unit = {
       texture = v.field("texture", texture)
       image = v.field("image", image)
       sprite = v.field("sprite", sprite)
+      atlas = v.field("atlas", atlas)
       animation = v.field("animation", animation)
+      sound = v.field("sound", sound)
+      font = v.field("font", font)
     }
   }
 

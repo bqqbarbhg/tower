@@ -8,6 +8,7 @@ object Importer {
     name match {
       case "stb_image" => Some(StbImageImporter)
       case "stb_vorbis" => Some(StbVorbisImporter)
+      case "stb_truetype" => Some(StbTruetypeImpoter)
       case "wav" => Some(WavImporter)
       case _ => None
     }
