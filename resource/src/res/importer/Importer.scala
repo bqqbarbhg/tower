@@ -7,6 +7,7 @@ object Importer {
   def get(name: String): Option[Importer] = {
     name match {
       case "stb_image" => Some(StbImageImporter)
+      case "stb_vorbis" => Some(StbVorbisImporter)
       case "wav" => Some(WavImporter)
       case _ => None
     }

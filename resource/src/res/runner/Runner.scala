@@ -177,7 +177,7 @@ class Runner(val opts: RunOptions) {
       val tomlFiles = sourceFiles.filter(_.getName().endsWith(".toml"))
       println(s"Parsing config .toml files... ${tomlFiles.length} found")
       for (tomlFile <- tomlFiles) {
-        if (opts.verbose) println(s"> ${assetRelative(tomlFile)}")
+        if (opts.debug) println(s"> ${assetRelative(tomlFile)}")
         try {
           val root = io.Toml.parseFile(tomlFile.getAbsolutePath)
           val config = new Config()
@@ -201,7 +201,7 @@ class Runner(val opts: RunOptions) {
         }
 
         val config = mergeConfigs(configs)
-        if (opts.verbose && config.importer.name.nonEmpty)
+        if (opts.debug && config.importer.name.nonEmpty)
           println(s"> ${assetRelative(assetFile)} [${config.importer.name}]")
 
         val importerName = config.importer.name
@@ -311,6 +311,24 @@ class Runner(val opts: RunOptions) {
         sound.unload()
       }
     }
+
+    // Process audio sounds
+    {
+      val dirtySounds = dirtyAssets.filter(_.fileType == ImportFileAudio)
+      println(s"Processing compressed sounds... ${dirtySounds.size} found")
+      for (asset <- dirtySounds) {
+        val resources = asset.importAsset()
+        assert(resources.size == 1)
+        val sound = resources.head.asInstanceOf[Sound]
+
+        val relPath = assetRelative(asset.file)
+        val filename = Paths.get(opts.dataRoot, relPath + ".s2au").toFile
+        val file = filename.getCanonicalFile.getAbsoluteFile
+        file.getParentFile.mkdirs()
+        AudioFile.save(writer, filename, sound)
+        sound.unload()
+      }
+  }
 
     // Process the assets!
     {
