@@ -258,8 +258,6 @@ class Runner(val opts: RunOptions) {
           for ((page, index) <- atlas.pages.zipWithIndex) {
             val texture = CreateTexture.createTexture(page, config.res.atlas.texture)
             val filename = Paths.get(opts.dataRoot, "atlas", s"${atlas.name}_$index.s2tx").toFile
-            val file = filename.getCanonicalFile.getAbsoluteFile
-            file.getParentFile.mkdirs()
             TextureFile.save(writer, filename, texture)
             texture.unload()
           }
@@ -285,8 +283,6 @@ class Runner(val opts: RunOptions) {
         val texture = CreateTexture.createTexture(image, asset.config.res.texture)
         val relPath = assetRelative(asset.file)
         val filename = Paths.get(opts.dataRoot, relPath + ".s2tx").toFile
-        val file = filename.getCanonicalFile.getAbsoluteFile
-        file.getParentFile.mkdirs()
         TextureFile.save(writer, filename, texture)
         texture.unload()
       }
@@ -305,8 +301,6 @@ class Runner(val opts: RunOptions) {
 
         val relPath = assetRelative(asset.file)
         val filename = Paths.get(opts.dataRoot, relPath + ".s2au").toFile
-        val file = filename.getCanonicalFile.getAbsoluteFile
-        file.getParentFile.mkdirs()
         AudioFile.save(writer, filename, sound)
         sound.unload()
       }
@@ -323,8 +317,6 @@ class Runner(val opts: RunOptions) {
 
         val relPath = assetRelative(asset.file)
         val filename = Paths.get(opts.dataRoot, relPath + ".s2au").toFile
-        val file = filename.getCanonicalFile.getAbsoluteFile
-        file.getParentFile.mkdirs()
         AudioFile.save(writer, filename, sound)
         sound.unload()
       }
@@ -355,9 +347,7 @@ class Runner(val opts: RunOptions) {
 
         val texture = CreateTexture.createTexture(bakedFont.image, asset.config.res.font.texture)
         val filename = Paths.get(opts.dataRoot, relPath + ".s2tx").toFile
-        val file = filename.getCanonicalFile.getAbsoluteFile
-        file.getParentFile.mkdirs()
-        TextureFile.save(writer, file, texture)
+        TextureFile.save(writer, filename, texture)
 
         texture.unload()
         bakedFont.unload()
@@ -380,9 +370,7 @@ class Runner(val opts: RunOptions) {
           val parts = ProcessMesh.processMesh(mesh, asset.config.res.mesh)
 
           val filename = Paths.get(opts.dataRoot, s"$relPath.${mesh.name}.s2ms").toFile
-          val file = filename.getCanonicalFile.getAbsoluteFile
-          file.getParentFile.mkdirs()
-          MeshFile.save(writer, file, parts)
+          MeshFile.save(writer, filename, parts)
           parts.foreach(_.unload())
         }
 
@@ -390,18 +378,14 @@ class Runner(val opts: RunOptions) {
           ProcessAnimation.processAnimation(anim, asset.config.res.animation)
 
           val filename = Paths.get(opts.dataRoot, s"$relPath.${anim.name}.s2an").toFile
-          val file = filename.getCanonicalFile.getAbsoluteFile
-          file.getParentFile.mkdirs()
-          AnimationFile.save(writer, file, anim)
+          AnimationFile.save(writer, filename, anim)
         }
 
         for (model <- models) {
           val flatModel = FlattenModel.flattenModel(model)
 
           val filename = Paths.get(opts.dataRoot, s"$relPath.s2md").toFile
-          val file = filename.getCanonicalFile.getAbsoluteFile
-          file.getParentFile.mkdirs()
-          ModelFile.save(writer, file, flatModel)
+          ModelFile.save(writer, filename, flatModel)
           flatModel.unload()
         }
 

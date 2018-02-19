@@ -36,7 +36,10 @@ class OutputFileWriter(val opts: RunOptions) {
     }
   }
 
-  def writeFile(file: File, data: ByteBuffer): Unit = {
+  def writeFile(filename: File, data: ByteBuffer): Unit = {
+    val file = filename.getCanonicalFile.getAbsoluteFile
+    file.getParentFile.mkdirs()
+
     val hash = BufferHash.hashBuffer(data)
     val size = data.remaining
     val cacheFile = getCacheFilePath(file)
