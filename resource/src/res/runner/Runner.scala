@@ -357,11 +357,55 @@ class Runner(val opts: RunOptions) {
         val filename = Paths.get(opts.dataRoot, relPath + ".s2tx").toFile
         val file = filename.getCanonicalFile.getAbsoluteFile
         file.getParentFile.mkdirs()
-        TextureFile.save(writer, filename, texture)
+        TextureFile.save(writer, file, texture)
 
         texture.unload()
         bakedFont.unload()
         font.unload()
+      }
+    }
+
+    // Process the models
+    {
+      val dirtyModels = dirtyAssets.filter(_.fileType == ImportFileModel)
+      println(s"Processing models... ${dirtyModels.size} found")
+      for (asset <- dirtyModels) {
+        val relPath = assetRelative(asset.file)
+        val resources = asset.importAsset()
+        val meshes = resources.collect({ case a: Mesh => a })
+        val animations = resources.collect({ case a: Animation => a })
+        val models = resources.collect({ case a: Model => a })
+
+        for (mesh <- meshes) {
+          val parts = ProcessMesh.processMesh(mesh, asset.config.res.mesh)
+
+          val filename = Paths.get(opts.dataRoot, s"$relPath.${mesh.name}.s2ms").toFile
+          val file = filename.getCanonicalFile.getAbsoluteFile
+          file.getParentFile.mkdirs()
+          MeshFile.save(writer, file, parts)
+          parts.foreach(_.unload())
+        }
+
+        for (anim <- animations) {
+          ProcessAnimation.processAnimation(anim, asset.config.res.animation)
+
+          val filename = Paths.get(opts.dataRoot, s"$relPath.${anim.name}.s2an").toFile
+          val file = filename.getCanonicalFile.getAbsoluteFile
+          file.getParentFile.mkdirs()
+          AnimationFile.save(writer, file, anim)
+        }
+
+        for (model <- models) {
+          val flatModel = FlattenModel.flattenModel(model)
+
+          val filename = Paths.get(opts.dataRoot, s"$relPath.s2md").toFile
+          val file = filename.getCanonicalFile.getAbsoluteFile
+          file.getParentFile.mkdirs()
+          ModelFile.save(writer, file, flatModel)
+          flatModel.unload()
+        }
+
+        resources.foreach(_.unload())
       }
     }
 

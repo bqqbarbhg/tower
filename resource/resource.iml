@@ -48,5 +48,18 @@
         <jarDirectory url="file://$MODULE_DIR$/../external/lwjgl/lwjgl-stb" recursive="false" type="SOURCES" />
       </library>
     </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="file://$MODULE_DIR$/../external/lwjgl/lwjgl-assimp" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="file://$MODULE_DIR$/../external/lwjgl/lwjgl-assimp" />
+        </SOURCES>
+        <jarDirectory url="file://$MODULE_DIR$/../external/lwjgl/lwjgl-assimp" recursive="false" />
+        <jarDirectory url="file://$MODULE_DIR$/../external/lwjgl/lwjgl-assimp" recursive="false" type="SOURCES" />
+      </library>
+    </orderEntry>
   </component>
 </module>

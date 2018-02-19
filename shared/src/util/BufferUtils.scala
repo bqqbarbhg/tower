@@ -116,6 +116,40 @@ object BufferUtils {
     /** Reads a identifier with leading size and UTF-8 encoded content padded to 4-byte boundary */
     def getIdentifier(): Identifier = Identifier(buffer.getString())
 
+    /** Writes a Matrix43 with full precision */
+    def putMatrix43(m: Matrix43): Unit = {
+      buffer.putDouble(m.m11)
+      buffer.putDouble(m.m12)
+      buffer.putDouble(m.m13)
+      buffer.putDouble(m.m14)
+      buffer.putDouble(m.m21)
+      buffer.putDouble(m.m22)
+      buffer.putDouble(m.m23)
+      buffer.putDouble(m.m24)
+      buffer.putDouble(m.m31)
+      buffer.putDouble(m.m32)
+      buffer.putDouble(m.m33)
+      buffer.putDouble(m.m34)
+    }
+
+    /** Reads a Matrix43 with full precision */
+    def getMatrix43(): Matrix43 = {
+      val m = new Matrix43
+      m.m11 = buffer.getDouble()
+      m.m12 = buffer.getDouble()
+      m.m13 = buffer.getDouble()
+      m.m14 = buffer.getDouble()
+      m.m21 = buffer.getDouble()
+      m.m22 = buffer.getDouble()
+      m.m23 = buffer.getDouble()
+      m.m24 = buffer.getDouble()
+      m.m31 = buffer.getDouble()
+      m.m32 = buffer.getDouble()
+      m.m33 = buffer.getDouble()
+      m.m34 = buffer.getDouble()
+      m
+    }
+
   }
 }
 

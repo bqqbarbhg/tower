@@ -145,11 +145,38 @@ object Config {
     }
 
     class Animation extends SimpleSerializable {
+
       /** Maximum error value for the rotation keyframe compression */
       var rotationMaxError: Double = 0.01
 
+      /** Maximum error value for the position keyframe compression */
+      var positionMaxError: Double = 0.001
+
+      /** Maximum error value for the scale keyframe compression */
+      var scaleMaxError: Double = 0.001
+
       override def visit(v: SimpleVisitor): Unit = {
         rotationMaxError = v.field("rotationMaxError", rotationMaxError)
+        positionMaxError = v.field("positionMaxError", positionMaxError)
+        scaleMaxError = v.field("scaleMaxError", scaleMaxError)
+      }
+    }
+
+    class Mesh extends SimpleSerializable {
+
+      /** Maximum number of bone weights per vertex */
+      var maxBonesPerVertex: Int = 4
+
+      /** Maximum number of bones in one mesh (draw call) */
+      var maxBonesPerMesh: Int = 24
+
+      /** Minimum amount of bone influence allowed before it's culled */
+      var boneCullWeight: Double = 0.01
+
+      override def visit(v: SimpleVisitor): Unit = {
+        maxBonesPerVertex = v.field("maxBonesPerVertex", maxBonesPerVertex)
+        maxBonesPerMesh = v.field("maxBonesPerMesh", maxBonesPerMesh)
+        boneCullWeight = v.field("boneCullWeight", boneCullWeight)
       }
     }
 
@@ -257,6 +284,7 @@ object Config {
     var sprite = new Res.Sprite()
     var atlas = new Res.Atlas()
     var animation = new Res.Animation()
+    var mesh = new Res.Mesh()
     var sound = new Res.Sound()
     var font = new Res.Font()
 
@@ -266,6 +294,7 @@ object Config {
       sprite = v.field("sprite", sprite)
       atlas = v.field("atlas", atlas)
       animation = v.field("animation", animation)
+      mesh = v.field("mesh", mesh)
       sound = v.field("sound", sound)
       font = v.field("font", font)
     }
