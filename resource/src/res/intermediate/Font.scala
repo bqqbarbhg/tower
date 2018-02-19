@@ -5,9 +5,11 @@ import Font._
 object Font {
 
   class Glyph {
+    var advance: Double = 0.0
+    var leftSideBearing: Double = 0.0
   }
 
-  case class Bitmap(width: Int, height: Int, data: Array[Double]) {
+  case class Bitmap(x: Double, y: Double, width: Int, height: Int, data: Array[Double]) {
     def getPixel(x: Int, y: Int): Double = data(y * width + x)
   }
 
@@ -27,5 +29,8 @@ abstract class Font extends Resource {
 
   /** Render a glyph into a signed distance field */
   def renderGlyphSdf(char: Char, heightInPixels: Int): Bitmap
+
+  /** Amount of kerning to add to the advance from `prev` to `next` */
+  def getKerning(prev: Char, next: Char): Double
 
 }

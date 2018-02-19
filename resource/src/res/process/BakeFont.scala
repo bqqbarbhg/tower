@@ -1,5 +1,6 @@
 package res.process
 
+import core._
 import res.intermediate._
 import res.intermediate.Font._
 import res.intermediate.BakedFont._
@@ -40,7 +41,9 @@ object BakeFont {
       .map(set => (set.codepointMin to set.codepointMax).toSet)
       .fold(Set[Int]())(_ ++ _)
       .map(_.toChar))
-    val charset = fullCharset.filter(font.getGlyph(_).isDefined)
+
+    val glyphs = fullCharset.toIterable.flatMap(c => font.getGlyph(c).map(g => (c, g))).toMap
+    val charset = glyphs.keySet
 
     val variantsToBuild = new ArrayBuffer[VariantToBuild]()
 
@@ -111,7 +114,9 @@ object BakeFont {
         sizesLeft --= result.keys
 
         for ((index, rect) <- result) {
-          rects(index) = GlyphRect(rect, channel)
+          val bitmap = bitmaps(index)
+          val offset = Vector2(bitmap.x, bitmap.y)
+          rects(index) = GlyphRect(offset, rect, channel)
         }
       }
       assert(sizesLeft.isEmpty)
@@ -138,12 +143,21 @@ object BakeFont {
       }
     }
 
+    val kerningPairs = (for {
+      prev <- charset
+      next <- charset
+    } yield {
+      val pair = (prev, next)
+      (pair, font.getKerning(prev, next))
+    }).filter(pair => math.abs(pair._2) > 0.0001).toMap
+
     val bakedFont = new BakedFont()
     bakedFont.image = image
     bakedFont.variants = variantsToBuild.map(variant => {
       variant.variant.glyphs = variant.bitmapsIndices.mapValues(rects)
       variant.variant
     }).toVector
+    bakedFont.kerningPairs = kerningPairs
 
     bakedFont
   }

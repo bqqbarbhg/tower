@@ -19,7 +19,13 @@ class StbTruetypeFont(var buffer: ByteBuffer) extends Font {
   override def getGlyph(char: Char): Option[Glyph] = {
     val glyph = stbtt_FindGlyphIndex(fontInfo, char.toInt)
     if (glyph > 0) {
-      Some(new Glyph)
+      val advance = Array(0)
+      val leftSideBearing = Array(0)
+      stbtt_GetGlyphHMetrics(fontInfo, glyph, advance, leftSideBearing)
+      val result = new Glyph()
+      result.advance = advance(0)
+      result.leftSideBearing = leftSideBearing(0)
+      Some(result)
     } else {
       None
     }
@@ -84,7 +90,9 @@ class StbTruetypeFont(var buffer: ByteBuffer) extends Font {
       data(y * width + x) = value
     }
 
-    Bitmap(width, height, data)
+    val x = x0(0).toDouble + subX
+    val y = y0(0).toDouble + subY
+    Bitmap(x, y, width, height, data)
   }
 
   override def renderGlyphSdf(char: Char, heightInPixels: Int): Bitmap = {
@@ -123,7 +131,17 @@ class StbTruetypeFont(var buffer: ByteBuffer) extends Font {
 
       stbtt_FreeSDF(buffer)
     }
-    Bitmap(width, height, data)
+    Bitmap(axoff(0), ayoff(0), width, height, data)
+  }
+
+  override def getKerning(prev: Char, next: Char): Double = {
+    val glyphPrev = stbtt_FindGlyphIndex(fontInfo, prev.toInt)
+    val glyphNext = stbtt_FindGlyphIndex(fontInfo, next.toInt)
+    if (glyphPrev > 0 && glyphNext > 0) {
+      stbtt_GetGlyphKernAdvance(fontInfo, glyphPrev, glyphNext).toDouble
+    } else {
+      0.0
+    }
   }
 
   override def unload(): Unit = {

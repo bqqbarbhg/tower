@@ -352,11 +352,19 @@ class Runner(val opts: RunOptions) {
           SaveDebugImage.saveImageChannel(file, bakedFont.image, index)
         }
 
-        val texture = CreateTexture.createTexture(bakedFont.image, asset.config.res.font.texture)
-        val filename = Paths.get(opts.dataRoot, relPath + ".s2tx").toFile
-        TextureFile.save(writer, filename, texture)
+        val texRes = {
+          val texture = CreateTexture.createTexture(bakedFont.image, asset.config.res.font.texture)
+          val filename = Paths.get(opts.dataRoot, relPath + ".s2tx").toFile
+          TextureFile.save(writer, filename, texture)
+          texture.unload()
+          writer.dataRelative(filename)
+        }
 
-        texture.unload()
+        {
+          val filename = Paths.get(opts.dataRoot, relPath + ".s2ft").toFile
+          FontFile.save(writer, filename, bakedFont, texRes)
+        }
+
         bakedFont.unload()
         font.unload()
       }
