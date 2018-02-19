@@ -366,23 +366,27 @@ class Runner(val opts: RunOptions) {
         val animations = resources.collect({ case a: Animation => a })
         val models = resources.collect({ case a: Model => a })
 
-        for (mesh <- meshes) {
+        val meshMapping = (for (mesh <- meshes) yield {
           val parts = ProcessMesh.processMesh(mesh, asset.config.res.mesh)
 
           val filename = Paths.get(opts.dataRoot, s"$relPath.${mesh.name}.s2ms").toFile
           MeshFile.save(writer, filename, parts)
           parts.foreach(_.unload())
-        }
 
-        for (anim <- animations) {
+          (mesh.name, writer.dataRelative(filename))
+        }).toMap
+
+        val animMapping = (for (anim <- animations) yield {
           ProcessAnimation.processAnimation(anim, asset.config.res.animation)
 
           val filename = Paths.get(opts.dataRoot, s"$relPath.${anim.name}.s2an").toFile
           AnimationFile.save(writer, filename, anim)
-        }
+
+          (anim.name, writer.dataRelative(filename))
+        }).toMap
 
         for (model <- models) {
-          val flatModel = FlattenModel.flattenModel(model)
+          val flatModel = FlattenModel.flattenModel(model, meshMap = meshMapping, animMap = animMapping)
 
           val filename = Paths.get(opts.dataRoot, s"$relPath.s2md").toFile
           ModelFile.save(writer, filename, flatModel)

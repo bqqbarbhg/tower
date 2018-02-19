@@ -22,6 +22,7 @@ object ModelFile {
 
     buffer.putInt(model.nodes.length)
     buffer.putInt(model.meshes.length)
+    buffer.putInt(model.animations.length)
 
     for (node <- model.nodes) {
       buffer.putIdentifier(node.node.name)
@@ -31,7 +32,13 @@ object ModelFile {
 
     for (mesh <- model.meshes) {
       buffer.putInt(mesh.parent)
-      buffer.putIdentifier(mesh.mesh.meshResource)
+      buffer.putIdentifier(mesh.mesh.name)
+      buffer.putIdentifier(mesh.resource)
+    }
+
+    for (anim <- model.animations) {
+      buffer.putIdentifier(anim.name)
+      buffer.putIdentifier(anim.resource)
     }
 
     buffer.putMagic("E.md")

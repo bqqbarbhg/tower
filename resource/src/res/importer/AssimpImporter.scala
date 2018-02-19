@@ -169,8 +169,8 @@ object AssimpImporter extends Importer {
       node
     }
 
-
     model.root = convertNode(aScene.mRootNode)
+    model.animations = animations.map(_.name).to[ArrayBuffer]
 
     aiReleaseImport(aScene)
 

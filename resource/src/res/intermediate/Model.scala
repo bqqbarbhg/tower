@@ -6,7 +6,7 @@ import core._
 import Model._
 
 object Model {
-  case class ModelMesh(val meshResource: String)
+  case class ModelMesh(val name: String)
 
   class ModelNode(val name: String) {
     var children: ArrayBuffer[ModelNode] = new ArrayBuffer[ModelNode]()
@@ -18,6 +18,7 @@ object Model {
 
 class Model extends Resource {
   var root: ModelNode = null
+  var animations: ArrayBuffer[String] = ArrayBuffer[String]()
 
   override def unload(): Unit = {
     root = null

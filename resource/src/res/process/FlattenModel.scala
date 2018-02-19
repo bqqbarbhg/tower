@@ -10,7 +10,7 @@ import res.intermediate.FlatModel._
   */
 object FlattenModel {
 
-  def flattenModel(model: Model): FlatModel = {
+  def flattenModel(model: Model, meshMap: Map[String, String], animMap: Map[String, String]): FlatModel = {
     val flat = new FlatModel()
 
     def visitNode(node: ModelNode, parentIndex: Int): Unit = {
@@ -20,7 +20,7 @@ object FlattenModel {
       flat.nodes += flatNode
 
       for (mesh <- node.meshes) {
-        val flatMesh = FlatMesh(nodeIndex, mesh)
+        val flatMesh = FlatMesh(nodeIndex, mesh, meshMap(mesh.name))
         flat.meshes += flatMesh
       }
 
@@ -29,6 +29,8 @@ object FlattenModel {
     }
 
     visitNode(model.root, -1)
+
+    flat.animations = model.animations.map(animName => FlatAnimation(animName, animMap(animName)))
 
     flat
   }
