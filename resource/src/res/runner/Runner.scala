@@ -255,6 +255,9 @@ class Runner(val opts: RunOptions) {
         val config = atlas.sprites.head.config
         if (GenerateAtlas.generateAtlas(atlas, images, config.res.atlas)) {
 
+          val pageFileBase = Paths.get(opts.dataRoot, "atlas", s"${atlas.name}").toFile
+          val pageNameBase = writer.dataRelative(pageFileBase)
+
           for ((page, index) <- atlas.pages.zipWithIndex) {
             val texture = CreateTexture.createTexture(page, config.res.atlas.texture)
             val filename = Paths.get(opts.dataRoot, "atlas", s"${atlas.name}_$index.s2tx").toFile
@@ -262,6 +265,10 @@ class Runner(val opts: RunOptions) {
             texture.unload()
           }
 
+          val spriteNames = atlas.sprites.map(a => assetRelative(a.file))
+
+          val filename = Paths.get(opts.dataRoot, "atlas", s"${atlas.name}.s2at").toFile
+          AtlasFile.save(writer, filename, atlas, pageNameBase, spriteNames)
         } else {
           println(s"Atlas ${atlas.name} ERROR: Failed to pack")
         }
