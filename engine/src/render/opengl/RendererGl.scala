@@ -110,7 +110,7 @@ class RendererGl {
       glClearColor(r, g, b, a)
     }
     for (d <- depth) {
-      flags |= GL_DEPTH_BUFFER_BIT
+      flags |= GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT
       glClearDepth(d.toFloat)
     }
 

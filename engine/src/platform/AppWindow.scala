@@ -23,6 +23,8 @@ object AppWindow {
 
       if (msgType == GL_DEBUG_TYPE_ERROR_ARB) {
         throw new RuntimeException(s"OpenGL error: $message")
+      } else if (msgType != GL_DEBUG_TYPE_OTHER_ARB) {
+        println(s"GL: $message")
       }
     }
   }
@@ -72,4 +74,5 @@ object AppWindow {
     glfwSwapBuffers(window)
   }
 
+  def currentTime: Double = glfwGetTime
 }
