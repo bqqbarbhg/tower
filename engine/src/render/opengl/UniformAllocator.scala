@@ -6,6 +6,8 @@ import org.lwjgl.opengl.GL15._
 import org.lwjgl.opengl.GL30._
 import org.lwjgl.opengl.GL31._
 
+import core._
+
 class UniformAllocator(val bufferSize: Int) {
 
   private val uniformAlignment = glGetInteger(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT)
@@ -30,7 +32,7 @@ class UniformAllocator(val bufferSize: Int) {
     frameIndex += 1
   }
 
-  def push(size: Int, writeData: ByteBuffer => Unit): UniformBlockRefGl = {
+  def push(size: Int, writeData: ByteBuffer => Unit): UniformBlockRefGl = withStack {
     val alignedSize = uniformAlign(size)
     if (offset + alignedSize > alignedBufferSize) {
       assert(frameIndex > lastWrapFrame + 4)
@@ -42,9 +44,12 @@ class UniformAllocator(val bufferSize: Int) {
     offset += alignedSize
 
     glBindBuffer(GL_UNIFORM_BUFFER, buffer)
-    val mapping = glMapBufferRange(GL_UNIFORM_BUFFER, loc, alignedSize, GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT)
-    writeData(mapping)
-    glUnmapBuffer(GL_UNIFORM_BUFFER)
+
+    val buf = alloca(size)
+    writeData(buf)
+    buf.position(0)
+    glBufferSubData(GL_UNIFORM_BUFFER, loc, buf)
+
     glBindBuffer(GL_UNIFORM_BUFFER, 0)
 
     UniformBlockRefGl(buffer, loc, size)

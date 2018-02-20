@@ -19,6 +19,8 @@ import scala.io.StdIn
 
 object TestScene extends App {
 
+  core.StackAllocator.createCurrentThread(16 * 1024 * 1024)
+
   object ModelTextures extends SamplerBlock {
     val Diffuse = sampler2D("Diffuse", Sampler.RepeatAnisotropic)
   }
@@ -127,6 +129,8 @@ void main() {
   var ix = 0
 
   renderer.setDepthMode(true, true)
+
+  System.gc()
 
   var time = 0.0
   while (AppWindow.running) {
