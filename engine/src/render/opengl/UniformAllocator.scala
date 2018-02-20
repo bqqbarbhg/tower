@@ -38,13 +38,16 @@ class UniformAllocator(val bufferSize: Int) {
       offset = 0
     }
 
+    val loc = offset
+    offset += alignedSize
+
     glBindBuffer(GL_UNIFORM_BUFFER, buffer)
-    val mapping = glMapBufferRange(GL_UNIFORM_BUFFER, offset, alignedSize, GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT)
+    val mapping = glMapBufferRange(GL_UNIFORM_BUFFER, loc, alignedSize, GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT)
     writeData(mapping)
     glUnmapBuffer(GL_UNIFORM_BUFFER)
     glBindBuffer(GL_UNIFORM_BUFFER, 0)
 
-    UniformBlockRefGl(buffer, offset, size)
+    UniformBlockRefGl(buffer, loc, size)
   }
 
   def unload(): Unit = {
