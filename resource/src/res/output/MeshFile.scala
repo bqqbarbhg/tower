@@ -21,13 +21,15 @@ object MeshFile {
     buffer.putInt(mesh.numVertices)
     buffer.putInt(mesh.numIndices)
     buffer.putInt(mesh.bones.length)
+    buffer.putInt(mesh.vertexData.remaining)
+    buffer.putInt(mesh.indexData.remaining)
+    buffer.putInt(mesh.vertexSpec.attribs.length)
 
     for (bone <- mesh.bones) {
       buffer.putIdentifier(bone.name)
       buffer.putMatrix43(bone.meshToBone)
     }
 
-    buffer.putInt(mesh.vertexSpec.attribs.length)
     for (attrib <- mesh.vertexSpec.attribs) {
       buffer.putMagic(attrib.fmt.magic)
       buffer.putMagic(attrib.semantic.magic)
@@ -35,8 +37,6 @@ object MeshFile {
       buffer.putShort(attrib.index.toShort)
     }
 
-    buffer.putInt(mesh.vertexData.remaining)
-    buffer.putInt(mesh.indexData.remaining)
 
     buffer.put(mesh.vertexData.duplicateEx)
     buffer.put(mesh.indexData.duplicateEx)

@@ -19,5 +19,6 @@
         <jarDirectory url="file://$MODULE_DIR$/../external/scalatest" recursive="false" />
       </library>
     </orderEntry>
+    <orderEntry type="module" module-name="engine" />
   </component>
 </module>

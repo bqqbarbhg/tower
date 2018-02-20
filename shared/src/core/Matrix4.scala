@@ -89,6 +89,29 @@ class Matrix4 {
     r
   }
 
+  def *(m: Matrix43): Matrix4 = {
+    val r = new Matrix4()
+
+    r.m11 = m11*m.m11 + m12*m.m21 + m13*m.m31
+    r.m12 = m11*m.m12 + m12*m.m22 + m13*m.m32
+    r.m13 = m11*m.m13 + m12*m.m23 + m13*m.m33
+    r.m14 = m11*m.m14 + m12*m.m24 + m13*m.m34 + m14
+    r.m21 = m21*m.m11 + m22*m.m21 + m23*m.m31
+    r.m22 = m21*m.m12 + m22*m.m22 + m23*m.m32
+    r.m23 = m21*m.m13 + m22*m.m23 + m23*m.m33
+    r.m24 = m21*m.m14 + m22*m.m24 + m23*m.m34 + m24
+    r.m31 = m31*m.m11 + m32*m.m21 + m33*m.m31
+    r.m32 = m31*m.m12 + m32*m.m22 + m33*m.m32
+    r.m33 = m31*m.m13 + m32*m.m23 + m33*m.m33
+    r.m34 = m31*m.m14 + m32*m.m24 + m33*m.m34 + m34
+    r.m41 = m41*m.m11 + m42*m.m21 + m43*m.m31
+    r.m42 = m41*m.m12 + m42*m.m22 + m43*m.m32
+    r.m43 = m41*m.m13 + m42*m.m23 + m43*m.m33
+    r.m44 = m41*m.m14 + m42*m.m24 + m43*m.m34 + m44
+
+    r
+  }
+
   def copy: Matrix4 = {
     val r = new Matrix4()
     r.unsafeCopy(this)

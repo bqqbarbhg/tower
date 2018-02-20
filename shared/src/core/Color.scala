@@ -34,6 +34,23 @@ object Color {
     Color(lr, lg, lb, la)
   }
 
+  /** Color from big-endian 24-bit RGB sRGB encoded color, useful with hex constants. */
+  def rgb(hexRgb: Int): Color = {
+    val r = (hexRgb >>> 16) & 0xFF
+    val g = (hexRgb >>>  8) & 0xFF
+    val b = (hexRgb >>>  0) & 0xFF
+    Color.fromSrgb(r, g, b)
+  }
+
+  /** Color from big-endian 32-bit ARGB sRGB encoded color, useful with hex constants. */
+  def argb(hexArgb: Int): Color = {
+    val a = (hexArgb >>> 24) & 0xFF
+    val r = (hexArgb >>> 16) & 0xFF
+    val g = (hexArgb >>>  8) & 0xFF
+    val b = (hexArgb >>>  0) & 0xFF
+    Color.fromSrgb(r, g, b, a)
+  }
+
 }
 
 /**

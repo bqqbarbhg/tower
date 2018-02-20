@@ -26,6 +26,25 @@ package object core {
     /** For some reason JVM forgets byte order when duplicating !?! */
     def sliceEx: ByteBuffer = buffer.slice.order(buffer.order)
 
+    /** Return a version of the buffer which starts at current position with new limit */
+    def limited(numBytes: Int): ByteBuffer = {
+      val copy = buffer.sliceEx
+      copy.limit(numBytes)
+      copy
+    }
+
+    /** Skip forward a number of bytes */
+    def skip(numBytes: Int): Unit = {
+      buffer.position(buffer.position + numBytes)
+    }
+
+    /** Read a sub-buffer of size `numBytes` from the buffer */
+    def getBuffer(numBytes: Int): ByteBuffer = {
+      val buf = buffer.limited(numBytes)
+      buffer.skip(numBytes)
+      buf
+    }
+
     /** Set the limit to be current position and rewind to beginning */
     def finish(): Unit = {
       buffer.limit(buffer.position)
