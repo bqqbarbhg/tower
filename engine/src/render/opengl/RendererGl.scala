@@ -2,10 +2,13 @@ package render.opengl
 import java.nio.ByteBuffer
 
 import org.lwjgl.opengl.GL11._
+import org.lwjgl.opengl.GL13._
 import org.lwjgl.opengl.GL15._
 import org.lwjgl.opengl.GL20._
 import org.lwjgl.opengl.GL30._
 import org.lwjgl.opengl.GL31._
+import org.lwjgl.opengl.GL32._
+import org.lwjgl.opengl.GL33._
 
 import core._
 import render._
@@ -28,21 +31,19 @@ object RendererGl {
 class RendererGl {
 
   val vaoCache = new VaoCache()
+  val samplerCache = new SamplerCache()
   val uniformAllocator = new UniformAllocator(1024*1024)
 
   var activeShaderEnabled: Boolean = false
   var activeShader: ShaderGl = null
   var activeUniforms: Array[UniformBlockRefGl] = Array[UniformBlockRefGl]()
+  var activeTextures: Array[Int] = Array[Int]()
 
   /** Needs to be called every frame */
   def advanceFrame(): Unit = {
     vaoCache.advanceFrame()
+    samplerCache.advanceFrame()
     uniformAllocator.advanceFrame()
-
-    val error = glGetError()
-    if (error != 0) {
-      println(s"GL error: $error")
-    }
 
     java.util.Arrays.fill(activeUniforms.asInstanceOf[Array[AnyRef]], null)
   }
@@ -69,16 +70,33 @@ class RendererGl {
     activeUniforms(uniform.serial) = ref
   }
 
+  def setTexture(sampler: SamplerBlock.USampler2D, texture: TextureHandleGl): Unit = {
+    val samplerObj = samplerCache.getSampler(sampler.sampler)
+    glActiveTexture(GL_TEXTURE0 + sampler.index)
+    glBindTexture(GL_TEXTURE_2D, texture.texture)
+    glBindSampler(sampler.index, samplerObj)
+  }
+
   def applyState(): Unit = {
     if (!activeShaderEnabled) {
       glUseProgram(activeShader.program)
       activeShaderEnabled = true
+
+      for (sampler <- activeShader.samplers) {
+        glUniform1i(sampler.shaderIndex, sampler.index)
+      }
     }
 
     for (uniform <- activeShader.uniforms) {
       val ref = activeUniforms(uniform.serial)
       glBindBufferRange(GL_UNIFORM_BUFFER, uniform.shaderIndex, ref.buffer, ref.offset, ref.size)
     }
+  }
+
+  def setDepthMode(write: Boolean, test: Boolean): Unit = {
+    glDepthMask(write)
+    if (test) glEnable (GL_DEPTH_TEST)
+    else      glDisable(GL_DEPTH_TEST)
   }
 
   def clear(color: Option[Color], depth: Option[Double]): Unit = {
@@ -111,6 +129,7 @@ class RendererGl {
 
   def unload(): Unit = {
     uniformAllocator.unload()
+    samplerCache.unload()
     vaoCache.unload()
   }
 }

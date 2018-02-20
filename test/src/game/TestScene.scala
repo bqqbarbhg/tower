@@ -11,6 +11,10 @@ import platform.AppWindow
 
 object TestScene extends App {
 
+  object ModelTextures extends SamplerBlock {
+    val Diffuse = sampler2D("Diffuse", Sampler.RepeatAnisotropic)
+  }
+
   object ModelUniform extends UniformBlock("ModelUniform") {
     val ViewProjection = mat4("ViewProjection")
     val World = mat4x3("World")
@@ -43,42 +47,66 @@ void main() {
     """
 #version 150
 
+uniform sampler2D u_Diffuse;
+
 in vec2 v_TexCoord;
 out vec4 o_Color;
 
 void main() {
-  o_Color = vec4(1.0, 0.0, 0.0, 1.0);
+  o_Color = texture(u_Diffuse, v_TexCoord);
 }
     """
 
-  AppWindow.initialize(1280, 720, "Test window")
+  val arg = util.ArgumentParser.parse(args)
+  val debug = arg.flag("debug")
+
+  AppWindow.initialize(1280, 720, "Test window", debug)
 
   val renderer = Renderer.initialize()
-  val shader = Shader.compile(VertexShader, FragmentShader, ModelUniform)
+  val shader = Shader.compile(VertexShader, FragmentShader, ModelTextures, ModelUniform)
 
   val viewProjection = (
       Matrix4.perspective(1280.0 / 720.0, math.Pi / 3.0, 0.01, 1000.0)
       * Matrix43.look(Vector3(0.0, 0.0, -10.0), Vector3(0.0, 0.0, 1.0)))
 
-  val file = new File("data/test/sausageman.fbx.Cube.000.s2ms")
-  val buf = ByteBuffer.allocateDirect(16 * 1024 * 1024)
-  buf.order(ByteOrder.LITTLE_ENDIAN)
-  buf.readFromFile(file)
-  buf.finish()
+  val buffer = ByteBuffer.allocateDirect(16 * 1024 * 1024)
 
-  val mesh = new gfx.Mesh()
-  mesh.load(buf)
+  val mesh = {
+    val file = new File("data/test/sausageman.fbx.Cube.000.s2ms")
+    var buf = buffer.duplicateEx
+    buf.order(ByteOrder.LITTLE_ENDIAN)
+    buf.readFromFile(file)
+    buf.finish()
+
+    val mesh = new gfx.Mesh()
+    mesh.load(buf)
+    mesh
+  }
+
+  val texture = {
+    val file = new File("data/test/grass.jpg.s2tx")
+    var buf = buffer.duplicateEx
+    buf.order(ByteOrder.LITTLE_ENDIAN)
+    buf.readFromFile(file)
+    buf.finish()
+
+    val tex = new gfx.Texture()
+    tex.load(buf)
+    tex
+  }
 
   var time = 0.0
   while (AppWindow.running) {
     AppWindow.pollEvents()
 
+    renderer.setDepthMode(true, true)
+
     renderer.advanceFrame()
 
     time += 0.016
-    val world = Matrix43.rotateY(time)
+    val world = Matrix43.translate(0.0, -5.0, 0.0) * Matrix43.rotateY(time) * Matrix43.rotateX(math.Pi / 2.0)
 
-    renderer.clear(Some(Color.rgb(0x6495ED)), None)
+    renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
 
     renderer.setShader(shader)
 
@@ -87,6 +115,8 @@ void main() {
       ViewProjection.set(u, viewProjection)
       World.set(u, world)
     })
+
+    renderer.setTexture(ModelTextures.Diffuse, texture.texture)
 
     for (part <- mesh.parts) {
       part.draw()

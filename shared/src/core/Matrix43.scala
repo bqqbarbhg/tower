@@ -56,6 +56,23 @@ object Matrix43 {
     m
   }
 
+  /** Translation */
+  def translate(amount: Vector3): Matrix43 = {
+    val m = Matrix43.makeIdentity
+    m.m14 = amount.x
+    m.m24 = amount.y
+    m.m34 = amount.z
+    m
+  }
+
+  /** Translation */
+  def translate(x: Double, y: Double, z: Double): Matrix43 = {
+    val m = Matrix43.makeIdentity
+    m.m14 = x
+    m.m24 = y
+    m.m34 = z
+    m
+  }
 
   /**
     * Unsafe version of `worldRot()`: Mutates argument r!

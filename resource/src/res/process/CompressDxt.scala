@@ -52,7 +52,7 @@ object CompressDxt {
       STBDXT.stb_compress_dxt_block(dst, src, hasAlpha, STBDXT.STB_DXT_HIGHQUAL)
     }
 
-    dst.finish()
+    dst.position(0)
 
     val format = if (hasAlpha) Texture.Format.Dxt5 else Texture.Format.Dxt1
     val tex = new Texture(image.width, image.height, format)

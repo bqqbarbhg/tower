@@ -15,10 +15,17 @@ object ShaderGl {
 
   case class UniformBind(serial: Int, shaderIndex: Int)
   case class AttribBind(semantic: VertexSpec.Semantic, index: Int, shaderIndex: Int)
+  case class SamplerBind(index: Int, shaderIndex: Int)
 
   val AttribRegex = """^a_([A-Za-z]+)([0-9]*)$""".r
 
+  object NullSamplers extends SamplerBlock
+
   def compile(vert: String, frag: String, uniforms: UniformBlock*): ShaderGl = {
+    compile(vert, frag, NullSamplers, uniforms : _*)
+  }
+
+  def compile(vert: String, frag: String, samplers: SamplerBlock, uniforms: UniformBlock*): ShaderGl = {
 
     // -- Compile the shader
     def createShader(src: String, shaderType: Int): Int = {
@@ -79,11 +86,21 @@ object ShaderGl {
       }
     }).toArray
 
+    // -- List active uniform textures
+    val samplerMapping = samplers.samplers.flatMap(sampler => {
+      val loc = glGetUniformLocation(program, "u_" + sampler.name)
+      if (loc >= 0) {
+        Some(SamplerBind(sampler.index, loc))
+      } else {
+        None
+      }
+    }).toArray
+
     stack.pop()
 
     val serial = serialCounter
     serialCounter += 1
-    new ShaderGl(serial, program, uniformMapping, attribMapping)
+    new ShaderGl(serial, program, uniformMapping, attribMapping, samplerMapping)
   }
 
   private var serialCounter = 0
@@ -93,7 +110,8 @@ object ShaderGl {
 class ShaderGl(val serial: Int,
                val program: Int,
                val uniforms: Array[UniformBind],
-               val attribs: Array[AttribBind]) {
+               val attribs: Array[AttribBind],
+               val samplers: Array[SamplerBind]) {
 
   /**
     * Returns the index of a vertex attribute, -1 if not enabled
