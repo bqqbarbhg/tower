@@ -135,7 +135,8 @@ void main() {
   var sampledTimesMs = Array.fill(60/**100*/)(0.0)
   var ix = 0
 
-  renderer.setDepthMode(true, true)
+  renderer.setDepthMode(false, false)
+  renderer.setBlend(false)
 
   System.gc()
 
@@ -150,7 +151,7 @@ void main() {
 
     renderer.advanceFrame()
 
-    renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
+    renderer.clear(Some(Color.rgb(0xffffff)), Some(1.0))
 
     renderer.setShader(shader)
 
@@ -163,12 +164,14 @@ void main() {
 
     renderer.setTexture(ModelTextures.Diffuse, texture.texture)
 
+    /*
     for (part <- mesh.parts) {
       part.draw()
     }
+    */
 
-    val variant = font.variants.head
-    font.drawText(variant, "Hello world!", Vector2.Zero)
+    val variant = font.variants.dropRight(1).last
+    font.drawText(variant, "This is a test", Vector2(0.0, 0.0))
 
     AppWindow.swapBuffers()
 

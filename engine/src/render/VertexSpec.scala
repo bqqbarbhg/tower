@@ -13,6 +13,7 @@ object VertexSpec {
     case object UI8 extends DataFmt(1)
     case object SN16 extends DataFmt(2)
     case object UN16 extends DataFmt(2)
+    case object UF16 extends DataFmt(2)
     case object PAD extends DataFmt(1)
   }
 

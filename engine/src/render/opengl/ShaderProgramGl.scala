@@ -68,6 +68,7 @@ object ShaderProgramGl {
     val numUniformBlocks = glGetProgrami(program, GL_ACTIVE_UNIFORM_BLOCKS)
     val uniformMapping = (0 until numUniformBlocks).flatMap(index => {
       val name = glGetActiveUniformBlockName(program, index)
+      glUniformBlockBinding(program, index, index)
       uniforms.find(_.name == name).map(ub => UniformBind(ub.serial, index))
     }).toArray
 
@@ -77,9 +78,10 @@ object ShaderProgramGl {
       val psize = stack.ints(0)
       val ptype = stack.ints(0)
       val name = glGetActiveAttrib(program, index, psize, ptype)
+      val loc = glGetAttribLocation(program, name)
       name match {
         case AttribRegex(nameStr) =>
-          AttribBind(Identifier(nameStr).index, index)
+          AttribBind(Identifier(nameStr).index, loc)
         case _ => throw new ShaderCompileError(s"Attribute name '$name' doesn't match any semantic")
       }
     }).toArray

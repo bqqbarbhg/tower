@@ -7,6 +7,7 @@ import res.intermediate.BakedFont._
 import util.{BinarySearch, Extents, RectanglePacker}
 
 import scala.collection.mutable.ArrayBuffer
+import scala.reflect.macros.whitebox
 
 /**
   * Bakes a vector font into a bitmap version. The configuration defines
@@ -117,7 +118,8 @@ object BakeFont {
         for ((index, rect) <- result) {
           val bitmap = bitmaps(index)
           val offset = Vector2(bitmap.x, bitmap.y)
-          rects(index) = GlyphRect(offset, rect, channel)
+          val cropped = rect.copy(w = rect.w - 1, h = rect.h - 1)
+          rects(index) = GlyphRect(offset, cropped, channel)
         }
       }
       assert(sizesLeft.isEmpty)

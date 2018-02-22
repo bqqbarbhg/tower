@@ -57,6 +57,7 @@ class VaoCache {
           case UI8  => glVertexAttribIPointer(ix, num, GL_BYTE,                  stride, offset)
           case SN16 => glVertexAttribPointer (ix, num, GL_SHORT,          true,  stride, offset)
           case UN16 => glVertexAttribPointer (ix, num, GL_UNSIGNED_SHORT, true,  stride, offset)
+          case UF16 => glVertexAttribPointer (ix, num, GL_UNSIGNED_SHORT, false, stride, offset)
           case PAD  => // Nop: Padding is implied in `stride` and `offset`
         }
         offset += attrib.sizeInBytes

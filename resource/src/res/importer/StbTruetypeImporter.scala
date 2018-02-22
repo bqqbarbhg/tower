@@ -44,11 +44,11 @@ class StbTruetypeFont(var buffer: ByteBuffer) extends Font {
     val y0 = Array(0)
     val y1 = Array(0)
 
+    var x: Double = 0.0
+    var y: Double = 0.0
     var width: Int = 0
     var height: Int = 0
     var buffer: ByteBuffer = null
-    var subX: Double = 0.0
-    var subY: Double = 0.0
 
     if (oversampleX > 1 || oversampleY > 1) {
       stbtt_GetGlyphBitmapBoxSubpixel(fontInfo, glyph, scaleX, scaleY, 0.0f, 0.0f, x0, y0, x1, y1)
@@ -68,8 +68,8 @@ class StbTruetypeFont(var buffer: ByteBuffer) extends Font {
         /* Sub       */ asubX, asubY,
         /* Glyph     */ glyph)
 
-      subX = asubX(0)
-      subY = asubY(0)
+      x = x0(0).toDouble / oversampleX + asubX(0)
+      y = y0(0).toDouble / oversampleY + asubY(0)
     } else {
 
       stbtt_GetGlyphBitmapBox(fontInfo, glyph, scaleX, scaleY, x0, y0, x1, y1)
@@ -79,6 +79,9 @@ class StbTruetypeFont(var buffer: ByteBuffer) extends Font {
       buffer = alloca(width * height)
 
       stbtt_MakeGlyphBitmap(fontInfo, buffer, width, height, width, scaleX, scaleY, glyph)
+
+      x = x0(0).toDouble
+      y = y0(0).toDouble
     }
 
     val data = new Array[Double](width * height)
@@ -90,8 +93,6 @@ class StbTruetypeFont(var buffer: ByteBuffer) extends Font {
       data(y * width + x) = value
     }
 
-    val x = x0(0).toDouble + subX
-    val y = y0(0).toDouble + subY
     Bitmap(x, y, width, height, data)
   }
 

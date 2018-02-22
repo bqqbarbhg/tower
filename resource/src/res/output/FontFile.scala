@@ -91,6 +91,12 @@ object FontFile {
 
             buffer.putFloat(rect.offset.x.toFloat)
             buffer.putFloat(rect.offset.y.toFloat)
+
+            val w = rc.w.toFloat / variant.config.oversampleX.toFloat
+            val h = rc.h.toFloat / variant.config.oversampleY.toFloat
+            buffer.putFloat(w.toShort)
+            buffer.putFloat(h.toShort)
+
           case None =>
             buffer.putInt(-1)
             buffer.putShort(0)
@@ -99,6 +105,8 @@ object FontFile {
             buffer.putShort(0)
             buffer.putFloat(0.0f)
             buffer.putFloat(0.0f)
+            buffer.putShort(0)
+            buffer.putShort(0)
         }
       }
     }

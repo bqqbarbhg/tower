@@ -32,10 +32,14 @@ object Font {
     val SrcX1 = short
     val SrcY1 = short
 
-    /** Horizontal offset when rendering */
+    /** Horizontal offset of the character quad */
     val OffsetX = float
-    /** Horizontal offset when rendering */
+    /** Horizontal offset of the character quad */
     val OffsetY = float
+    /** Width of the character quad */
+    val Width = float
+    /** Height of the character quad */
+    val Height = float
 
     /** RGBA channel in the texture */
     val Channel = byte
@@ -66,7 +70,7 @@ object Font {
     Vector(
       Attrib(2, F32,  Identifier("Position")),
       Attrib(4, UN8,  Identifier("ChannelMask")),
-      Attrib(2, UN16, Identifier("TexCoord")),
+      Attrib(2, UF16, Identifier("TexCoord")),
     )
   })
 
@@ -76,7 +80,7 @@ object Font {
   lazy val fontIndexBuffer = IndexBuffer.createStatic(withStack {
     val data = alloca(MaxQuadsPerDraw * 6 * 2)
     for (i <- 0 until MaxQuadsPerDraw) {
-      val base = i * 6
+      val base = i * 4
       data.putShort((base + 0).toShort)
       data.putShort((base + 2).toShort)
       data.putShort((base + 1).toShort)
@@ -92,11 +96,13 @@ object Font {
   var fontVertexOffset = 0
 
   object FontUniform extends UniformBlock("FontUniform") {
-    val TexCoordToScreen = vec4("TexCoordToScreen")
+    val TexCoordScale = vec4("TexCoordScale")
+    val PosScale = vec4("PosScale")
   }
 
   object FontPixelUniform extends UniformBlock("FontPixelUniform") {
     val Color = vec4("Color")
+    val SdfRamp = vec4("SdfRamp")
   }
 
   object FontTextures extends SamplerBlock {
@@ -227,16 +233,18 @@ class Font {
         val srcY0 = VarCharInfo.SrcY0.get(D,VA)
         val srcX1 = VarCharInfo.SrcX1.get(D,VA)
         val srcY1 = VarCharInfo.SrcY1.get(D,VA)
+        val w = VarCharInfo.Width.get(D,VA)
+        val h = VarCharInfo.Height.get(D,VA)
 
         val x = posX + VarCharInfo.OffsetX.get(D,VA)
-        val y = posY + VarCharInfo.OffsetY.get(D,VA)
+        val y = posY - VarCharInfo.OffsetY.get(D,VA)
         val channel = VarCharInfo.Channel.get(D,VA)
-        val mask = ChannelMasks(channel)
 
-        if (mask >= 0) {
-          posX += kerning
+        if (channel >= 0) {
+          posX += kerning * variant.scale
 
           // Note: x/y/mask stay constant, could be instanced?
+          val mask = ChannelMasks(channel)
 
           buffer.putFloat(x)
           buffer.putFloat(y)
@@ -244,26 +252,26 @@ class Font {
           buffer.putShort(srcX0)
           buffer.putShort(srcY0)
 
-          buffer.putFloat(x)
+          buffer.putFloat(x + w)
           buffer.putFloat(y)
           buffer.putInt(mask)
           buffer.putShort(srcX1)
           buffer.putShort(srcY0)
 
           buffer.putFloat(x)
-          buffer.putFloat(y)
+          buffer.putFloat(y - h)
           buffer.putInt(mask)
           buffer.putShort(srcX0)
           buffer.putShort(srcY1)
 
-          buffer.putFloat(x)
-          buffer.putFloat(y)
+          buffer.putFloat(x + w)
+          buffer.putFloat(y - h)
           buffer.putInt(mask)
           buffer.putShort(srcX1)
           buffer.putShort(srcY1)
 
           val advance = CharInfo.Advance.get(D,CA)
-          posX += advance
+          posX += advance * variant.scale
 
           numQuads += 1
         }
@@ -292,21 +300,28 @@ class Font {
     Font.fontVertexOffset += numQuads * 4
 
     renderer.pushUniform(FontPixelUniform, b => {
-      FontPixelUniform.Color.set(b, 1.0f, 1.0f, 1.0f, 1.0f)
+      FontPixelUniform.Color.set(b, 0.0f, 0.0f, 0.0f, 1.0f)
     })
 
     renderer.pushUniform(FontUniform, b => {
-      val texCoordRatioX = texture.width.toFloat / 1280.0f
-      val texCoordRatioY = texture.height.toFloat / 720.0f
+      val texScaleX = 1.0f / texture.width.toFloat
+      val texScaleY = 1.0f / texture.height.toFloat
+      val texCoordRatioX = 1280.0f / texture.width.toFloat
+      val texCoordRatioY = 720.0f / texture.height.toFloat
+      val screenX = 1.0f / 1280.0f * 8.0f
+      val screenY = 1.0f / 720.0f * 8.0f
 
-      FontUniform.TexCoordToScreen.set(b, texCoordRatioX, texCoordRatioY, 0.0f, 0.0f)
+      FontUniform.TexCoordScale.set(b, texScaleX, texScaleY, texCoordRatioX, texCoordRatioY)
+      FontUniform.PosScale.set(b, screenX, screenY, 0.0f, 0.0f)
     })
+
+    renderer.setTexture(FontTextures.Texture, texture.texture)
 
     fontShader.use(perm => {
       perm(FontPermutations.UseSdf) = variant.useSdf
     })
 
-    renderer.drawElements(numQuads, fontIndexBuffer, fontVertexBuffer, baseVertex = offset)
+    renderer.drawElements(numQuads * 6, fontIndexBuffer, fontVertexBuffer, baseVertex = offset)
   }
 
   def load(buffer: ByteBuffer): Unit = {
@@ -344,8 +359,8 @@ class Font {
         val A = charInfoBase + CharInfo.size * charI
 
         charsetCodepoint(charI) = buffer.getInt()
-        CharInfo.Advance.set(D, A, buffer.getInt())
-        CharInfo.LeftSideBearing.set(D, A, buffer.getInt())
+        CharInfo.Advance.set(D, A, buffer.getFloat())
+        CharInfo.LeftSideBearing.set(D, A, buffer.getFloat())
         CharInfo.KernOffset.set(D, A, buffer.getInt())
         CharInfo.KernCount.set(D, A, buffer.getInt())
       }
@@ -382,6 +397,8 @@ class Font {
         VarCharInfo.SrcY1.set(D, A, buffer.getShort())
         VarCharInfo.OffsetX.set(D, A, buffer.getFloat())
         VarCharInfo.OffsetY.set(D, A, buffer.getFloat())
+        VarCharInfo.Width.set(D, A, buffer.getFloat())
+        VarCharInfo.Height.set(D, A, buffer.getFloat())
       }
     }
 

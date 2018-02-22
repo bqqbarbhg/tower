@@ -100,6 +100,11 @@ class RendererGl {
     else      glDisable(GL_DEPTH_TEST)
   }
 
+  def setBlend(enable: Boolean): Unit = {
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+  }
+
   def clear(color: Option[Color], depth: Option[Double]): Unit = {
     var flags = 0x0
     for (c <- color) {

@@ -86,7 +86,7 @@ object OptsGl {
   /** If `uniformMap` mode is not supported, fallback to this mode. */
   var uniformMapFallback: MapMode = MapMode.SubData
   /** How to map dynamic vertex buffers */
-  var vertexMap: MapMode = MapMode.Map
+  var vertexMap: MapMode = MapMode.SubData
   /** If `vertexMap` mode is not supported, fallback to this mode. */
   var vertexMapFallback: MapMode = MapMode.Map
 }
