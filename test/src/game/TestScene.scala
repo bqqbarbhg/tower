@@ -170,7 +170,7 @@ void main() {
     }
     */
 
-    val variant = font.variants.dropRight(1).last
+    val variant = font.variants.last
     font.drawText(variant, "This is a test", Vector2(0.0, 0.0))
 
     AppWindow.swapBuffers()
