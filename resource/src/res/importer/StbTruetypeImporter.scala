@@ -144,6 +144,10 @@ class StbTruetypeFont(var buffer: ByteBuffer) extends Font {
     }
   }
 
+  override def getScaleForHeight(heightInPixels: Double): Double = {
+    stbtt_ScaleForPixelHeight(fontInfo, heightInPixels.toFloat).toDouble
+  }
+
   override def unload(): Unit = {
     fontInfo.free()
     MemoryUtil.memFree(buffer)

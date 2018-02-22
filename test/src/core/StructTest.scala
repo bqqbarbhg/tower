@@ -10,11 +10,6 @@ import org.scalactic.TolerantNumerics
 @RunWith(classOf[JUnitRunner])
 class StructTest extends FlatSpec with Matchers {
 
-  object Nested extends Struct {
-    val Pt = struct(Point)
-    val Foo = float
-  }
-
   object Point extends Struct {
     val X = int
     val Y = int

@@ -1,5 +1,7 @@
 package io.content
 
+import core._
+
 /** Info about a file in a directory listing */
 case class FileInfo(name: String, directory: Boolean)
 
@@ -13,6 +15,18 @@ trait File {
 
   /** Opens the file for reading */
   def read(): java.io.InputStream
+}
+
+object Package {
+  private var instance: Package = null
+
+  /** Setup the package */
+  def set(value: Package) = {
+    instance = value
+  }
+
+  /** Get the main package singleton */
+  def get: Package = instance
 
 }
 
@@ -26,6 +40,9 @@ trait Package {
 
   /** Get a file descriptor for a filename */
   def get(filename: String): Option[File]
+
+  /** Get a file descriptor for a filename using an identifier */
+  def get(filename: Identifier): Option[File] = get(filename.toString)
 
   /** List all the files and directories in a path */
   def list(path: String): Seq[FileInfo]

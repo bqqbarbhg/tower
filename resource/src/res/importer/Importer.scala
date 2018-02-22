@@ -11,6 +11,7 @@ object Importer {
       case "stb_truetype" => Some(StbTruetypeImpoter)
       case "assimp" => Some(AssimpImporter)
       case "wav" => Some(WavImporter)
+      case "glsl" => Some(GlslImporter)
       case _ => None
     }
   }

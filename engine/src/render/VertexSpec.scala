@@ -1,6 +1,7 @@
 package render
 
 import VertexSpec._
+import core.Identifier
 
 object VertexSpec {
 
@@ -15,7 +16,7 @@ object VertexSpec {
     case object PAD extends DataFmt(1)
   }
 
-  case class Attrib(num: Int, fmt: DataFmt, nameInShader: String) {
+  case class Attrib(num: Int, fmt: DataFmt, nameInShader: Identifier) {
     def sizeInBytes: Int = fmt.sizeInBytes * num
   }
 }

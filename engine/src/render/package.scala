@@ -1,7 +1,7 @@
 package object render {
 
   type Renderer = render.opengl.RendererGl
-  type Shader = render.opengl.ShaderProgramGl
+  type ShaderProgram = render.opengl.ShaderProgramGl
   type VertexBuffer = render.opengl.VertexBufferGl
   type IndexBuffer = render.opengl.IndexBufferGl
   type TextureHandle = render.opengl.TextureHandleGl

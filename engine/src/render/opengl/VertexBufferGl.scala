@@ -2,8 +2,10 @@ package render.opengl
 
 import java.nio.ByteBuffer
 
+import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL15._
 import org.lwjgl.opengl.GL30._
+import org.lwjgl.opengl.GL44._
 import core._
 import org.lwjgl.system.MemoryUtil
 import render._
@@ -35,7 +37,7 @@ class VertexBufferGl(val spec: VertexSpec, val numVertices: Int, val dynamic: Bo
   val sizeInBytes = numVertices * spec.sizeInBytes
 
   private var mapMode = OptsGl.vertexMap
-  private var persistentMap = null
+  private var persistentMap: ByteBuffer = null
 
   val buffer: Int = glGenBuffers()
 
@@ -72,11 +74,13 @@ class VertexBufferGl(val spec: VertexSpec, val numVertices: Int, val dynamic: Bo
     val loc = begin * spec.sizeInBytes
     val size = numVertices * spec.sizeInBytes
 
+    glBindBuffer(GL_ARRAY_BUFFER, buffer)
+
     mapMode match {
       case MapMode.Map =>
         val buf = glMapBufferRange(GL_ARRAY_BUFFER, loc, size, GL_MAP_WRITE_BIT|GL_MAP_UNSYNCHRONIZED_BIT|GL_MAP_FLUSH_EXPLICIT_BIT)
         val numVerts = writeData(buf)
-        glFlushMappedBufferRange(GL_ARRAY_BUFFER, loc, numVerts * spec.sizeInBytes)
+        glFlushMappedBufferRange(GL_ARRAY_BUFFER, 0, numVerts * spec.sizeInBytes)
         glUnmapBuffer(GL_ARRAY_BUFFER)
 
       case MapMode.SubData =>
@@ -101,6 +105,8 @@ class VertexBufferGl(val spec: VertexSpec, val numVertices: Int, val dynamic: Bo
         MemoryUtil.memCopy(copy, buf)
         glFlushMappedBufferRange(GL_ARRAY_BUFFER, loc, toWrite)
     }
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
 
   }
 

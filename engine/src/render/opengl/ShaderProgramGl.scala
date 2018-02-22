@@ -10,14 +10,15 @@ import org.lwjgl.opengl.GL31._
 
 import render._
 import ShaderProgramGl._
+import core._
 
 object ShaderProgramGl {
 
   case class UniformBind(serial: Int, shaderIndex: Int)
-  case class AttribBind(semantic: VertexSpec.Semantic, index: Int, shaderIndex: Int)
+  case class AttribBind(nameId: Int, shaderIndex: Int)
   case class SamplerBind(index: Int, shaderIndex: Int)
 
-  val AttribRegex = """^a_([A-Za-z]+)([0-9]*)$""".r
+  val AttribRegex = """^a_([A-Za-z0-9]+)$""".r
 
   object NullSamplers extends SamplerBlock
 
@@ -29,12 +30,18 @@ object ShaderProgramGl {
 
     // -- Compile the shader
     def createShader(src: String, shaderType: Int): Int = {
+
       val shader = glCreateShader(shaderType)
       glShaderSource(shader, src)
       glCompileShader(shader)
       if (glGetShaderi(shader, GL_COMPILE_STATUS) != GL_TRUE) {
         val msg = glGetShaderInfoLog(shader)
-        throw new ShaderCompileError(msg)
+
+        val shType = if      (shaderType == GL_VERTEX_SHADER)   "Vertex shader"
+                     else if (shaderType == GL_FRAGMENT_SHADER) "Fragment shader"
+                     else "Shader"
+
+        throw new ShaderCompileError(s"$shType error: $msg")
       }
       shader
     }
@@ -71,17 +78,8 @@ object ShaderProgramGl {
       val ptype = stack.ints(0)
       val name = glGetActiveAttrib(program, index, psize, ptype)
       name match {
-        case AttribRegex(semStr, semIndexStr) =>
-          val semIndex = if (semIndexStr.nonEmpty) semIndexStr.toInt else 0
-          val sem = semStr match {
-            case "Position" => VertexSpec.Semantic.Position
-            case "TexCoord" => VertexSpec.Semantic.TexCoord
-            case "TangentSpace" => VertexSpec.Semantic.TangentSpace
-            case "BoneIndex" => VertexSpec.Semantic.BoneIndex
-            case "BoneWeight" => VertexSpec.Semantic.BoneWeight
-            case other => throw new ShaderCompileError(s"Not a valid vertex semantic: '$other'")
-          }
-          AttribBind(sem, semIndex, index)
+        case AttribRegex(nameStr) =>
+          AttribBind(Identifier(nameStr).index, index)
         case _ => throw new ShaderCompileError(s"Attribute name '$name' doesn't match any semantic")
       }
     }).toArray
@@ -116,11 +114,11 @@ class ShaderProgramGl(val serial: Int,
   /**
     * Returns the index of a vertex attribute, -1 if not enabled
     */
-  def getAttributeIndex(semantic: VertexSpec.Semantic, index: Int): Int = {
+  def getAttributeIndex(name: Identifier): Int = {
     var ix = 0
     while (ix < attribs.length) {
       val atr = attribs(ix)
-      if ((atr.semantic eq semantic) && atr.index == index) return atr.shaderIndex
+      if (atr.nameId == name.index) return atr.shaderIndex
       ix += 1
     }
     -1

@@ -370,7 +370,7 @@ class Runner(val opts: RunOptions) {
       }
     }
 
-    // Process the models
+    // Process models
     {
       val dirtyModels = dirtyAssets.filter(_.fileType == ImportFileModel)
       println(s"Processing models... ${dirtyModels.size} found")
@@ -409,6 +409,24 @@ class Runner(val opts: RunOptions) {
         }
 
         resources.foreach(_.unload())
+      }
+    }
+
+    // Process shaders
+    {
+      val dirtyShaders = dirtyAssets.filter(_.fileType == ImportFileShader)
+      println(s"Processing shaders... ${dirtyShaders.size} found")
+
+      for (asset <- dirtyShaders) {
+        val relPath = assetRelative(asset.file)
+        val resources = asset.importAsset()
+        assert(resources.size == 1)
+        val shader = resources.head.asInstanceOf[Shader]
+
+        val filename = Paths.get(opts.dataRoot, s"$relPath.s2sh").toFile
+        ShaderFile.save(writer, filename, shader)
+
+        shader.unload()
       }
     }
 

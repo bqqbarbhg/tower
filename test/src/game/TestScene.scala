@@ -14,12 +14,17 @@ import core._
 import render._
 import render.UniformBlock
 import platform.AppWindow
+import ui.Font
+import io.content._
 
 import scala.io.StdIn
 
 object TestScene extends App {
 
   core.StackAllocator.createCurrentThread(16 * 1024 * 1024)
+
+  val testPackage = new DirectoryPackage("data")
+  Package.set(testPackage)
 
   object ModelTextures extends SamplerBlock {
     val Diffuse = sampler2D("Diffuse", Sampler.RepeatAnisotropic)
@@ -124,6 +129,8 @@ void main() {
     tex
   }
 
+  val font = Font.load("font/open-sans/OpenSans-Regular.ttf.s2ft").get
+
   var prevNs = java.lang.System.nanoTime()
   var sampledTimesMs = Array.fill(60/**100*/)(0.0)
   var ix = 0
@@ -159,6 +166,9 @@ void main() {
     for (part <- mesh.parts) {
       part.draw()
     }
+
+    val variant = font.variants.head
+    font.drawText(variant, "Hello world!", Vector2.Zero)
 
     AppWindow.swapBuffers()
 

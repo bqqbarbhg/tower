@@ -46,7 +46,7 @@ class VaoCache {
     var offset = 0
     glBindBuffer(GL_ARRAY_BUFFER, buf.buffer)
     for (attrib <- buf.spec.attribs) {
-      val ix = shader.getAttributeIndex(attrib.semantic, attrib.index)
+      val ix = shader.getAttributeIndex(attrib.nameInShader)
       if (ix >= 0) {
         glEnableVertexAttribArray(ix)
         val num = attrib.num

@@ -67,6 +67,7 @@ object BakeFont {
         })
 
         val sizedVariant = new Variant(height, variant)
+        sizedVariant.scale = font.getScaleForHeight(height)
         variantsToBuild += new VariantToBuild(sizedVariant, indices)
       }
     }
@@ -158,6 +159,7 @@ object BakeFont {
       variant.variant
     }).toVector
     bakedFont.kerningPairs = kerningPairs
+    bakedFont.glyphs = glyphs
 
     bakedFont
   }

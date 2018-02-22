@@ -65,10 +65,18 @@ object ImportFileAudio extends ImportFileType {
 }
 
 object ImportFileFont extends ImportFileType {
-  def version = 10
+  def version = 11
 
   def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
     dst.font = src.font
+  }
+}
+
+object ImportFileShader extends ImportFileType {
+  def version = 2
+
+  def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
+    // No options
   }
 }
 

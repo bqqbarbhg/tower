@@ -33,4 +33,7 @@ abstract class Font extends Resource {
   /** Amount of kerning to add to the advance from `prev` to `next` */
   def getKerning(prev: Char, next: Char): Double
 
+  /** Get factor to scale the font measures for pixel height */
+  def getScaleForHeight(heightInPixels: Double): Double
+
 }

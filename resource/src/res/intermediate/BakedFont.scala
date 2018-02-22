@@ -21,6 +21,7 @@ object BakedFont {
 
   class Variant(val height: Int, val config: Config.Res.Font.Variant) {
     var glyphs: Map[Char, GlyphRect] = Map[Char, GlyphRect]()
+    var scale: Double = 0.0
   }
 
 }
@@ -30,6 +31,7 @@ class BakedFont extends Resource {
   var image: Image = null
   var variants: Vector[Variant] = Vector[Variant]()
   var kerningPairs: Map[(Char, Char), Double] = Map[(Char, Char), Double]()
+  var glyphs: Map[Char, Font.Glyph] = Map[Char, Font.Glyph]()
 
   def unload(): Unit = {
     image.unload()

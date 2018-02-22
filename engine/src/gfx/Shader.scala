@@ -1,12 +1,13 @@
 package gfx
 
-import java.io.FileInputStream
 import java.nio.ByteBuffer
 
 import core._
 import render._
 import util.BufferUtils._
 import Shader._
+import io.content.Package
+import org.lwjgl.system.MemoryUtil
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -49,17 +50,36 @@ object Shader {
 
   /** Simple wrapper class for setting permutation values */
   class PermutationSetter(val values: Array[Int]) extends AnyVal {
+
     def update(permutation: Permutation, value: Int): Unit = {
       values(permutation.index) = value
     }
+
+    def update(permutation: Permutation, value: Boolean): Unit = {
+      values(permutation.index) = if (value) 1 else 0
+    }
+
   }
 
-  private def loadShaderFile(filename: String): String = {
-    val file = new File("../asset/shader/" + filename)
-    val input = new FileInputStream(file)
-    val source = new Array[Byte](1024*128)
-    val len = input.read(source)
-    new String(source, 0, len, "UTF-8")
+  private def loadShaderSource(filename: String): String = withStack {
+    val file = Package.get.get(filename).getOrElse {
+      throw new RuntimeException(s"Shader not found: $filename")
+    }
+
+    val buffer = alloca(file.sizeInBytes.toInt)
+    val stream = file.read()
+    buffer.readFrom(stream)
+    stream.close()
+    buffer.finish()
+
+    // @Deserialize(s2sh)
+    val MaxVersion = 1
+    buffer.verifyMagic("s2sh")
+    val version = buffer.getVersion(MaxVersion)
+    val source = buffer.getString()
+    buffer.verifyMagic("E.sh")
+
+    source
   }
 
   /**
@@ -72,31 +92,32 @@ object Shader {
     * @return The compiled shader object
     */
   def load(name: String, permutations: Permutations, samplers: SamplerBlock, uniforms: UniformBlock*): Shader = {
+    val perms = permutations.permutations
 
     // TODO: Generate less shaders using separable shader objects
 
-    val vertSrc = loadShaderFile(name + ".vs.glsl")
-    val fragSrc = loadShaderFile(name + ".fs.glsl")
+    val vertSrc = loadShaderSource(name + ".vs.glsl.s2sh")
+    val fragSrc = loadShaderSource(name + ".fs.glsl.s2sh")
 
     /** Generate the source for a shader permutation */
     def generateShaderPermutationSource(source: String, mask: Int, values: Seq[Int]): String = {
       val builder = new mutable.StringBuilder()
 
       // General shader header
-      builder += "#version 150\n"
+      builder ++= "#version 330\n"
 
       // Permutation defines
       for ((perm, value) <- (perms zip values)) {
         if ((perm.mask & mask) != 0) {
-          builder += s"#define ${perm.name} $value\n"
+          builder ++= s"#define ${perm.name} $value\n"
         }
       }
 
       // Reset the line for the actual source
-      builder += "#line 1\n"
+      builder ++= "#line 0\n"
 
       // The actual source code
-      builder += source
+      builder ++= source
 
       builder.mkString
     }
@@ -106,12 +127,11 @@ object Shader {
       val vertGen = generateShaderPermutationSource(vertSrc, MaskVert, values)
       val fragGen = generateShaderPermutationSource(fragSrc, MaskFrag, values)
 
-      ShaderProgram.compile(vert, frag, samplers, uniforms)
+      ShaderProgram.compile(vertGen, fragGen, samplers, uniforms : _*)
     }
 
     // Recursively generate all the permutations for the shader
-    val permMap = new mutable.HashMap[Seq, ShaderProgram]()
-    val perms = permutations.permutations
+    val permMap = new mutable.HashMap[Seq[Int], ShaderProgram]()
     def makePerms(index: Int, values: Vector[Int]): Unit = {
       if (index == perms.length) {
         val perm = values.toArray.toSeq
@@ -123,11 +143,13 @@ object Shader {
       }
     }
 
+    makePerms(0, Vector[Int]())
+
     new Shader(permutations, permMap.toMap)
   }
 }
 
-class Shader(val permutations: Permutations, val programs: Map[Seq, ShaderProgram]) {
+class Shader(val permutations: Permutations, val programs: Map[Seq[Int], ShaderProgram]) {
 
   /** Throw a useful error for setting the wrong or missing value for permutations */
   private def throwPermutationError(values: Array[Int]): Nothing = {

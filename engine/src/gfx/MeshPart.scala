@@ -5,6 +5,20 @@ import java.nio.ByteBuffer
 import core._
 import render._
 import util.BufferUtils._
+import MeshPart._
+
+object MeshPart {
+
+  val SemanticMap = Map(
+    "Posi" -> Identifier("Position"),
+    "TxCo" -> Identifier("TexCoord"),
+    "TnSp" -> Identifier("TangentSpace"),
+    "BoIx" -> Identifier("BoneIndex"),
+    "BoWg" -> Identifier("BoneWeight"),
+    "Pad." -> Identifier("Padding"),
+  )
+
+}
 
 class MeshPart {
 
@@ -60,18 +74,15 @@ class MeshPart {
         case "UN16" => DataFmt.UN16
         case "PAD." => DataFmt.PAD
       }
-      val sem = buffer.getMagic() match {
-        case "Posi" => Semantic.Position
-        case "TxCo" => Semantic.TexCoord
-        case "TnSp" => Semantic.TangentSpace
-        case "BoIx" => Semantic.BoneIndex
-        case "BoWg" => Semantic.BoneWeight
-        case "Pad." => Semantic.Padding
-      }
+      val semantic = buffer.getMagic()
       val num = buffer.getShort().toInt
       val index = buffer.getShort().toInt
 
-      Attrib(num, fmt, sem, index)
+      val name = SemanticMap.getOrElse(semantic, {
+        throw new RuntimeException(s"Unexpected vertex semantic: $semantic")
+      })
+
+      Attrib(num, fmt, name)
     })
 
     vertexSpec = VertexSpec(attribs)

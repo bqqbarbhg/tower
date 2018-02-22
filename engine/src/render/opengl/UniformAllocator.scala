@@ -98,7 +98,7 @@ class UniformAllocator(val bufferSize: Int) {
   }
 
   def unload(): Unit = {
-    if (persistentMap) {
+    if (persistentMap != null) {
       glBindBuffer(GL_UNIFORM_BUFFER, buffer)
       glUnmapBuffer(GL_UNIFORM_BUFFER)
       glBindBuffer(GL_UNIFORM_BUFFER, 0)

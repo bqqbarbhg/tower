@@ -51,8 +51,8 @@ object Struct {
     def get(buf: ByteBuffer, base: Int): Float = buf.getFloat(base + offset)
     def set(buf: ByteBuffer, base: Int, value: Float) = buf.putFloat(base + offset, value)
 
-    def size: Float = 4
-    def align: Float = 4
+    def size: Int = 4
+    def align: Int = 4
   }
 
   class FieldDouble extends Field {
@@ -61,6 +61,33 @@ object Struct {
 
     def size: Int = 8
     def align: Int = 8
+  }
+
+  /**
+    * Layout a series of structs with correct alignment.
+    * Returns base offsets for each of the structs and the end of the required
+    * memory buffer last.
+    *
+    * For example:
+    *
+    * val offsets = Struct.layout(Point * 3, SomeInfo * 5)
+    * val pointBase    = offsets(0)
+    * val someInfoBase = offsets(1)
+    * val bufferSize   = offsets(2)
+    */
+  def layout(elements: (Struct, Int)*): Seq[Int] = {
+    var offset = 0
+    val bases = for ((struct, count) <- elements) yield {
+      val align = struct.align
+
+      offset = offset + (align - offset % align) % align
+      val base = offset
+      offset += struct.size * count
+
+      base
+    }
+
+    bases :+ offset
   }
 
 }
@@ -87,8 +114,11 @@ class Struct {
   protected def short: FieldShort = push(new FieldShort())
   protected def int: FieldInt = push(new FieldInt())
   protected def long: FieldLong = push(new FieldLong())
-  protected def float: FieldInt = push(new FieldFloat())
-  protected def double: FieldLong = push(new FieldDouble())
+  protected def float: FieldFloat = push(new FieldFloat())
+  protected def double: FieldDouble = push(new FieldDouble())
+
+  /** Helper for layout DSL */
+  def *(num: Int): (Struct, Int) = (this, num)
 
 }
 
