@@ -68,8 +68,8 @@ class StbTruetypeFont(var buffer: ByteBuffer) extends Font {
         /* Sub       */ asubX, asubY,
         /* Glyph     */ glyph)
 
-      x = x0(0).toDouble / oversampleX + asubX(0)
-      y = y0(0).toDouble / oversampleY + asubY(0)
+      x = x0(0).toDouble / oversampleX.toDouble + asubX(0)
+      y = y0(0).toDouble / oversampleY.toDouble + asubY(0)
     } else {
 
       stbtt_GetGlyphBitmapBox(fontInfo, glyph, scaleX, scaleY, x0, y0, x1, y1)

@@ -308,8 +308,8 @@ class Font {
       val texScaleY = 1.0f / texture.height.toFloat
       val texCoordRatioX = 1280.0f / texture.width.toFloat
       val texCoordRatioY = 720.0f / texture.height.toFloat
-      val screenX = 1.0f / 1280.0f * 8.0f
-      val screenY = 1.0f / 720.0f * 8.0f
+      val screenX = 1.0f / 1280.0f * 2.0f
+      val screenY = 1.0f / 720.0f * 2.0f
 
       FontUniform.TexCoordScale.set(b, texScaleX, texScaleY, texCoordRatioX, texCoordRatioY)
       FontUniform.PosScale.set(b, screenX, screenY, 0.0f, 0.0f)

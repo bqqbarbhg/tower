@@ -136,7 +136,7 @@ void main() {
   var ix = 0
 
   renderer.setDepthMode(false, false)
-  renderer.setBlend(false)
+  renderer.setBlend(true)
 
   System.gc()
 

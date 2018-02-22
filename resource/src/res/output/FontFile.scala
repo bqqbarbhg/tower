@@ -94,8 +94,8 @@ object FontFile {
 
             val w = rc.w.toFloat / variant.config.oversampleX.toFloat
             val h = rc.h.toFloat / variant.config.oversampleY.toFloat
-            buffer.putFloat(w.toShort)
-            buffer.putFloat(h.toShort)
+            buffer.putFloat(w)
+            buffer.putFloat(h)
 
           case None =>
             buffer.putInt(-1)
