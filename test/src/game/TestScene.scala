@@ -92,7 +92,7 @@ void main() {
 
   val renderer = Renderer.initialize()
 
-  val shader = Shader.compile(VertexShader, FragmentShader, ModelTextures, ModelUniform)
+  val shader = ShaderProgram.compile(VertexShader, FragmentShader, ModelTextures, ModelUniform)
 
   val viewProjection = (
       Matrix4.perspective(1280.0 / 720.0, math.Pi / 3.0, 0.01, 1000.0)

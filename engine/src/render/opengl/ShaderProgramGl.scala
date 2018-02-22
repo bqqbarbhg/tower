@@ -9,9 +9,9 @@ import org.lwjgl.opengl.GL30._
 import org.lwjgl.opengl.GL31._
 
 import render._
-import ShaderGl._
+import ShaderProgramGl._
 
-object ShaderGl {
+object ShaderProgramGl {
 
   case class UniformBind(serial: Int, shaderIndex: Int)
   case class AttribBind(semantic: VertexSpec.Semantic, index: Int, shaderIndex: Int)
@@ -21,11 +21,11 @@ object ShaderGl {
 
   object NullSamplers extends SamplerBlock
 
-  def compile(vert: String, frag: String, uniforms: UniformBlock*): ShaderGl = {
+  def compile(vert: String, frag: String, uniforms: UniformBlock*): ShaderProgramGl = {
     compile(vert, frag, NullSamplers, uniforms : _*)
   }
 
-  def compile(vert: String, frag: String, samplers: SamplerBlock, uniforms: UniformBlock*): ShaderGl = {
+  def compile(vert: String, frag: String, samplers: SamplerBlock, uniforms: UniformBlock*): ShaderProgramGl = {
 
     // -- Compile the shader
     def createShader(src: String, shaderType: Int): Int = {
@@ -100,18 +100,18 @@ object ShaderGl {
 
     val serial = serialCounter
     serialCounter += 1
-    new ShaderGl(serial, program, uniformMapping, attribMapping, samplerMapping)
+    new ShaderProgramGl(serial, program, uniformMapping, attribMapping, samplerMapping)
   }
 
   private var serialCounter = 0
 
 }
 
-class ShaderGl(val serial: Int,
-               val program: Int,
-               val uniforms: Array[UniformBind],
-               val attribs: Array[AttribBind],
-               val samplers: Array[SamplerBind]) {
+class ShaderProgramGl(val serial: Int,
+                      val program: Int,
+                      val uniforms: Array[UniformBind],
+                      val attribs: Array[AttribBind],
+                      val samplers: Array[SamplerBind]) {
 
   /**
     * Returns the index of a vertex attribute, -1 if not enabled

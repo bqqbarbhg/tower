@@ -33,6 +33,14 @@ package object core {
       copy
     }
 
+    /** Return a slice of the buffer from [offset, offset + numBytes[ */
+    def sliced(offset: Int, numBytes: Int): ByteBuffer = {
+      val copy = sliceEx
+      copy.position(offset)
+      copy.limit(offset + numBytes)
+      copy
+    }
+
     /** Skip forward a number of bytes */
     def skip(numBytes: Int): Unit = {
       buffer.position(buffer.position + numBytes)

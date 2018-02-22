@@ -4,16 +4,6 @@ import VertexSpec._
 
 object VertexSpec {
 
-  sealed abstract class Semantic(val nameInShader: String)
-  object Semantic {
-    case object Position extends Semantic("Position")
-    case object TexCoord extends Semantic("TexCoord")
-    case object TangentSpace extends Semantic("TangentSpace")
-    case object BoneIndex extends Semantic("BoneIndex")
-    case object BoneWeight extends Semantic("BoneWeight")
-    case object Padding extends Semantic("")
-  }
-
   sealed abstract class DataFmt(val sizeInBytes: Int)
   object DataFmt {
     case object F32 extends DataFmt(4)
@@ -25,7 +15,7 @@ object VertexSpec {
     case object PAD extends DataFmt(1)
   }
 
-  case class Attrib(num: Int, fmt: DataFmt, semantic: Semantic, index: Int = 0) {
+  case class Attrib(num: Int, fmt: DataFmt, nameInShader: String) {
     def sizeInBytes: Int = fmt.sizeInBytes * num
   }
 }

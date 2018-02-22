@@ -26,6 +26,7 @@ object RendererGl {
     assert(instance != null)
     instance
   }
+
 }
 
 class RendererGl {
@@ -35,7 +36,7 @@ class RendererGl {
   val uniformAllocator = new UniformAllocator(1024*1024)
 
   var activeShaderEnabled: Boolean = false
-  var activeShader: ShaderGl = null
+  var activeShader: ShaderProgramGl = null
   var activeUniforms: Array[UniformBlockRefGl] = Array[UniformBlockRefGl]()
   var activeTextures: Array[Int] = Array[Int]()
 
@@ -48,7 +49,7 @@ class RendererGl {
     java.util.Arrays.fill(activeUniforms.asInstanceOf[Array[AnyRef]], null)
   }
 
-  def setShader(shader: ShaderGl): Unit = {
+  def setShader(shader: ShaderProgramGl): Unit = {
     activeShader = shader
     activeShaderEnabled = false
   }
@@ -118,11 +119,15 @@ class RendererGl {
       glClear(flags)
   }
 
-  def drawElements(num: Int, ib: IndexBufferGl, vb0: VertexBufferGl, vb1: VertexBufferGl = null): Unit = {
+  def drawElements(num: Int, ib: IndexBufferGl, vb0: VertexBufferGl, vb1: VertexBufferGl = null, baseVertex: Int = 0): Unit = {
     applyState()
     vaoCache.bindVertexBuffers(activeShader, vb0, vb1)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib.buffer)
-    glDrawElements(GL_TRIANGLES, num, GL_UNSIGNED_SHORT, 0)
+    if (baseVertex != 0) {
+      glDrawElementsBaseVertex(GL_TRIANGLES, num, GL_UNSIGNED_SHORT, 0, baseVertex)
+    } else {
+      glDrawElements(GL_TRIANGLES, num, GL_UNSIGNED_SHORT, 0)
+    }
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
     glBindVertexArray(0)
   }

@@ -10,6 +10,11 @@ import org.scalactic.TolerantNumerics
 @RunWith(classOf[JUnitRunner])
 class StructTest extends FlatSpec with Matchers {
 
+  object Nested extends Struct {
+    val Pt = struct(Point)
+    val Foo = float
+  }
+
   object Point extends Struct {
     val X = int
     val Y = int
@@ -19,6 +24,11 @@ class StructTest extends FlatSpec with Matchers {
     val X = int
     val Y = int
     val Z = int
+  }
+
+  object Padded extends Struct {
+    val A = int
+    val B = long
   }
 
   "Struct.size" should "return the size of the struct in bytes" in {
@@ -73,6 +83,13 @@ class StructTest extends FlatSpec with Matchers {
 
     assert(Point.X.get(buf, off) === 123)
     assert(Point.Y.get(buf, off) === 456)
+  }
+
+  "Struct" should "add padding to enforce alignment" in {
+    assert(Padded.A.offset === 0)
+    assert(Padded.B.offset === 8)
+    assert(Padded.size === 16)
+    assert(Padded.align === 8)
   }
 
 }

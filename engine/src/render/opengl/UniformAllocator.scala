@@ -1,17 +1,19 @@
 package render.opengl
 
 import java.nio.ByteBuffer
+
+import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11._
 import org.lwjgl.opengl.GL15._
 import org.lwjgl.opengl.GL30._
 import org.lwjgl.opengl.GL31._
-
+import org.lwjgl.opengl.GL44._
 import core._
+import org.lwjgl.system.MemoryUtil
 
 class UniformAllocator(val bufferSize: Int) {
 
-  private val uniformAlignment = glGetInteger(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT)
-  private val buffer = glGenBuffers()
+  private val uniformAlignment = math.max(glGetInteger(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT), 64)
 
   private def uniformAlign(size: Int): Int = {
     size + (uniformAlignment - size % uniformAlignment) % uniformAlignment
@@ -22,10 +24,29 @@ class UniformAllocator(val bufferSize: Int) {
   private var lastWrapFrame = 0
   private var frameIndex = 0
 
+  private var mapMode = OptsGl.uniformMap
+
+  private var buffer = 0
+  private var persistentMap: ByteBuffer = null
+
   // Init
   {
+    buffer = glGenBuffers()
     glBindBuffer(GL_UNIFORM_BUFFER, buffer)
-    glBufferData(GL_UNIFORM_BUFFER, alignedBufferSize, GL_DYNAMIC_DRAW)
+
+    if (mapMode.persistent) {
+      if (GL.getCapabilities.GL_ARB_buffer_storage) {
+        glBufferStorage(GL_UNIFORM_BUFFER, alignedBufferSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT)
+        persistentMap = glMapBuffer(GL_UNIFORM_BUFFER, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT)
+      } else {
+        mapMode = OptsGl.uniformMapFallback
+      }
+    }
+
+    if (persistentMap == null)
+      glBufferData(GL_UNIFORM_BUFFER, alignedBufferSize, GL_DYNAMIC_DRAW)
+
+    glBindBuffer(GL_UNIFORM_BUFFER, 0)
   }
 
   def advanceFrame(): Unit = {
@@ -45,10 +66,31 @@ class UniformAllocator(val bufferSize: Int) {
 
     glBindBuffer(GL_UNIFORM_BUFFER, buffer)
 
-    val buf = alloca(size)
-    writeData(buf)
-    buf.position(0)
-    glBufferSubData(GL_UNIFORM_BUFFER, loc, buf)
+    mapMode match {
+      case MapMode.Map =>
+        val buf = glMapBufferRange(GL_UNIFORM_BUFFER, loc, size, GL_MAP_WRITE_BIT|GL_MAP_UNSYNCHRONIZED_BIT)
+        writeData(buf)
+        glUnmapBuffer(GL_UNIFORM_BUFFER)
+
+      case MapMode.SubData =>
+        val buf = alloca(size)
+        writeData(buf)
+        buf.position(0)
+        glBufferSubData(GL_UNIFORM_BUFFER, loc, buf)
+
+      case MapMode.Persistent =>
+        val buf = persistentMap.sliced(loc, size)
+        writeData(buf)
+        glFlushMappedBufferRange(GL_UNIFORM_BUFFER, loc, size)
+
+      case MapMode.PersistentCopy =>
+        val buf = alloca(size)
+        writeData(buf)
+        buf.position(0)
+        val copy = persistentMap.sliced(loc, size)
+        MemoryUtil.memCopy(copy, buf)
+        glFlushMappedBufferRange(GL_UNIFORM_BUFFER, loc, size)
+    }
 
     glBindBuffer(GL_UNIFORM_BUFFER, 0)
 
@@ -56,7 +98,14 @@ class UniformAllocator(val bufferSize: Int) {
   }
 
   def unload(): Unit = {
+    if (persistentMap) {
+      glBindBuffer(GL_UNIFORM_BUFFER, buffer)
+      glUnmapBuffer(GL_UNIFORM_BUFFER)
+      glBindBuffer(GL_UNIFORM_BUFFER, 0)
+      persistentMap = null
+    }
     glDeleteBuffers(buffer)
+    buffer = 0
   }
 }
 

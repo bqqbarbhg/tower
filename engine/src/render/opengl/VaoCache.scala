@@ -40,7 +40,7 @@ class VaoCache {
   private var lruHead: Entry = null
   private var lruTail: Entry = null
 
-  private def configureVertexBuffer(shader: ShaderGl, buf: VertexBufferGl): Unit = {
+  private def configureVertexBuffer(shader: ShaderProgramGl, buf: VertexBufferGl): Unit = {
     import VertexSpec.DataFmt._
     val stride = buf.spec.sizeInBytes
     var offset = 0
@@ -64,7 +64,7 @@ class VaoCache {
     }
   }
 
-  private def configureVao(vao: Int, shader: ShaderGl, b0: VertexBufferGl, b1: VertexBufferGl): Unit = {
+  private def configureVao(vao: Int, shader: ShaderProgramGl, b0: VertexBufferGl, b1: VertexBufferGl): Unit = {
     glBindVertexArray(vao)
     for (i <- 0 until 8) glDisableVertexAttribArray(i)
     if (b0 != null) configureVertexBuffer(shader, b0)
@@ -85,7 +85,7 @@ class VaoCache {
     * in `LruWaitFrames` it is possible to reclaim in a least-recently-used
     * queue.
     */
-  def bindVertexBuffers(shader: ShaderGl, b0: VertexBufferGl, b1: VertexBufferGl): Unit = {
+  def bindVertexBuffers(shader: ShaderProgramGl, b0: VertexBufferGl, b1: VertexBufferGl): Unit = {
     val tag = Tag(shader.serial,
       if (b0 != null) b0.serial else 0,
       if (b1 != null) b1.serial else 0)

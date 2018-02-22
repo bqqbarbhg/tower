@@ -20,6 +20,18 @@ object UniformBlock {
     def sizeInVec4: Int = math.max(arraySize, 1) * elementSizeInVec4
   }
 
+  class UVec4(name: String, offset: Int, array: Int) extends Uniform(name, offset, array) {
+    def elementSizeInVec4: Int = 1
+
+    def set(buffer: ByteBuffer, x: Float, y: Float, z: Float, w: Float): Unit = {
+      val base = offsetInVec4 * 16
+      buffer.putFloat(base + 0 *4, x)
+      buffer.putFloat(base + 1 *4, y)
+      buffer.putFloat(base + 2 *4, z)
+      buffer.putFloat(base + 3 *4, w)
+    }
+  }
+
   class UMat4(name: String, offset: Int, array: Int) extends Uniform(name, offset, array) {
     def elementSizeInVec4: Int = 4
 
@@ -86,6 +98,7 @@ class UniformBlock(val name: String) {
     uniform
   }
 
+  def vec4(name: String): UVec4 = push(new UVec4(name, layoutPosition, 0))
   def mat4(name: String): UMat4 = push(new UMat4(name, layoutPosition, 0))
   def mat4(name: String, arraySize: Int): UMat4 = push(new UMat4(name, layoutPosition, arraySize))
   def mat4x3(name: String): UMat4x3 = push(new UMat4x3(name, layoutPosition, 0))
