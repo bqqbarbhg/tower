@@ -33,8 +33,18 @@ package object core {
       copy
     }
 
-    /** Return a slice of the buffer from [offset, offset + numBytes[ */
+    /** Return a slice of the buffer from [offset, offset + numBytes[
+      * Position is guaranteed to be zero. */
     def sliced(offset: Int, numBytes: Int): ByteBuffer = {
+      val copy = sliceEx
+      copy.position(offset)
+      copy.limit(offset + numBytes)
+      copy.sliceEx
+    }
+
+    /** Return a slice of the buffer from [offset, offset + numBytes[
+      * Position may be non-zero. */
+    def slicedOffset(offset: Int, numBytes: Int): ByteBuffer = {
       val copy = sliceEx
       copy.position(offset)
       copy.limit(offset + numBytes)

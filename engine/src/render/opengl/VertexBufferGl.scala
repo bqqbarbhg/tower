@@ -48,7 +48,7 @@ class VertexBufferGl(val spec: VertexSpec, val numVertices: Int, val dynamic: Bo
     if (mapMode.persistent) {
       if (GL.getCapabilities.GL_ARB_buffer_storage) {
         glBufferStorage(GL_ARRAY_BUFFER, sizeInBytes, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT)
-        persistentMap = glMapBuffer(GL_ARRAY_BUFFER, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT)
+        persistentMap = glMapBufferRange(GL_ARRAY_BUFFER, 0, sizeInBytes, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT)
       } else {
         mapMode = OptsGl.vertexMapFallback
       }
@@ -99,10 +99,10 @@ class VertexBufferGl(val spec: VertexSpec, val numVertices: Int, val dynamic: Bo
         val buf = alloca(size)
         val numVerts = writeData(buf)
         val toWrite = numVerts * spec.sizeInBytes
-        val copy = persistentMap.sliced(loc, toWrite)
+        val copy = persistentMap.slicedOffset(loc, toWrite)
         buf.position(0)
         buf.limit(toWrite)
-        MemoryUtil.memCopy(copy, buf)
+        MemoryUtil.memCopy(buf, copy)
         glFlushMappedBufferRange(GL_ARRAY_BUFFER, loc, toWrite)
     }
 

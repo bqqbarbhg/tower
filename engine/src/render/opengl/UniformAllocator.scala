@@ -37,7 +37,7 @@ class UniformAllocator(val bufferSize: Int) {
     if (mapMode.persistent) {
       if (GL.getCapabilities.GL_ARB_buffer_storage) {
         glBufferStorage(GL_UNIFORM_BUFFER, alignedBufferSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT)
-        persistentMap = glMapBuffer(GL_UNIFORM_BUFFER, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT)
+        persistentMap = glMapBufferRange(GL_UNIFORM_BUFFER, 0, alignedBufferSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT)
       } else {
         mapMode = OptsGl.uniformMapFallback
       }
@@ -87,8 +87,8 @@ class UniformAllocator(val bufferSize: Int) {
         val buf = alloca(size)
         writeData(buf)
         buf.position(0)
-        val copy = persistentMap.sliced(loc, size)
-        MemoryUtil.memCopy(copy, buf)
+        val copy = persistentMap.slicedOffset(loc, size)
+        MemoryUtil.memCopy(buf, copy)
         glFlushMappedBufferRange(GL_UNIFORM_BUFFER, loc, size)
     }
 
