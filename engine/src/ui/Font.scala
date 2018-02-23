@@ -55,22 +55,26 @@ object Font {
     var height: Int = 0
     /** Scaling factor for measures */
     var scale: Float = 0.0f
-  }
 
-  /** Mask to use for RGBA channels, the integer depends on endianness */
-  val ChannelMasks = if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
-    Array(0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000)
-  } else {
-    Array(0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF)
+    /** Max outline width in pixels relative to the height of the text */
+    var sdfMaxOutline: Double = 0.0
+    /** Amount to step the SDF in [0.0, 1.0] */
+    var sdfStep: Double = 0.0
+    /** Value at the SDF edge in [0.0, 1.0] */
+    var sdfEdgeValue: Double = 0.0
   }
 
   val FontVertexSpec = VertexSpec({
     import VertexSpec._
     import VertexSpec.DataFmt._
     Vector(
+      // X/Y in screen coordinates
       Attrib(2, F32,  Identifier("Position")),
-      Attrib(4, UN8,  Identifier("ChannelMask")),
-      Attrib(2, UF16, Identifier("TexCoord")),
+      //  0..11: UV X
+      // 12..23: UV Y
+      // 24..25: UV Channel
+      // 26..30: Batch index
+      Attrib(1, I32,  Identifier("Packed")),
     )
   })
 
@@ -95,27 +99,26 @@ object Font {
   lazy val fontVertexBuffer = VertexBuffer.createDynamic(FontVertexSpec, 4 * MaxQuadsPerFrame)
   var fontVertexOffset = 0
 
-  object FontUniform extends UniformBlock("FontUniform") {
+  /** Number of batches that can be drawn with one draw-call */
+  val MaxBatchCount: Int = 32
+
+  object FontVertexUniform extends UniformBlock("FontVertexUniform") {
     val TexCoordScale = vec4("TexCoordScale")
     val PosScale = vec4("PosScale")
   }
 
   object FontPixelUniform extends UniformBlock("FontPixelUniform") {
-    val Color = vec4("Color")
-    val SdfRamp = vec4("SdfRamp")
+    val Color = vec4("Color", MaxBatchCount)
+    val SdfRamp = vec4("SdfRamp", MaxBatchCount)
   }
 
   object FontTextures extends SamplerBlock {
     val Texture = sampler2D("Texture", Sampler.ClampBilinearNoMip)
   }
 
-  object FontPermutations extends Shader.Permutations {
-    val UseSdf = frag("UseSdf", 0 to 1)
-  }
-
   lazy val fontShader = {
     import Shader._
-    Shader.load("shader/font", FontPermutations, FontTextures, FontUniform, FontPixelUniform)
+    Shader.load("shader/font", NoPermutations, FontTextures, FontVertexUniform, FontPixelUniform)
   }
 
   def load(name: String): Option[Font] = withStack {
@@ -134,6 +137,23 @@ object Font {
     })
   }
 
+  case class TextDraw(text: String, offset: Int, length: Int, position: Vector2, height: Double, color: Color, outline: Double, order: Int) {
+
+    /** Sort order depending on preferred order and approximage mergability */
+    def sortKey: Long = order.toLong << 32 | (color.hashCode ^ outline.hashCode ^ height.hashCode)
+
+    /** Can `this` and `other` be drawn in a signle draw-call */
+    def canMerge(other: TextDraw): Boolean = {
+      // Color is uniform
+      if (!color.roughlyEqual(other.color)) return false
+      // Height affects variant selection and SDF properties
+      if (math.abs(height - other.height) > 0.0001) return false
+      // Outline changes SDF properties
+      if (math.abs(outline - other.outline) > 0.0001) return false
+      true
+    }
+  }
+
 }
 
 class Font {
@@ -143,6 +163,9 @@ class Font {
 
   /** Base address of the CharInfo array */
   var charInfoBase: Int = 0
+
+  /** The required scaling factor for 1px high text */
+  var scalePerPixelHeight: Double = 0.0
 
   /** Contains consecutive sorted lists of characters for kerning
     * Addressed by `CharInfo.KernOffset` */
@@ -209,16 +232,23 @@ class Font {
 
   /** Write the vertices for the characters in `string`.
     * Returns the number of written quads. */
-  private def writeTextVertices(buffer: ByteBuffer, variant: Variant, string: String, position: Vector2): Int = {
+  private def writeTextVertices(buffer: ByteBuffer, variant: Variant, draw: TextDraw, batch: Int): Int = {
 
     var numQuads = 0
 
-    var posX: Float = position.x.toFloat
-    var posY: Float = position.y.toFloat
+    var posX: Float = draw.position.x.toFloat
+    var posY: Float = draw.position.y.toFloat
+    val advanceScale = (scalePerPixelHeight * draw.height).toFloat
+    val scaleF = draw.height.toFloat / variant.height
+
+    val batchHigh = batch << 26
 
     val D = this.data
     var prevCodepoint = 0
-    for (char <- string) {
+
+    var charIndex = 0
+    while (charIndex < draw.length) {
+      val char = draw.text(draw.offset + charIndex)
       val codepoint = char.toInt
       val index = findCharsetIndexFromCodepoint(codepoint)
       if (index >= 0) {
@@ -229,103 +259,234 @@ class Font {
         val kernCount = CharInfo.KernCount.get(D,CA)
         val kerning = findKerning(kernOffset, kernCount, prevCodepoint)
 
-        val srcX0 = VarCharInfo.SrcX0.get(D,VA)
-        val srcY0 = VarCharInfo.SrcY0.get(D,VA)
-        val srcX1 = VarCharInfo.SrcX1.get(D,VA)
-        val srcY1 = VarCharInfo.SrcY1.get(D,VA)
-        val w = VarCharInfo.Width.get(D,VA)
-        val h = VarCharInfo.Height.get(D,VA)
+        val w = VarCharInfo.Width.get(D,VA) * scaleF
+        val h = VarCharInfo.Height.get(D,VA) * scaleF
 
-        val x = posX + VarCharInfo.OffsetX.get(D,VA)
-        val y = posY - VarCharInfo.OffsetY.get(D,VA)
-        val channel = VarCharInfo.Channel.get(D,VA)
+        val x = posX + VarCharInfo.OffsetX.get(D,VA) * scaleF
+        val y = posY + VarCharInfo.OffsetY.get(D,VA) * scaleF
+        val channel = VarCharInfo.Channel.get(D,VA).toInt
+        val high = channel << 24 | batchHigh
+
+        // Fold high bits into srcX0/1
+        val srcX0 = VarCharInfo.SrcX0.get(D,VA).toInt | high
+        val srcX1 = VarCharInfo.SrcX1.get(D,VA).toInt | high
+        val srcY0 = VarCharInfo.SrcY0.get(D,VA).toInt << 12
+        val srcY1 = VarCharInfo.SrcY1.get(D,VA).toInt << 12
 
         if (channel >= 0) {
-          posX += kerning * variant.scale
-
-          // Note: x/y/mask stay constant, could be instanced?
-          val mask = ChannelMasks(channel)
+          posX += kerning * advanceScale
 
           buffer.putFloat(x)
           buffer.putFloat(y)
-          buffer.putInt(mask)
-          buffer.putShort(srcX0)
-          buffer.putShort(srcY0)
+          buffer.putInt(srcX0 | srcY0)
 
           buffer.putFloat(x + w)
           buffer.putFloat(y)
-          buffer.putInt(mask)
-          buffer.putShort(srcX1)
-          buffer.putShort(srcY0)
+          buffer.putInt(srcX1 | srcY0)
 
           buffer.putFloat(x)
-          buffer.putFloat(y - h)
-          buffer.putInt(mask)
-          buffer.putShort(srcX0)
-          buffer.putShort(srcY1)
+          buffer.putFloat(y + h)
+          buffer.putInt(srcX0 | srcY1)
 
           buffer.putFloat(x + w)
-          buffer.putFloat(y - h)
-          buffer.putInt(mask)
-          buffer.putShort(srcX1)
-          buffer.putShort(srcY1)
+          buffer.putFloat(y + h)
+          buffer.putInt(srcX1 | srcY1)
 
           val advance = CharInfo.Advance.get(D,CA)
-          posX += advance * variant.scale
+          posX += advance * advanceScale
 
           numQuads += 1
         }
       }
       prevCodepoint = codepoint
+      charIndex += 1
     }
 
     numQuads
   }
 
-  def drawText(variant: Variant, string: String, position: Vector2): Unit = {
-    val renderer = Renderer.get
+  /** Find the most suitable variant to draw `draw` with */
+  private def findVariantForDraw(draw: TextDraw): Variant = {
+    if (draw.outline >= 0.001) {
+      // If the draw has an outline need to select an SDF variant
+      var best: Variant = null
+      var bestFits = false
+      for (variant <- variants) {
+        if (variant.useSdf) {
+          val outlineSize = variant.height.toDouble * variant.sdfMaxOutline
+          val fits = outlineSize >= draw.outline
 
-    val maxVerts = string.length * 4
-    if (Font.fontVertexOffset + maxVerts > fontVertexBuffer.numVertices) {
-      Font.fontVertexOffset = 0
+          if (!bestFits && fits) {
+            // Most important: Select a variant that supports the outline thickness
+            best = variant
+            bestFits = true
+          } else if (best != null && variant.height > best.height) {
+            // Tiebreaker: Select the bigger font
+            best = variant
+          } else if (best == null) {
+            // Lowest priority: Select something if nothing has been selected so far
+            best = variant
+          }
+        }
+      }
+
+      assert(best != null, "Could not find an SDF font for outline")
+      best
+    } else {
+
+      // Prefer exact-sized non-SDF variants
+      for (variant <- variants) {
+        if (!variant.useSdf && math.abs(variant.height.toDouble - draw.height) <= 0.0001)
+          return variant
+      }
+
+      // Otherwise just take the biggest SDF
+      {
+        var best: Variant = null
+        for (variant <- variants) {
+          if (variant.useSdf && (best == null || variant.height > best.height))
+            best = variant
+        }
+        if (best != null) return best
+      }
+
+      // Nothing suitable found: Just return anything
+      variants.head
     }
+  }
 
-    var numQuads = 0
-    fontVertexBuffer.map(Font.fontVertexOffset, maxVerts, buffer => {
-      numQuads = writeTextVertices(buffer, variant, string, position)
-      numQuads * 4
-    })
+  /** Write pixel uniform data for a batch */
+  private def setupPixelUniform(b: ByteBuffer, batch: Int, draw: TextDraw, variant: Variant): Unit = {
+    FontPixelUniform.Color.setSrgb(b, batch, draw.color)
 
-    val offset = Font.fontVertexOffset
-    Font.fontVertexOffset += numQuads * 4
+    if (variant.useSdf) {
+      val scale = draw.height / variant.height
+      val step = variant.sdfStep / scale
+      val edge = math.max(variant.sdfEdgeValue - draw.outline * step, 0.0)
 
-    renderer.pushUniform(FontPixelUniform, b => {
-      val sdfA = 0.48f
-      val sdfB = 0.52f
+      val width = math.min(edge, step * 0.75)
+      val sdfA = edge - width
+      val sdfB = edge + width
+      FontPixelUniform.SdfRamp.set(b, batch, sdfA.toFloat, sdfB.toFloat, -123.0f, -123.0f)
+    } else {
+      FontPixelUniform.SdfRamp.set(b, batch, -1.0f, -1.0f, -123.0f, -123.0f)
+    }
+  }
 
-      FontPixelUniform.Color.set(b, 0.0f, 0.0f, 0.0f, 1.0f)
-      FontPixelUniform.SdfRamp.set(b, sdfA, sdfB, 0.0f, 0.0f)
-    })
+  /** Render `draws[offset .. offset+count[` without checking for ordering or merging.
+    * Precondition: `count` is at least 1 */
+  private def renderMergedDraws(draws: Seq[TextDraw], batchIndex: Array[Int], offset: Int, count: Int): Unit = {
+    val renderer = Renderer.get
+    val batchVariants = new Array[Variant](MaxBatchCount)
 
-    renderer.pushUniform(FontUniform, b => {
+    var maxQuads = 0
+    var drawnQuads = 0
+
+    // Set the font texture
+    renderer.setTexture(FontTextures.Texture, texture.texture)
+
+    // Setup the vertex uniform
+    renderer.pushUniform(FontVertexUniform, b => {
       val texScaleX = 1.0f / texture.width.toFloat
       val texScaleY = 1.0f / texture.height.toFloat
       val texCoordRatioX = 1280.0f / texture.width.toFloat
       val texCoordRatioY = 720.0f / texture.height.toFloat
-      val screenX = 1.0f / 1280.0f * 2.0f * 4.0f
-      val screenY = 1.0f / 720.0f * 2.0f * 4.0f
+      val screenX = 2.0f / 1280.0f
+      val screenY = -2.0f / 720.0f
 
-      FontUniform.TexCoordScale.set(b, texScaleX, texScaleY, texCoordRatioX, texCoordRatioY)
-      FontUniform.PosScale.set(b, screenX, screenY, 0.0f, 0.0f)
+      FontVertexUniform.TexCoordScale.set(b, texScaleX, texScaleY, texCoordRatioX, texCoordRatioY)
+      FontVertexUniform.PosScale.set(b, screenX, screenY, 0.0f, 0.0f)
     })
 
-    renderer.setTexture(FontTextures.Texture, texture.texture)
+    // Resolve variants, count max vertices, setup uniforms
+    renderer.pushUniform(FontPixelUniform, b => {
+      var prevBatch = -1
+      for (i <- offset until offset + count) {
+        val draw = draws(i)
+        maxQuads += draw.length
 
-    fontShader.use(perm => {
-      perm(FontPermutations.UseSdf) = variant.useSdf
+        val batch = batchIndex(i)
+        if (batch != prevBatch) {
+          val variant = findVariantForDraw(draw)
+          batchVariants(batch) = variant
+          setupPixelUniform(b, batch, draw, variant)
+        }
+        prevBatch = batch
+      }
     })
 
-    renderer.drawElements(numQuads * 6, fontIndexBuffer, fontVertexBuffer, baseVertex = offset)
+    // Write the vertices of the batches
+    if (Font.fontVertexOffset + maxQuads * 4 > fontVertexBuffer.numVertices) {
+      Font.fontVertexOffset = 0
+    }
+    fontVertexBuffer.map(Font.fontVertexOffset, maxQuads * 4, buffer => {
+      for (i <- offset until offset + count) {
+        val draw = draws(i)
+        val batch = batchIndex(i)
+        val variant = batchVariants(batch)
+        drawnQuads += writeTextVertices(buffer, variant, draw, batch)
+      }
+      drawnQuads * 4
+    })
+    val vertexOffset = Font.fontVertexOffset
+    Font.fontVertexOffset += drawnQuads * 4
+
+    // Do the actual draw
+    fontShader.use()
+    renderer.drawElements(drawnQuads * 6, fontIndexBuffer, fontVertexBuffer, baseVertex = vertexOffset)
+  }
+
+  /**
+    * Get the horizontal advance from the current position to the end of a character.
+    *
+    * @param char Character to measure
+    * @param height Height of the font in pixels
+    * @param previousChar Character leading to this one, used for kerning.
+    *                     Specify 0 for no kerning.
+    */
+  def getAdvance(char: Char, height: Double, previousChar: Char = 0): Float = {
+    val index = findCharsetIndexFromCodepoint(char)
+    val D = this.data
+    val A = charInfoBase + index * CharInfo.size
+    val kernCount = CharInfo.KernCount.get(D, A)
+    val advance = CharInfo.Advance.get(D, A)
+    val kerning = if (previousChar != 0 && kernCount > 0) {
+      val kernOffset = CharInfo.KernOffset.get(D, A)
+      findKerning(kernOffset, kernCount, previousChar.toInt)
+    } else {
+      0.0f
+    }
+    val scale = scalePerPixelHeight * height
+    (advance + kerning) * scale.toFloat
+  }
+
+  /**
+    * Render a collection of text draw-calls.
+    */
+  def render(draws: Seq[TextDraw]): Unit = {
+    val orderedDraws = draws.sortBy(_.sortKey)
+    val batchIndices = new Array[Int](orderedDraws.length)
+
+    var batchBegin = 0
+    var batchCount = 0
+
+    var index = 0
+    while (index < orderedDraws.length) {
+      val draw = orderedDraws(index)
+      if (index == 0 || !orderedDraws(index - 1).canMerge(draw)) {
+        if (batchCount == MaxBatchCount) {
+          renderMergedDraws(orderedDraws, batchIndices, batchBegin, index - batchBegin)
+          batchBegin = index
+          batchCount = 0
+        }
+        batchCount += 1
+      }
+      batchIndices(index) = batchCount - 1
+      index += 1
+    }
+
+    if (index > batchBegin)
+      renderMergedDraws(orderedDraws, batchIndices, batchBegin, index - batchBegin)
   }
 
   def load(buffer: ByteBuffer): Unit = {
@@ -340,6 +501,7 @@ class Font {
     val numCharset = buffer.getInt()
     val numKernData = buffer.getInt()
     val numVariants = buffer.getInt()
+    scalePerPixelHeight = buffer.getDouble()
 
     // Setup arrays
     charsetCodepoint = new Array[Int](numCharset)
@@ -382,10 +544,16 @@ class Font {
       variants(variantI) = variant
 
       val flags = buffer.getInt()
-      if ((flags & 0x01) != 0) variant.useSdf = true
 
       variant.height = buffer.getInt()
       variant.scale = buffer.getFloat()
+
+      if ((flags & 0x01) != 0) {
+        variant.useSdf = true
+        variant.sdfMaxOutline = buffer.getDouble()
+        variant.sdfStep = buffer.getDouble()
+        variant.sdfEdgeValue = buffer.getDouble()
+      }
 
       val base = varCharBase + VarCharInfo.size * variantI * numCharset
       variant.charDataOffset = base

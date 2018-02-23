@@ -8,6 +8,7 @@ object VertexSpec {
   sealed abstract class DataFmt(val sizeInBytes: Int)
   object DataFmt {
     case object F32 extends DataFmt(4)
+    case object I32 extends DataFmt(4)
     case object SN8 extends DataFmt(1)
     case object UN8 extends DataFmt(1)
     case object UI8 extends DataFmt(1)

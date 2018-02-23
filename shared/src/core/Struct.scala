@@ -103,8 +103,8 @@ class Struct {
   protected def push[T <: Field](field: T): T = {
     val fieldAlign = field.align
     val alignedLoc = loc + (fieldAlign - loc % fieldAlign) % fieldAlign
-    field.offset = loc
-    loc += field.size
+    field.offset = alignedLoc
+    loc = alignedLoc + field.size
     mutAlign = math.max(mutAlign, field.align)
     mutSize = loc + (mutAlign - loc % mutAlign) % mutAlign
     field

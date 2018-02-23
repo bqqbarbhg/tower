@@ -220,6 +220,9 @@ object Config {
         /** Render the font into a signed distance field */
         var signedDistanceField: Boolean = false
 
+        /** SDF only: Maximum width of the outline relative to the character size */
+        var maxOutlineRelative: Double = 0.0
+
         override def visit(v: SimpleVisitor): Unit = {
           height = v.field("height", height)
           heightMin = v.field("heightMin", heightMin)
@@ -228,6 +231,7 @@ object Config {
           oversampleX = v.field("oversampleX", oversampleX)
           oversampleY = v.field("oversampleY", oversampleY)
           signedDistanceField = v.field("signedDistanceField", signedDistanceField)
+          maxOutlineRelative = v.field("maxOutlineRelative", maxOutlineRelative)
         }
 
       }

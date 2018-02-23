@@ -81,6 +81,13 @@ case class Color(r: Double, g: Double, b: Double, a: Double = 1.0) {
     clamp(b * 255.0, 0.0, 255.0).toInt,
     clamp(a * 255.0, 0.0, 255.0).toInt)
 
+  /** Returns whether this color and `rhs` are within an epsilon of each other */
+  def roughlyEqual(rhs: Color, epsilon: Double = 0.001): Boolean = (
+    math.abs(r - rhs.r) <= epsilon &&
+    math.abs(g - rhs.g) <= epsilon &&
+    math.abs(b - rhs.b) <= epsilon &&
+    math.abs(a - rhs.a) <= epsilon)
+
   def *(f: Double): Color = Color(r * f, g * f, b * f, a * f)
   def /(f: Double): Color = this * (1.0 / f)
   def +(c: Color): Color = Color(r + c.r, g + c.g, b + c.b, a + c.a)

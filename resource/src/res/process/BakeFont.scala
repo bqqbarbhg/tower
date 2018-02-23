@@ -17,10 +17,12 @@ object BakeFont {
 
   private class VariantToBuild(val variant: Variant, val bitmapsIndices: Map[Char, Int])
 
-  def bakeVariantBitmaps(font: Font, height: Int, config: Config.Res.Font.Variant, charset: Set[Char]): Map[Char, Bitmap] = {
+  def bakeVariantBitmaps(font: Font, height: Int, variant: Variant, charset: Set[Char]): Map[Char, Bitmap] = {
+    val config = variant.config
     val pairs = for (char <- charset) yield {
       val bitmap = if (config.signedDistanceField) {
-        font.renderGlyphSdf(char, height)
+        val opts = variant.sdfOptions.get
+        font.renderGlyphSdf(char, height, opts.step, opts.edgeValue, opts.padding)
       } else {
         font.renderGlyphAa(char, height, config.oversampleX, config.oversampleY)
       }
@@ -60,14 +62,14 @@ object BakeFont {
       }
 
       for (height <- heights) {
-        val charToBitmap = bakeVariantBitmaps(font, height, variant, charset)
+        val sizedVariant = new Variant(height, variant)
+        val charToBitmap = bakeVariantBitmaps(font, height, sizedVariant, charset)
         val indices = charToBitmap.map({ case (char, bitmap) =>
           val index = bitmaps.length
           bitmaps += bitmap
           (char, index)
         })
 
-        val sizedVariant = new Variant(height, variant)
         sizedVariant.scale = font.getScaleForHeight(height)
         variantsToBuild += new VariantToBuild(sizedVariant, indices)
       }
@@ -162,6 +164,7 @@ object BakeFont {
     }).toVector
     bakedFont.kerningPairs = kerningPairs
     bakedFont.glyphs = glyphs
+    bakedFont.scalePerPixel = font.getScaleForHeight(1.0)
 
     bakedFont
   }

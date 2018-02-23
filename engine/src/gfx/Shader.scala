@@ -114,7 +114,7 @@ object Shader {
       }
 
       // Reset the line for the actual source
-      builder ++= "#line 0\n"
+      builder ++= "#line 1\n"
 
       // The actual source code
       builder ++= source

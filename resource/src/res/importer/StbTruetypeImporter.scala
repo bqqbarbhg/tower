@@ -96,7 +96,7 @@ class StbTruetypeFont(var buffer: ByteBuffer) extends Font {
     Bitmap(x, y, width, height, data)
   }
 
-  override def renderGlyphSdf(char: Char, heightInPixels: Int): Bitmap = {
+  override def renderGlyphSdf(char: Char, heightInPixels: Int, step: Double, edgeValue: Int, padding: Int): Bitmap = {
     val glyph = stbtt_FindGlyphIndex(fontInfo, char.toInt)
     assert(glyph > 0)
 
@@ -109,12 +109,11 @@ class StbTruetypeFont(var buffer: ByteBuffer) extends Font {
     val buffer = stbtt_GetGlyphSDF(fontInfo,
       /* Scale         */ scale,
       /* Glyph         */ glyph,
-      /* Padding       */ 4,
-      /* On-edge value */ 128.toByte,
-      /* Pixel-dist    */ 64.0f / 4.0f,
+      /* Padding       */ padding,
+      /* On-edge value */ clamp(edgeValue, 0, 255).toByte,
+      /* Pixel-dist    */ step.toFloat,
       /* Size          */ awidth, aheight,
       /* Offset        */ axoff, ayoff)
-
 
     val width = awidth(0)
     val height = aheight(0)

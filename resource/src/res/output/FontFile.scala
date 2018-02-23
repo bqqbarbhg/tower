@@ -53,6 +53,7 @@ object FontFile {
     buffer.putInt(charset.length)
     buffer.putInt(kernDataSize)
     buffer.putInt(font.variants.length)
+    buffer.putDouble(font.scalePerPixel)
 
     for ((char, glyph) <- charset) {
       buffer.putInt(char.toInt)
@@ -78,6 +79,14 @@ object FontFile {
       buffer.putInt(flags)
       buffer.putInt(variant.height)
       buffer.putFloat(variant.scale.toFloat)
+
+      if ((flags & 0x01) != 0) {
+        val opts = variant.sdfOptions.get
+        buffer.putDouble(variant.config.maxOutlineRelative)
+        buffer.putDouble(opts.step / 255.0)
+        buffer.putDouble(opts.edgeValue.toDouble / 255.0)
+      }
+
       for ((codepoint, glyph) <- charset) {
         variant.glyphs.get(codepoint) match {
           case Some(rect) =>

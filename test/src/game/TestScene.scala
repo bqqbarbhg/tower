@@ -16,7 +16,9 @@ import render.UniformBlock
 import platform.AppWindow
 import ui.Font
 import io.content._
+import ui.Font.TextDraw
 
+import scala.collection.mutable.ArrayBuffer
 import scala.io.StdIn
 
 object TestScene extends App {
@@ -151,7 +153,7 @@ void main() {
 
     renderer.advanceFrame()
 
-    renderer.clear(Some(Color.rgb(0xffffff)), Some(1.0))
+    renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
 
     renderer.setShader(shader)
 
@@ -170,8 +172,17 @@ void main() {
     }
     */
 
-    val variant = font.variants.last
-    font.drawText(variant, "This is a test", Vector2(0.0, 0.0))
+    val fg = Color.rgb(0xffffff)
+    val bg = Color.rgb(0x000000)
+
+    val draws = ArrayBuffer[TextDraw]()
+    draws += TextDraw("This is a long body text that", 0, "This is a long body text that".length, Vector2(100.0, 114.0), 22.0, fg, 0.0, 1)
+    draws += TextDraw("Hello world!", 0, "Hello world!".length, Vector2(100.0, 90.0), 82.0, fg, 0.0, 1)
+    draws += TextDraw("spans many lines but is currently", 0, "spans many lines but is currently".length, Vector2(100.0, 128.0), 22.0, fg, 0.0, 1)
+    draws += TextDraw("Hello world!", 0, "Hello world!".length, Vector2(100.0, 90.0), 82.0, bg, 2.0, 0)
+    draws += TextDraw("manually wrapped...", 0, "manually wrapped...".length, Vector2(100.0, 142.0), 22.0, fg, 0.0, 1)
+
+    font.render(draws)
 
     AppWindow.swapBuffers()
 

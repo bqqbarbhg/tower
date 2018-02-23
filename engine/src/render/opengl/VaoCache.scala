@@ -52,6 +52,7 @@ class VaoCache {
         val num = attrib.num
         attrib.fmt match {
           case F32  => glVertexAttribPointer (ix, num, GL_FLOAT,          false, stride, offset)
+          case I32  => glVertexAttribIPointer(ix, num, GL_INT,                   stride, offset)
           case SN8  => glVertexAttribPointer (ix, num, GL_BYTE,           true,  stride, offset)
           case UN8  => glVertexAttribPointer (ix, num, GL_UNSIGNED_BYTE,  true,  stride, offset)
           case UI8  => glVertexAttribIPointer(ix, num, GL_BYTE,                  stride, offset)
