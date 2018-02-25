@@ -19,6 +19,8 @@ class Atlas(val name: String) extends Resource {
   var locations: Array[SpriteLocation] = Array[SpriteLocation]()
   var pages: ArrayBuffer[Image] = ArrayBuffer[Image]()
 
+  var spriteImages: Seq[Sprite] = Array[Sprite]()
+
   def unload(): Unit = {
     for (page <- pages) {
       page.unload()

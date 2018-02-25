@@ -97,8 +97,12 @@ object Config {
       /** Name of the atlas this sprite belongs to */
       var atlas: String = ""
 
+      /** Allow cropping the transparent area of the sprite */
+      var crop: Boolean = true
+
       override def visit(v: SimpleVisitor): Unit = {
         atlas = v.field("atlas", atlas)
+        crop = v.field("crop", crop)
       }
     }
 
@@ -110,7 +114,7 @@ object Config {
       var padding: Int = 4
 
       /** Maximum number of pages in the atlas */
-      var maxPages: Int = 10
+      var maxPages: Int = 32
 
       /** Maximum size of a page in the atlas */
       var maxPageSize: Int = 2048

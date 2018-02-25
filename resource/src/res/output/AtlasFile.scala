@@ -25,13 +25,17 @@ object AtlasFile {
     buffer.putInt(atlas.locations.length)
     buffer.putInt(numPages)
 
-    for ((loc, name) <- (atlas.locations zip spriteNames)) {
+    for ((loc, sprite, name) <- (atlas.locations, atlas.spriteImages, spriteNames).zipped) {
       buffer.putIdentifier(name)
       buffer.putInt(loc.page)
       buffer.putInt(loc.rect.x)
       buffer.putInt(loc.rect.y)
       buffer.putInt(loc.rect.w)
       buffer.putInt(loc.rect.h)
+      buffer.putInt(sprite.bounds.x)
+      buffer.putInt(sprite.bounds.y)
+      buffer.putInt(sprite.image.width)
+      buffer.putInt(sprite.image.height)
     }
 
     for (page <- 0 until numPages) {

@@ -248,15 +248,25 @@ class Runner(val opts: RunOptions) {
       println(s"Processing atlases... ${dirtyAtlases.size} found")
       for (atlas <- dirtyAtlases) {
         if (opts.verbose) println(s"> ${atlas.name} (${atlas.sprites.length} sprites)")
-        val sprites = atlas.sprites.flatMap(_.importAsset())
-        val images = sprites.map(_.asInstanceOf[Image])
-        assert(images.nonEmpty && images.size == atlas.sprites.size)
+        val spriteAssets = atlas.sprites.flatMap(_.importAsset())
+        val spriteImages = spriteAssets.map(_.asInstanceOf[Image])
+        assert(spriteImages.nonEmpty && spriteImages.size == atlas.sprites.size)
+
+        val sprites = for ((file, image) <- (atlas.sprites zip spriteImages)) yield {
+          ProcessSprite.processSprite(image, file.config.res.sprite)
+        }
 
         val config = atlas.sprites.head.config
-        if (GenerateAtlas.generateAtlas(atlas, images, config.res.atlas)) {
+        if (GenerateAtlas.generateAtlas(atlas, sprites, config.res.atlas)) {
 
           val pageFileBase = Paths.get(opts.dataRoot, "atlas", s"${atlas.name}").toFile
           val pageNameBase = writer.dataRelative(pageFileBase)
+
+          for ((page, index) <- atlas.pages.zipWithIndex) {
+            val filename = Paths.get(opts.tempRoot, "atlas", s"${atlas.name}_$index.png").toFile
+            filename.getParentFile.mkdirs()
+            SaveDebugImage.saveImage(filename, page)
+          }
 
           for ((page, index) <- atlas.pages.zipWithIndex) {
             val texture = CreateTexture.createTexture(page, config.res.atlas.texture)

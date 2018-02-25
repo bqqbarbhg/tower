@@ -50,18 +50,18 @@ object GenerateAtlas {
   }
 
   /** Returns required page sizes */
-  private def packAtlas(atlas: Atlas, images: Seq[Image], cfg: Config.Res.Atlas): Seq[Extents] = {
+  private def packAtlas(atlas: Atlas, sprites: Seq[Sprite], cfg: Config.Res.Atlas): Seq[Extents] = {
 
     val packer = RectanglePacker.get(cfg.packingAlgorithm).getOrElse {
       println(s"ERROR: Packing algorithm not found: ${cfg.packingAlgorithm}, falling back to lightmap")
       RectanglePacker.get("lightmap").get
     }
 
-    atlas.locations = new Array[Atlas.SpriteLocation](images.size)
+    atlas.locations = new Array[Atlas.SpriteLocation](sprites.size)
 
     val toPack = mutable.HashMap[Int, Extents]()
 
-    val extents = images.map(i => new Extents(i.width + cfg.padding, i.height + cfg.padding))
+    val extents = sprites.map(s => new Extents(s.bounds.w + cfg.padding, s.bounds.h + cfg.padding))
     for ((extent, index) <- extents.zipWithIndex) {
       toPack(index) = extent
     }
@@ -87,26 +87,30 @@ object GenerateAtlas {
   }
 
   /** Try to generate an atlas, returns true on success */
-  def generateAtlas(atlas: Atlas, images: Iterable[Image], config: Config.Res.Atlas): Boolean = {
-    val imageSeq = images.toSeq
-    val pageSizes = packAtlas(atlas, imageSeq, config)
+  def generateAtlas(atlas: Atlas, sprites: Iterable[Sprite], config: Config.Res.Atlas): Boolean = {
+    val spriteSeq = sprites.toSeq
+    val pageSizes = packAtlas(atlas, spriteSeq, config)
     if (pageSizes.isEmpty) return false
+
+    atlas.spriteImages = spriteSeq
 
     for (page <- pageSizes) {
       atlas.pages += Image.create32(page.w, page.h, true)
     }
 
-    for ((loc, imageIndex) <- atlas.locations.zipWithIndex) {
+    for ((loc, spriteIndex) <- atlas.locations.zipWithIndex) {
       val page = atlas.pages(loc.page)
-      val image = imageSeq(imageIndex)
+      val sprite = spriteSeq(spriteIndex)
+
+      val srcRect = sprite.bounds
 
       val bx = loc.rect.x
       val by = loc.rect.y
       for {
-        y <- 0 until image.height
-        x <- 0 until image.width
+        y <- 0 until srcRect.h
+        x <- 0 until srcRect.w
       } {
-        val pixel = image.getPixel(x, y)
+        val pixel = sprite.image.getPixel(srcRect.x + x, srcRect.y + y)
         page.setPixel(bx + x, by + y, pixel)
       }
     }

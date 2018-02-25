@@ -26,6 +26,76 @@ object Texture {
     })
   }
 
+  def createArray(names: Seq[Identifier]): Option[Texture] = {
+    if (names.length <= 0) return None
+    val files = names.flatMap(Package.get.get(_)).toSeq
+    if (files.length != names.length) return None
+
+    val texture = new Texture()
+
+    // Setup the array and first layer data from the first file
+    {
+      val file = files.head
+      val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
+      val stream = file.read()
+      buffer.readFrom(stream)
+      buffer.finish()
+
+      val MaxVersion = 1
+      buffer.verifyMagic("s2tx")
+      val version = buffer.getVersion(MaxVersion)
+      val width = buffer.getInt()
+      val height = buffer.getInt()
+      val numLevels = buffer.getInt()
+      val format = buffer.getMagic()
+
+      val levels = Seq.fill(numLevels) {
+        val size = buffer.getInt()
+        buffer.getBuffer(size)
+      }
+
+      texture.texture = TextureHandle.createArray(width, height, format, files.length, numLevels)
+      texture.texture.setLayerData(0, width, height, format, levels)
+      texture.width = width
+      texture.height = height
+      texture.format = format
+      texture.numLevels = numLevels
+
+      buffer.verifyMagic("E.tx")
+      stream.close()
+      MemoryUtil.memFree(buffer)
+    }
+
+    // Setup rest of the layers
+    for ((file, index) <- files.zipWithIndex.drop(1)) {
+      val file = files.head
+      val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
+      val stream = file.read()
+      buffer.readFrom(stream)
+      buffer.finish()
+
+      val MaxVersion = 1
+      buffer.verifyMagic("s2tx")
+      val version = buffer.getVersion(MaxVersion)
+      val width = buffer.getInt()
+      val height = buffer.getInt()
+      val numLevels = buffer.getInt()
+      val format = buffer.getMagic()
+
+      val levels = Seq.fill(numLevels) {
+        val size = buffer.getInt()
+        buffer.getBuffer(size)
+      }
+
+      texture.texture.setLayerData(index, width, height, format, levels)
+
+      buffer.verifyMagic("E.tx")
+      stream.close()
+      MemoryUtil.memFree(buffer)
+    }
+
+    Some(texture)
+  }
 }
 
 class Texture {
