@@ -78,6 +78,13 @@ class RendererGl {
     glBindSampler(sampler.index, samplerObj)
   }
 
+  def setTexture(sampler: SamplerBlock.USampler2DArray, texture: TextureHandleGl): Unit = {
+    val samplerObj = samplerCache.getSampler(sampler.sampler)
+    glActiveTexture(GL_TEXTURE0 + sampler.index)
+    glBindTexture(GL_TEXTURE_2D_ARRAY, texture.texture)
+    glBindSampler(sampler.index, samplerObj)
+  }
+
   def applyState(): Unit = {
     if (!activeShaderEnabled) {
       glUseProgram(activeShader.program)

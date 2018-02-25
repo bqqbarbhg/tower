@@ -1,5 +1,8 @@
 package core
 
+import java.io.ByteArrayOutputStream
+import java.nio.ByteOrder
+
 import Color._
 
 object Color {
@@ -51,6 +54,8 @@ object Color {
     Color.fromSrgb(r, g, b, a)
   }
 
+  val littleEndian: Boolean = ByteOrder.nativeOrder == ByteOrder.LITTLE_ENDIAN
+
 }
 
 /**
@@ -72,6 +77,21 @@ case class Color(r: Double, g: Double, b: Double, a: Double = 1.0) {
     assert(rgb._4 < 256)
 
     rgb
+  }
+
+  /** Compress to 8-bit sRGB with linear alpha channel.
+    * Packed in one integer. */
+  def toSrgbInt32: Int = {
+    val ir = clamp(linearToSrgb(r) * 255.0, 0.0, 255.0).toInt
+    val ig = clamp(linearToSrgb(g) * 255.0, 0.0, 255.0).toInt
+    val ib = clamp(linearToSrgb(b) * 255.0, 0.0, 255.0).toInt
+    val ia = clamp(a * 255.0, 0.0, 255.0).toInt
+
+    if (littleEndian) {
+      ir | ig << 8 | ib << 16 | ia << 24
+    } else {
+      ia | ib << 8 | ig << 16 | ir << 24
+    }
   }
 
   /** Compress to 8-bit linear color */

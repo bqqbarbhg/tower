@@ -89,5 +89,8 @@ object OptsGl {
   var vertexMap: MapMode = MapMode.Persistent
   /** If `vertexMap` mode is not supported, fallback to this mode. */
   var vertexMapFallback: MapMode = MapMode.Map
+
+  /** Enable glTexStorage if available */
+  var useTexStorage: Boolean = true
 }
 

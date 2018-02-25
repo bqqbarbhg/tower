@@ -39,6 +39,10 @@ class VertexBufferGl(val spec: VertexSpec, val numVertices: Int, val dynamic: Bo
   private var mapMode = OptsGl.vertexMap
   private var persistentMap: ByteBuffer = null
 
+  private var mapLoc = 0
+  private var mapSize = 0
+  private var mapBuf: ByteBuffer = null
+
   val buffer: Int = glGenBuffers()
 
   // Initialize dynamic
@@ -58,6 +62,84 @@ class VertexBufferGl(val spec: VertexSpec, val numVertices: Int, val dynamic: Bo
       glBufferData(GL_ARRAY_BUFFER, sizeInBytes, GL_DYNAMIC_DRAW)
 
     glBindBuffer(GL_ARRAY_BUFFER, 0)
+  }
+
+  /**
+    * Map a vertex buffer for writing and keep it mapped.
+    * Call `endMap` to finish writing the data.
+    *
+    * @param begin First vertex to map
+    * @param numVertices Number of vertices to map
+    */
+  def beginMap(begin: Int, numVertices: Int): ByteBuffer = {
+    val loc = begin * spec.sizeInBytes
+    val size = numVertices * spec.sizeInBytes
+    mapLoc = loc
+    mapSize = size
+
+    glBindBuffer(GL_ARRAY_BUFFER, buffer)
+
+    val buf = mapMode match {
+      case MapMode.Map =>
+        glMapBufferRange(GL_ARRAY_BUFFER, loc, size, GL_MAP_WRITE_BIT|GL_MAP_UNSYNCHRONIZED_BIT|GL_MAP_FLUSH_EXPLICIT_BIT)
+
+      case MapMode.SubData =>
+        MemoryUtil.memAlloc(size)
+
+      case MapMode.Persistent =>
+        persistentMap.sliced(loc, size)
+
+      case MapMode.PersistentCopy =>
+        MemoryUtil.memAlloc(size)
+    }
+
+    mapBuf = buf
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+    buf
+  }
+
+  /**
+    * Finish mapping the buffer.
+    *
+    * @param numVertices Number of vertices actually written.
+    * @return
+    */
+  def endMap(numVertices: Int): Unit = {
+    val loc = mapLoc
+    val size = mapSize
+    val buf = mapBuf
+
+    glBindBuffer(GL_ARRAY_BUFFER, buffer)
+
+    mapMode match {
+      case MapMode.Map =>
+        glFlushMappedBufferRange(GL_ARRAY_BUFFER, 0, numVertices * spec.sizeInBytes)
+        glUnmapBuffer(GL_ARRAY_BUFFER)
+        MemoryUtil.memFree(buf)
+
+      case MapMode.SubData =>
+        buf.position(0)
+        buf.limit(numVertices * spec.sizeInBytes)
+        glBufferSubData(GL_ARRAY_BUFFER, loc, buf)
+
+      case MapMode.Persistent =>
+        glFlushMappedBufferRange(GL_ARRAY_BUFFER, loc, numVertices * spec.sizeInBytes)
+
+      case MapMode.PersistentCopy =>
+        val toWrite = numVertices * spec.sizeInBytes
+        val copy = persistentMap.slicedOffset(loc, toWrite)
+        buf.position(0)
+        buf.limit(toWrite)
+        MemoryUtil.memCopy(buf, copy)
+        glFlushMappedBufferRange(GL_ARRAY_BUFFER, loc, toWrite)
+        MemoryUtil.memFree(buf)
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
+
+    mapLoc = 0
+    mapSize = 0
+    mapBuf = null
   }
 
   /**
@@ -107,7 +189,6 @@ class VertexBufferGl(val spec: VertexSpec, val numVertices: Int, val dynamic: Bo
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, 0)
-
   }
 
   def free(): Unit = {

@@ -14,8 +14,9 @@ import core._
 import render._
 import render.UniformBlock
 import platform.AppWindow
-import ui.Font
+import ui.{Atlas, Font, Sprite, SpriteBatch}
 import io.content._
+import render.opengl._
 import ui.Font.TextDraw
 
 import scala.collection.mutable.ArrayBuffer
@@ -77,6 +78,12 @@ void main() {
 
   val arg = util.ArgumentParser.parse(args)
 
+  if (arg.flag("gl-compat")) {
+    OptsGl.uniformMap = MapMode.SubData
+    OptsGl.vertexMap = MapMode.SubData
+    OptsGl.useTexStorage = false
+  }
+
   if (arg.flag("listen-gc")) {
     object GcListener extends NotificationListener {
       override def handleNotification(notification: Notification, handback: Any): Unit = {
@@ -131,6 +138,17 @@ void main() {
     tex
   }
 
+  val atlases = Package.get.list("atlas").filter(_.name.endsWith(".s2at"))
+  for (atlas <- atlases) {
+    println(s"Loading atlas: ${atlas.name}")
+    Atlas.load(Identifier(atlas.name))
+  }
+
+  val sprite = Sprite.SpriteMap.get(Identifier("sprites/a.png"))
+  Sprite.SpriteMap.atlases(sprite.atlas).loadTextures()
+
+  val sb = new SpriteBatch()
+
   val font = Font.load("font/open-sans/OpenSans-Regular.ttf.s2ft").get
 
   var prevNs = java.lang.System.nanoTime()
@@ -184,6 +202,16 @@ void main() {
 
     font.render(draws)
 
+    for (letter <- 'a' to 'z') {
+      val i = letter - 'a'
+      val x = i % 6
+      val y = i / 6
+      val offset = Vector2(x, y) * 50.0
+      sb.draw(Identifier(s"sprites/$letter.png"), Vector2(600.0, 200.0) + offset, Vector2(50.0, 50.0), Color.rgb(0xffffff))
+    }
+
+    sb.flush()
+
     AppWindow.swapBuffers()
 
     val end = java.lang.System.nanoTime()
@@ -202,6 +230,7 @@ void main() {
         println(f"Frame time: $min%.2fms - $max%.2fms, average $avg%.2fms")
       }
     }
+
   }
 
   AppWindow.unload()

@@ -57,7 +57,7 @@ object TextureHandleGl {
     val tex = new TextureHandleGl(width, height, numMips, format, GL_TEXTURE_2D_ARRAY)
     glBindTexture(GL_TEXTURE_2D_ARRAY, tex.texture)
 
-    if (GL.getCapabilities.GL_ARB_texture_storage) {
+    if (OptsGl.useTexStorage && GL.getCapabilities.GL_ARB_texture_storage) {
       val internalFormat = format match {
         case "RGBA" => GL_RGBA8
         case "DXT1" => GL_COMPRESSED_RGBA_S3TC_DXT1_EXT

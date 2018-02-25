@@ -68,7 +68,6 @@ object Texture {
 
     // Setup rest of the layers
     for ((file, index) <- files.zipWithIndex.drop(1)) {
-      val file = files.head
       val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
       val stream = file.read()
       buffer.readFrom(stream)
