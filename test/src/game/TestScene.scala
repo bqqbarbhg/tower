@@ -207,7 +207,8 @@ void main() {
       val x = i % 6
       val y = i / 6
       val offset = Vector2(x, y) * 50.0
-      sb.draw(Identifier(s"sprites/$letter.png"), Vector2(600.0, 200.0) + offset, Vector2(50.0, 50.0), Color.rgb(0xffffff))
+      val color = Color.rgb(0xffffff)
+      sb.draw(Identifier(s"sprites/$letter.png"), Vector2(600.0, 200.0) + offset, Vector2(50.0, 50.0), color)
     }
 
     sb.flush()

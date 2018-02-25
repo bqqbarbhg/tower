@@ -69,9 +69,9 @@ case class Color(r: Double, g: Double, b: Double, a: Double = 1.0) {
   /** Compress to 8-bit sRGB with linear alpha channel */
   def toSrgb32: (Int, Int, Int, Int) = {
     val rgb = (
-    clamp(linearToSrgb(r) * 255.0, 0.0, 255.0).toInt,
-    clamp(linearToSrgb(g) * 255.0, 0.0, 255.0).toInt,
-    clamp(linearToSrgb(b) * 255.0, 0.0, 255.0).toInt,
+    clamp(linearToSrgb(r) * 255.0 + 0.5, 0.0, 255.0).toInt,
+    clamp(linearToSrgb(g) * 255.0 + 0.5, 0.0, 255.0).toInt,
+    clamp(linearToSrgb(b) * 255.0 + 0.5, 0.0, 255.0).toInt,
     clamp(a * 255.0, 0.0, 255.0).toInt)
 
     assert(rgb._4 < 256)
@@ -82,9 +82,9 @@ case class Color(r: Double, g: Double, b: Double, a: Double = 1.0) {
   /** Compress to 8-bit sRGB with linear alpha channel.
     * Packed in one integer. */
   def toSrgbInt32: Int = {
-    val ir = clamp(linearToSrgb(r) * 255.0, 0.0, 255.0).toInt
-    val ig = clamp(linearToSrgb(g) * 255.0, 0.0, 255.0).toInt
-    val ib = clamp(linearToSrgb(b) * 255.0, 0.0, 255.0).toInt
+    val ir = clamp(linearToSrgb(r) * 255.0 + 0.5, 0.0, 255.0).toInt
+    val ig = clamp(linearToSrgb(g) * 255.0 + 0.5, 0.0, 255.0).toInt
+    val ib = clamp(linearToSrgb(b) * 255.0 + 0.5, 0.0, 255.0).toInt
     val ia = clamp(a * 255.0, 0.0, 255.0).toInt
 
     if (littleEndian) {
@@ -96,10 +96,10 @@ case class Color(r: Double, g: Double, b: Double, a: Double = 1.0) {
 
   /** Compress to 8-bit linear color */
   def toLinear32: (Int, Int, Int, Int) = (
-    clamp(r * 255.0, 0.0, 255.0).toInt,
-    clamp(g * 255.0, 0.0, 255.0).toInt,
-    clamp(b * 255.0, 0.0, 255.0).toInt,
-    clamp(a * 255.0, 0.0, 255.0).toInt)
+    clamp(r * 255.0 + 0.5, 0.0, 255.0).toInt,
+    clamp(g * 255.0 + 0.5, 0.0, 255.0).toInt,
+    clamp(b * 255.0 + 0.5, 0.0, 255.0).toInt,
+    clamp(a * 255.0 + 0.5, 0.0, 255.0).toInt)
 
   /** Returns whether this color and `rhs` are within an epsilon of each other */
   def roughlyEqual(rhs: Color, epsilon: Double = 0.001): Boolean = (
