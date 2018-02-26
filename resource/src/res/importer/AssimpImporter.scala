@@ -5,8 +5,8 @@ import scala.collection.mutable.ArrayBuffer
 import org.lwjgl.PointerBuffer
 import org.lwjgl.assimp._
 import org.lwjgl.assimp.Assimp._
-
 import core._
+import org.lwjgl.system.MemoryStack
 import res.intermediate._
 import res.intermediate.Model._
 import res.intermediate.Animation._
@@ -55,6 +55,7 @@ object AssimpImporter extends Importer {
     val aScene = aiImportFile(filename, flags)
     val aAnims = collect(aScene.mAnimations, aScene.mNumAnimations, AIAnimation.create)
     val aMeshes = collect(aScene.mMeshes, aScene.mNumMeshes, AIMesh.create)
+    val aMaterials = collect(aScene.mMaterials, aScene.mNumMaterials, AIMaterial.create)
 
     def convertAnimation(aAnim: AIAnimation): Animation = {
       val animName = aAnim.mName.dataString
@@ -75,9 +76,35 @@ object AssimpImporter extends Importer {
       anim
     }
 
+    def findTexture(aMaterial: AIMaterial): String = {
+      for (typ <- aiTextureType_DIFFUSE to aiTextureType_UNKNOWN) {
+        val num = aiGetMaterialTextureCount(aMaterial, aiTextureType_DIFFUSE)
+        for (i <- 0 until num) {
+          val stack = MemoryStack.stackPush()
+
+          val path = AIString.mallocStack()
+          val mapping = Array[Int](aiTextureMapping_UV)
+          val uvIndex = Array[Int](-1)
+          val blend = Array[Float](-1.0f)
+          val op = Array[Int](-1)
+          val mapmode = Array[Int](-1)
+          val flags = Array[Int](-1)
+          aiGetMaterialTexture(aMaterial, typ, i, path, mapping, uvIndex, blend, op, mapmode, flags)
+          val str = path.dataString()
+          stack.pop()
+          return str
+        }
+      }
+
+      ""
+    }
+
     def convertMesh(aMesh: AIMesh): Mesh = {
       val name = aMesh.mName.dataString
       val mesh = new Mesh(name)
+
+      val aMaterial = aMaterials(aMesh.mMaterialIndex)
+      mesh.textureName = findTexture(aMaterial)
 
       val numVerts = aMesh.mNumVertices
       mesh.vertices = Array.fill(numVerts)(new Vertex)
@@ -89,10 +116,8 @@ object AssimpImporter extends Importer {
 
         // If there's no tangents generate some dummy tangent space
         val (x, y) = if (aMesh.mTangents != null && aMesh.mBitangents != null) {
-          val ref = convertVec3(aMesh.mTangents.get(i))
-          val yref = (z cross ref).normalize
-          val x = (z cross yref).normalize
-          val y = (z cross x).normalize
+          val x = convertVec3(aMesh.mTangents.get(i))
+          val y = convertVec3(aMesh.mBitangents.get(i))
           (x, y)
         } else {
           val ref = if (math.abs(z dot Vector3(0.0, 0.0, 1.0)) < 0.5) {
@@ -107,15 +132,9 @@ object AssimpImporter extends Importer {
           (x, y)
         }
 
-        assert(math.abs(x.length - 1.0) < 0.001)
-        assert(math.abs(y.length - 1.0) < 0.001)
-        assert(math.abs(z.length - 1.0) < 0.001)
-        assert(math.abs(x dot y) < 0.001, (x dot y))
-        assert(math.abs(y dot z) < 0.001, (y dot z))
-        assert(math.abs(z dot x) < 0.001, (z dot x))
-        val quat = Quaternion.fromAxes(x, y, z)
-        assert(math.abs(quat.length - 1.0) < 0.001, s"Length should be 1, was ${quat.length} ($x $y $z)")
-        mesh.vertices(i).tangentSpace = quat.normalize
+        mesh.vertices(i).normal = z
+        mesh.vertices(i).tangent = x
+        mesh.vertices(i).bitangent = y
       }
 
       val uvs = aMesh.mTextureCoords(0)

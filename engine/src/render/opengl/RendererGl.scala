@@ -108,8 +108,12 @@ class RendererGl {
   }
 
   def setBlend(enable: Boolean): Unit = {
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    if (enable) {
+      glEnable(GL_BLEND)
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    } else {
+      glDisable(GL_BLEND)
+    }
   }
 
   def clear(color: Option[Color], depth: Option[Double]): Unit = {

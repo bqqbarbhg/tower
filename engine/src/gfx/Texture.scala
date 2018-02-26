@@ -95,6 +95,16 @@ object Texture {
 
     Some(texture)
   }
+
+  def createRgba(width: Int, height: Int, content: ByteBuffer): Texture = {
+    val texture = new Texture()
+    texture.width = width
+    texture.height = height
+    texture.format = "RGBA"
+    texture.numLevels = 1
+    texture.texture = TextureHandle.createStatic(width, height, "RGBA", Array(content))
+    texture
+  }
 }
 
 class Texture {

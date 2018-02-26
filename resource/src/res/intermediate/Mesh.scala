@@ -12,14 +12,18 @@ object Mesh {
     var position: Vector3 = Vector3.Zero
     var uv: Vector2 = Vector2.Zero
     var bones: ArrayBuffer[BoneWeight] = ArrayBuffer[BoneWeight]()
-    var tangentSpace: Quaternion = Quaternion.Identity
+    var normal: Vector3 = Vector3.Zero
+    var tangent: Vector3 = Vector3.Zero
+    var bitangent: Vector3 = Vector3.Zero
 
     def copy: Vertex = {
       val vert = new Vertex
       vert.position = position.copy()
       vert.uv = uv.copy()
       vert.bones = bones.map(_.copy())
-      vert.tangentSpace = tangentSpace.copy()
+      vert.normal = normal.copy()
+      vert.tangent = tangent.copy()
+      vert.bitangent = bitangent.copy()
       vert
     }
   }
@@ -35,6 +39,9 @@ class Mesh(val name: String) extends Resource {
   var bones = ArrayBuffer[MeshBone]()
   var vertices = Array[Vertex]()
   var indices = Array[Int]()
+
+  var textureName: String = ""
+  var material: Material = null
 
   override def unload(): Unit = {
     bones = ArrayBuffer[MeshBone]()

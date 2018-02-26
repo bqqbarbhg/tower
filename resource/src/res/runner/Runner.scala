@@ -387,9 +387,23 @@ class Runner(val opts: RunOptions) {
       for (asset <- dirtyModels) {
         val relPath = assetRelative(asset.file)
         val resources = asset.importAsset()
-        val meshes = resources.collect({ case a: Mesh => a })
-        val animations = resources.collect({ case a: Animation => a })
-        val models = resources.collect({ case a: Model => a })
+        val meshes = resources.collect({ case a: Mesh => a }).toSeq
+        val animations = resources.collect({ case a: Animation => a }).toSeq
+        val models = resources.collect({ case a: Model => a }).toSeq
+
+        val parent = asset.file.getParentFile
+        val siblingFiles = parent.listFiles.filterNot(_.isDirectory).map(_.getName).toSeq
+
+        def resolveTextureFile(name: String): String = {
+          val file = Paths.get(parent.getCanonicalFile.getAbsolutePath, name).toFile
+          val assetRel = assetRelative(file)
+          val dataRel = Paths.get(opts.dataRoot, assetRel).toFile
+          writer.dataRelative(dataRel)
+        }
+
+        for (mesh <- meshes) {
+          mesh.material = ResolveMaterial.resolveMaterialFromTexture(mesh.textureName, siblingFiles, resolveTextureFile)
+        }
 
         val meshMapping = (for (mesh <- meshes) yield {
           val parts = ProcessMesh.processMesh(mesh, asset.config.res.mesh)
@@ -398,7 +412,7 @@ class Runner(val opts: RunOptions) {
           MeshFile.save(writer, filename, parts)
           parts.foreach(_.unload())
 
-          (mesh.name, writer.dataRelative(filename))
+          (mesh.name, (writer.dataRelative(filename), mesh.material))
         }).toMap
 
         val animMapping = (for (anim <- animations) yield {

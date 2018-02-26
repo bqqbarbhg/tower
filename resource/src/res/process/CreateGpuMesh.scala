@@ -25,7 +25,10 @@ object CreateGpuMesh {
     var attribs = Vector(
       Attrib(3, DataFmt.F32,  Semantic.Position),
       Attrib(2, DataFmt.UN16, Semantic.TexCoord),
-      Attrib(4, DataFmt.SN8,  Semantic.TangentSpace),
+      Attrib(3, DataFmt.SN8,  Semantic.Normal),
+      Attrib(3, DataFmt.SN8,  Semantic.Tangent),
+      Attrib(3, DataFmt.SN8,  Semantic.Bitangent),
+      Attrib(3, DataFmt.PAD,  Semantic.Padding),
     )
 
     if (gpuMesh.hasBones) {
@@ -44,7 +47,7 @@ object CreateGpuMesh {
     gpuMesh.indexData = indexBuffer
     gpuMesh.vertexSpec = spec
 
-    val quat = new Array[Byte](4)
+    val ts = new Array[Byte](3)
     for (vert <- mesh.vertices) {
       vertexBuffer.putFloat(vert.position.x.toFloat)
       vertexBuffer.putFloat(vert.position.y.toFloat)
@@ -56,11 +59,25 @@ object CreateGpuMesh {
       vertexBuffer.putShort(uvX)
       vertexBuffer.putShort(uvY)
 
-      quat(0) = clamp((vert.tangentSpace.x * 127.0).toInt, -127, 127).toByte
-      quat(1) = clamp((vert.tangentSpace.y * 127.0).toInt, -127, 127).toByte
-      quat(2) = clamp((vert.tangentSpace.z * 127.0).toInt, -127, 127).toByte
-      quat(3) = clamp((vert.tangentSpace.w * 127.0).toInt, -127, 127).toByte
-      vertexBuffer.put(quat)
+      ts(0) = clamp((vert.normal.x * 127.0).toInt, -127, 127).toByte
+      ts(1) = clamp((vert.normal.y * 127.0).toInt, -127, 127).toByte
+      ts(2) = clamp((vert.normal.z * 127.0).toInt, -127, 127).toByte
+      vertexBuffer.put(ts)
+
+      ts(0) = clamp((vert.tangent.x * 127.0).toInt, -127, 127).toByte
+      ts(1) = clamp((vert.tangent.y * 127.0).toInt, -127, 127).toByte
+      ts(2) = clamp((vert.tangent.z * 127.0).toInt, -127, 127).toByte
+      vertexBuffer.put(ts)
+
+      ts(0) = clamp((vert.bitangent.x * 127.0).toInt, -127, 127).toByte
+      ts(1) = clamp((vert.bitangent.y * 127.0).toInt, -127, 127).toByte
+      ts(2) = clamp((vert.bitangent.z * 127.0).toInt, -127, 127).toByte
+      vertexBuffer.put(ts)
+
+      ts(0) = 0
+      ts(1) = 0
+      ts(2) = 0
+      vertexBuffer.put(ts)
 
       if (gpuMesh.hasBones) {
         for (boneI <- 0 until 4) {

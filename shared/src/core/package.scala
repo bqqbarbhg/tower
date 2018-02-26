@@ -5,6 +5,9 @@ import java.nio.ByteBuffer
 
 package object core {
 
+  /** Int, but semantically index of an identifier */
+  type IdentifierIx = Int
+
   /** Augments code of `block` with  */
   def withStack[T](block: => T): T = {
     val alloc = StackAllocator.get

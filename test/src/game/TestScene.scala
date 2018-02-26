@@ -31,6 +31,7 @@ object TestScene extends App {
 
   object ModelTextures extends SamplerBlock {
     val Diffuse = sampler2D("Diffuse", Sampler.RepeatAnisotropic)
+    val Normal = sampler2D("Normal", Sampler.RepeatAnisotropic)
   }
 
   object ModelUniform extends UniformBlock("ModelUniform") {
@@ -44,6 +45,9 @@ object TestScene extends App {
 
 in vec3 a_Position;
 in vec2 a_TexCoord;
+in vec3 a_Normal;
+in vec3 a_Tangent;
+in vec3 a_Bitangent;
 
 layout(row_major)
 layout(std140)
@@ -53,11 +57,18 @@ uniform ModelUniform {
 };
 
 out vec2 v_TexCoord;
+out vec3 v_TnX;
+out vec3 v_TnY;
+out vec3 v_TnZ;
 
 void main() {
   vec3 world = u_World * vec4(a_Position, 1.0);
   gl_Position = u_ViewProjection * vec4(world, 1.0);
   v_TexCoord = a_TexCoord;
+
+  v_TnX = u_World * vec4(a_Tangent, 0.0);
+  v_TnY = u_World * vec4(a_Bitangent, 0.0);
+  v_TnZ = u_World * vec4(a_Normal, 0.0);
 }
     """
 
@@ -66,12 +77,30 @@ void main() {
 #version 150
 
 uniform sampler2D u_Diffuse;
+uniform sampler2D u_Normal;
+
+in vec3 v_TnX;
+in vec3 v_TnY;
+in vec3 v_TnZ;
 
 in vec2 v_TexCoord;
 out vec4 o_Color;
 
 void main() {
-  o_Color = texture(u_Diffuse, v_TexCoord);
+  vec3 normal;
+  normal.xy = texture(u_Normal, v_TexCoord).rg - vec2(0.5);
+  normal.z = sqrt(clamp(1.0 - normal.x*normal.x - normal.y*normal.y, 0.0, 1.0)) * 0.5;
+  normal = normalize(normal);
+  normal = normal.x * normalize(v_TnX)
+         + normal.y * normalize(-v_TnY)
+         + normal.z * normalize(v_TnZ);
+
+  float lightA = max(dot(normal, normalize(vec3(1.0, 1.0, -1.0))), 0.0);
+  vec3 ambient = mix(vec3(71.0, 67.0, 34.0) / 255.0, vec3(118.0, 139.0, 214.0) / 255.0, normal.y * 0.5 + 0.5);
+
+  vec3 color = ambient * 0.5 + lightA * vec3(0.5);
+
+  o_Color = vec4(pow(color, vec3(1.0 / 2.2)), 1.0);
 }
     """
 
@@ -114,29 +143,8 @@ void main() {
 
   val buffer = ByteBuffer.allocateDirect(16 * 1024 * 1024)
 
-  val mesh = {
-    val file = new File("data/test/sausageman.fbx.Cube.000.s2ms")
-    var buf = buffer.duplicateEx
-    buf.order(ByteOrder.LITTLE_ENDIAN)
-    buf.readFromFile(file)
-    buf.finish()
-
-    val mesh = new gfx.Mesh()
-    mesh.load(buf)
-    mesh
-  }
-
-  val texture = {
-    val file = new File("data/test/grass.jpg.s2tx")
-    var buf = buffer.duplicateEx
-    buf.order(ByteOrder.LITTLE_ENDIAN)
-    buf.readFromFile(file)
-    buf.finish()
-
-    val tex = new gfx.Texture()
-    tex.load(buf)
-    tex
-  }
+  val model = gfx.Model.load(Identifier("test/sausageman/sausagemanWithTex.fbx.s2md")).get
+  model.loadContent()
 
   val atlases = Package.get.list("atlas").filter(_.name.endsWith(".s2at"))
   for (atlas <- atlases) {
@@ -155,9 +163,6 @@ void main() {
   var sampledTimesMs = Array.fill(60/**100*/)(0.0)
   var ix = 0
 
-  renderer.setDepthMode(false, false)
-  renderer.setBlend(true)
-
   System.gc()
 
   var time = 0.0
@@ -167,10 +172,11 @@ void main() {
     AppWindow.pollEvents()
 
     time = AppWindow.currentTime
-    val world = Matrix43.translate(0.0, -5.0, 0.0) * Matrix43.rotateY(time) * Matrix43.rotateX(math.Pi / 2.0)
+    val world = Matrix43.translate(0.0, -5.0, 0.0) * Matrix43.rotateY(time * 0.5) * Matrix43.rotateX(math.Pi / 2.0)
 
     renderer.advanceFrame()
 
+    renderer.setDepthMode(true, true)
     renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
 
     renderer.setShader(shader)
@@ -181,14 +187,19 @@ void main() {
       World.set(u, world)
     })
 
+    renderer.setDepthMode(true, true)
+    renderer.setBlend(false)
 
-    renderer.setTexture(ModelTextures.Diffuse, texture.texture)
-
-    /*
-    for (part <- mesh.parts) {
-      part.draw()
+    for (mesh <- model.meshes) {
+      renderer.setTexture(ModelTextures.Diffuse, mesh.material.albedoTex.texture)
+      renderer.setTexture(ModelTextures.Normal, mesh.material.normalTex.texture)
+      for (part <- mesh.parts) {
+        part.draw()
+      }
     }
-    */
+
+    renderer.setDepthMode(false, false)
+    renderer.setBlend(true)
 
     val fg = Color.rgb(0xffffff)
     val bg = Color.rgb(0x000000)
@@ -202,13 +213,15 @@ void main() {
 
     font.render(draws)
 
-    for (letter <- 'a' to 'z') {
-      val i = letter - 'a'
+    val names = ('a' to 'z').map(_.toString) ++ Seq("face")
+    for ((sprite, i) <- names.zipWithIndex) {
       val x = i % 6
       val y = i / 6
       val offset = Vector2(x, y) * 50.0
       val color = Color.rgb(0xffffff)
-      sb.draw(Identifier(s"sprites/$letter.png"), Vector2(600.0, 200.0) + offset, Vector2(50.0, 50.0), color)
+      val alpha = math.sin(time * 5.0 + i * 7.0) * 0.25 + 0.75
+      val col = color.copy(a = alpha)
+      sb.draw(Identifier(s"sprites/$sprite.png"), Vector2(800.0, 100.0) + offset, Vector2(50.0, 50.0), col)
     }
 
     sb.flush()

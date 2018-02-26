@@ -61,8 +61,8 @@ class VaoCache {
           case UF16 => glVertexAttribPointer (ix, num, GL_UNSIGNED_SHORT, false, stride, offset)
           case PAD  => // Nop: Padding is implied in `stride` and `offset`
         }
-        offset += attrib.sizeInBytes
       }
+      offset += attrib.sizeInBytes
     }
   }
 

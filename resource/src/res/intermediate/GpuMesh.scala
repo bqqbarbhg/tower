@@ -12,7 +12,9 @@ object GpuMesh {
   object Semantic {
     case object Position extends Semantic("Posi")
     case object TexCoord extends Semantic("TxCo")
-    case object TangentSpace extends Semantic("TnSp")
+    case object Normal extends Semantic("TSpZ")
+    case object Tangent extends Semantic("TSpX")
+    case object Bitangent extends Semantic("TSpY")
     case object BoneIndex extends Semantic("BoIx")
     case object BoneWeight extends Semantic("BoWg")
     case object Padding extends Semantic("Pad.")

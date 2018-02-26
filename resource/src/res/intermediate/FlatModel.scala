@@ -10,7 +10,7 @@ import res.intermediate.FlatModel._
 
 object FlatModel {
   case class FlatNode(parent: Int, node: ModelNode)
-  case class FlatMesh(parent: Int, mesh: ModelMesh, resource: String)
+  case class FlatMesh(parent: Int, mesh: ModelMesh, resource: String, materialIndex: Int)
   case class FlatAnimation(name: String, resource: String)
 }
 
@@ -18,6 +18,7 @@ class FlatModel extends Resource {
   var nodes = new ArrayBuffer[FlatNode]()
   var meshes = new ArrayBuffer[FlatMesh]()
   var animations = new ArrayBuffer[FlatAnimation]()
+  var materials = new ArrayBuffer[Material]()
 
   override def unload(): Unit = { }
 }

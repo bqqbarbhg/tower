@@ -23,6 +23,7 @@ object ModelFile {
     buffer.putInt(model.nodes.length)
     buffer.putInt(model.meshes.length)
     buffer.putInt(model.animations.length)
+    buffer.putInt(model.materials.length)
 
     for (node <- model.nodes) {
       buffer.putIdentifier(node.node.name)
@@ -34,11 +35,17 @@ object ModelFile {
       buffer.putInt(mesh.parent)
       buffer.putIdentifier(mesh.mesh.name)
       buffer.putIdentifier(mesh.resource)
+      buffer.putInt(mesh.materialIndex)
     }
 
     for (anim <- model.animations) {
       buffer.putIdentifier(anim.name)
       buffer.putIdentifier(anim.resource)
+    }
+
+    for (mat <- model.materials) {
+      buffer.putIdentifier(mat.albedo)
+      buffer.putIdentifier(mat.normal)
     }
 
     buffer.putMagic("E.md")
