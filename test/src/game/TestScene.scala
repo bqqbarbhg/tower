@@ -11,6 +11,7 @@ import com.sun.management.GarbageCollectionNotificationInfo
 
 import collection.JavaConverters._
 import core._
+import gfx._
 import render._
 import render.UniformBlock
 import platform.AppWindow
@@ -36,7 +37,7 @@ object TestScene extends App {
 
   object ModelUniform extends UniformBlock("ModelUniform") {
     val ViewProjection = mat4("ViewProjection")
-    val World = mat4x3("World")
+    val Bones = mat4x3("Bones", 24)
   }
 
   val VertexShader =
@@ -48,12 +49,14 @@ in vec2 a_TexCoord;
 in vec3 a_Normal;
 in vec3 a_Tangent;
 in vec3 a_Bitangent;
+in ivec4 a_BoneIndex;
+in vec4 a_BoneWeight;
 
 layout(row_major)
 layout(std140)
 uniform ModelUniform {
   mat4 u_ViewProjection;
-  mat4x3 u_World;
+  mat4x3 u_Bones[24];
 };
 
 out vec2 v_TexCoord;
@@ -62,13 +65,19 @@ out vec3 v_TnY;
 out vec3 v_TnZ;
 
 void main() {
-  vec3 world = u_World * vec4(a_Position, 1.0);
-  gl_Position = u_ViewProjection * vec4(world, 1.0);
+  mat4x3 world =
+     u_Bones[a_BoneIndex.x] * a_BoneWeight.x +
+     u_Bones[a_BoneIndex.y] * a_BoneWeight.y +
+     u_Bones[a_BoneIndex.z] * a_BoneWeight.z +
+     u_Bones[a_BoneIndex.w] * a_BoneWeight.w ;
+
+  vec3 worldPos = world * vec4(a_Position, 1.0);
+  gl_Position = u_ViewProjection * vec4(worldPos, 1.0);
   v_TexCoord = a_TexCoord;
 
-  v_TnX = u_World * vec4(a_Tangent, 0.0);
-  v_TnY = u_World * vec4(a_Bitangent, 0.0);
-  v_TnZ = u_World * vec4(a_Normal, 0.0);
+  v_TnX = world * vec4(a_Tangent, 0.0);
+  v_TnY = world * vec4(a_Bitangent, 0.0);
+  v_TnZ = world * vec4(a_Normal, 0.0);
 }
     """
 
@@ -146,6 +155,8 @@ void main() {
   val model = gfx.Model.load(Identifier("test/sausageman/sausagemanWithTex.fbx.s2md")).get
   model.loadContent()
 
+  val anim = model.anims.head
+
   val atlases = Package.get.list("atlas").filter(_.name.endsWith(".s2at"))
   for (atlas <- atlases) {
     println(s"Loading atlas: ${atlas.name}")
@@ -165,6 +176,9 @@ void main() {
 
   System.gc()
 
+  val modelState = new ModelState(model)
+  val animState = new AnimationState(model, anim)
+
   var time = 0.0
   while (AppWindow.running) {
     val begin = java.lang.System.nanoTime()
@@ -172,7 +186,7 @@ void main() {
     AppWindow.pollEvents()
 
     time = AppWindow.currentTime
-    val world = Matrix43.translate(0.0, -5.0, 0.0) * Matrix43.rotateY(time * 0.5) * Matrix43.rotateX(math.Pi / 2.0)
+    val world = Matrix43.translate(0.0, -4.0, 0.0) * Matrix43.rotateY(time * 0.5) * Matrix43.scale(0.01)
 
     renderer.advanceFrame()
 
@@ -181,19 +195,34 @@ void main() {
 
     renderer.setShader(shader)
 
-    renderer.pushUniform(ModelUniform, u => {
-      import ModelUniform._
-      ViewProjection.set(u, viewProjection)
-      World.set(u, world)
-    })
-
     renderer.setDepthMode(true, true)
     renderer.setBlend(false)
+
+    modelState.worldTransform = world
+    animState.time = (time * 1.5) % anim.duration
+    animState.alpha = math.sin(time) * 0.5 + 0.5
+
+    // animState.apply(modelState)
+
+    modelState.updateMatrices()
 
     for (mesh <- model.meshes) {
       renderer.setTexture(ModelTextures.Diffuse, mesh.material.albedoTex.texture)
       renderer.setTexture(ModelTextures.Normal, mesh.material.normalTex.texture)
       for (part <- mesh.parts) {
+
+        renderer.pushUniform(ModelUniform, u => {
+          import ModelUniform._
+          ViewProjection.set(u, viewProjection)
+
+          for ((name, index) <- part.boneName.zipWithIndex) {
+            val node = model.findNodeByName(new Identifier(name))
+            val transform = modelState.nodeWorldTransform(node) * part.boneMeshToBone(index)
+            Bones.set(u, index, transform)
+          }
+
+        })
+
         part.draw()
       }
     }

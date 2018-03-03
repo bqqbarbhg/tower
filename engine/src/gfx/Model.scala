@@ -28,7 +28,7 @@ object Model {
 class Model {
 
   // Nodes
-  var transformToParent: Array[Matrix43] = Array[Matrix43]()
+  var transformToParent: Array[AffineTransform] = Array[AffineTransform]()
   var transformToRoot: Array[Matrix43] = Array[Matrix43]()
   var parentIndex: Array[Int] = Array[Int]()
   var nodeName: Array[IdentifierIx] = Array[IdentifierIx]()
@@ -71,14 +71,14 @@ class Model {
     this.numMaterials = buffer.getInt()
 
     // Nodes
-    this.transformToParent = new Array[Matrix43](this.numNodes)
+    this.transformToParent = new Array[AffineTransform](this.numNodes)
     this.transformToRoot = new Array[Matrix43](this.numNodes)
     this.parentIndex = new Array[Int](this.numNodes)
     this.nodeName = new Array[IdentifierIx](this.numNodes)
     for (i <- 0 until this.numNodes) {
       this.nodeName(i) = buffer.getIdentifier().index
-      this.transformToParent(i) = buffer.getMatrix43()
       this.parentIndex(i) = buffer.getInt()
+      this.transformToParent(i) = buffer.getAffine()
     }
 
     // Meshes
@@ -118,7 +118,7 @@ class Model {
     this.transformToRoot(0) = Matrix43.Identity
     for (i <- 1 until this.numNodes) {
       val parent = this.parentIndex(i)
-      this.transformToRoot(i) = this.transformToParent(i) * this.transformToRoot(parent)
+      this.transformToRoot(i) = Matrix43.affine(this.transformToParent(i)) * this.transformToRoot(parent)
     }
   }
 
@@ -136,7 +136,7 @@ class Model {
         material.albedoTex = Texture.load(material.albedoTexRes).getOrElse(Material.missingAlbedo)
       else
         material.albedoTex = Material.missingAlbedo
-      
+
       if (material.normalTexRes != Identifier.Empty)
         material.normalTex = Texture.load(material.normalTexRes).getOrElse(Material.missingNormal)
       else
@@ -163,11 +163,7 @@ class Model {
   def resolveAnimationTimelineNodeIndices(animation: Animation): Array[Int] = {
     val cached = animationMappingCache.get(animation)
     if (cached != null) return cached
-    val mapping: Array[Int] = animation.timelines.map(tl => {
-      val index = findNodeByName(tl.bone)
-      assert(index >= 0)
-      index
-    })
+    val mapping: Array[Int] = animation.timelines.map(tl => findNodeByName(tl.bone))
     animationMappingCache.put(animation, mapping)
     mapping
   }

@@ -71,7 +71,7 @@ object UniformBlock {
 
     def set(buffer: ByteBuffer, value: Matrix43): Unit = set(buffer, 0, value)
     def set(buffer: ByteBuffer, index: Int, value: Matrix43): Unit = {
-      val base = offsetInVec4 * 16 + index * 64
+      val base = offsetInVec4 * 16 + index * 48
       buffer.putFloat(base + 0 *4, value.m11.toFloat)
       buffer.putFloat(base + 1 *4, value.m12.toFloat)
       buffer.putFloat(base + 2 *4, value.m13.toFloat)

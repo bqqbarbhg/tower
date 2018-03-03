@@ -10,6 +10,9 @@ import io.content.Package
 
 object Animation {
 
+  /** State needed by the animation playback */
+  type OpaqueState = Array[Int]
+
   object Timeline {
     /** Requires 3 integers per timeline: previous index of position, rotation, size */
     val StateSize = 3
@@ -34,7 +37,7 @@ object Animation {
     * @param numPosKeys Number of keys for position
     * @param numSizKeys Number of keys for size
     */
-  class Timeline(val anim: Animation, val bone: Identifier, val baseOffset: Int, val numRotKeys: Int, val numPosKeys: Int, val numSizKeys: Int, val flags: Int) {
+  class Timeline(val anim: Animation, val bone: Identifier, val baseOffset: Int, val numRotKeys: Int, val numPosKeys: Int, val numSizKeys: Int, val flags: Int, val index: Int) {
 
     // Offsets into the data buffer
     val rotTimeIndex: Int = baseOffset
@@ -72,7 +75,7 @@ object Animation {
       * Find a keyframe which time is lower than or equal to `time`.
       * Guaranteed to return an index [0, numFrames[
       */
-    private def findKeyframe(time: Float, dataOffset: Int, numFrames: Int, state: Array[Int], stateOffset: Int): Int = {
+    private def findKeyframe(time: Float, dataOffset: Int, numFrames: Int, state: OpaqueState, stateOffset: Int): Int = {
       val hint = state(stateOffset)
       val data = anim.data
 
@@ -116,11 +119,12 @@ object Animation {
       * Evaluate the timeline at a specific time.
       *
       * @param time Time in seconds to evaluate into the animation.
-      * @param state State to store previous frame. Requires `StateSize` elements per timeline.
-      * @param stateOffset At which index to load/store the state into.
-      * @return
+      * @param state State retrieved from `animation.createState()`, every logical
+      *              animation instance should have their own state.
+      * @return Transform of the node at `time`.
       */
-    def evaluate(time: Double, state: Array[Int], stateOffset: Int): Frame = {
+    def evaluate(time: Double, state: OpaqueState): AffineTransform = {
+      val stateOffset = index * Timeline.StateSize
       val timeF = clamp(time.toFloat, 0.0f, anim.duration.toFloat)
       val data = anim.data
 
@@ -170,21 +174,9 @@ object Animation {
         Vector3(x, y, z)
       }
 
-      Frame(rotation, position, scale)
+      AffineTransform(position, scale, rotation)
     }
   }
-
-  object Frame {
-    val Identity = Frame(Quaternion.Identity, Vector3.Zero, Vector3.One)
-
-    def lerp(a: Frame, b: Frame, t: Double): Frame = Frame(
-      Quaternion.lerp(a.rotation, b.rotation, t),
-      Vector3.lerp(a.position, b.position, t),
-      Vector3.lerp(a.scale, b.scale, t),
-    )
-  }
-
-  case class Frame(rotation: Quaternion, position: Vector3, scale: Vector3)
 
   def load(name: Identifier): Option[Animation] = {
     Package.get.get(name).map(file => {
@@ -209,6 +201,9 @@ class Animation {
   var duration: Double = 0.0
   var data: Array[Float] = null
   var timelines: Array[Timeline] = null
+
+  /** Create a new state object compatible with this animation */
+  def createState(): OpaqueState = Array.fill(timelines.length * Timeline.StateSize)(0)
 
   /**
     * Load the animation from a .s2an -file.
@@ -236,7 +231,7 @@ class Animation {
       val numSizKeys = buffer.getInt()
       val flags = if (version >= 2) buffer.getInt() else 0x00
 
-      timelines(i) = new Timeline(this, bone, baseOffset, numRotKeys, numPosKeys, numSizKeys, flags)
+      timelines(i) = new Timeline(this, bone, baseOffset, numRotKeys, numPosKeys, numSizKeys, flags, i)
     }
 
     // Data

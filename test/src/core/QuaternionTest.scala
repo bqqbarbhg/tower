@@ -54,22 +54,22 @@ class QuaternionTest extends FlatSpec with Matchers {
   }
 
   it should "work for fixtures" in {
-    val q1 = Quaternion.fromAxes(Vector3(0.0, 0.0, 1.0), Vector3(0.0, 1.0, 0.0), Vector3(-1.0, 0.0, 0.0))
+    val q1 = Quaternion.fromAxes(Vector3(0.0, 0.0, -1.0), Vector3(0.0, 1.0, 0.0), Vector3(1.0, 0.0, 0.0))
     assertEqual(q1, Quaternion(0.0, 0.7071, 0.0, 0.7071))
   }
 
   it should "work for advanced fixtures" in {
     val q1 = Quaternion.fromAxes(
-      Vector3(0.1333333,-0.6666667,0.7333333),
-      Vector3(0.9333333,0.3333333,0.1333333),
-      Vector3(-0.3333333,0.6666667,0.6666667),
+      Vector3(0.1333333,0.9333333,-0.3333333),
+      Vector3(-0.6666667,0.3333333,0.6666667),
+      Vector3(0.7333333,0.1333333,0.6666667),
     )
     assertEqual(q1, Quaternion(0.1825742,0.3651484,0.5477226,0.7302967))
 
     val q2 = Quaternion.fromAxes(
-      Vector3(0.3710692,-0.8427673,0.3899371),
-      Vector3(-0.9182390,-0.2704403,0.2893082),
-      Vector3(-0.1383648,-0.4654088,-0.8742138),
+      Vector3(0.3710692,-0.9182390,-0.1383648),
+      Vector3(-0.8427673,-0.2704403,-0.4654088),
+      Vector3(0.3899371,0.2893082,-0.8742138),
     )
     assertEqual(q2, Quaternion(0.7930516,-0.5551361,0.0793052,-0.2379155))
   }

@@ -27,8 +27,10 @@ object ModelFile {
 
     for (node <- model.nodes) {
       buffer.putIdentifier(node.node.name)
-      buffer.putMatrix43(node.node.transform)
       buffer.putInt(node.parent)
+
+      val affine = node.node.transform.toAffine
+      buffer.putAffine(affine)
     }
 
     for (mesh <- model.meshes) {

@@ -150,6 +150,53 @@ object BufferUtils {
       m
     }
 
+    /** Writes a Vector3 with full precision */
+    def putVector3(v: Vector3): Unit = {
+      buffer.putDouble(v.x)
+      buffer.putDouble(v.y)
+      buffer.putDouble(v.z)
+    }
+
+    /** Reads a Vector3 with full precision */
+    def getVector3(): Vector3 = {
+      val x = buffer.getDouble()
+      val y = buffer.getDouble()
+      val z = buffer.getDouble()
+      Vector3(x, y, z)
+    }
+
+    /** Writes a Quaternion with full precision */
+    def putQuaternion(q: Quaternion): Unit = {
+      buffer.putDouble(q.x)
+      buffer.putDouble(q.y)
+      buffer.putDouble(q.z)
+      buffer.putDouble(q.w)
+    }
+
+    /** Reads a Quaternion with full precision */
+    def getQuaternion(): Quaternion = {
+      val x = buffer.getDouble()
+      val y = buffer.getDouble()
+      val z = buffer.getDouble()
+      val w = buffer.getDouble()
+      Quaternion(x, y, z, w)
+    }
+
+    /** Writes an AffineTransform with full precision */
+    def putAffine(affine: AffineTransform): Unit = {
+      putVector3(affine.position)
+      putVector3(affine.scale)
+      putQuaternion(affine.rotation)
+    }
+
+    /** Reads an AffineTransform with full precision */
+    def getAffine(): AffineTransform = {
+      val pos = getVector3()
+      val scale = getVector3()
+      val rot = getQuaternion()
+      AffineTransform(pos, scale, rot)
+    }
+
   }
 }
 

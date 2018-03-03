@@ -16,7 +16,8 @@ class Matrix43Test extends FlatSpec with Matchers {
     val y = Vector3(0.9333333,0.3333333,0.1333333)
     val z = Vector3(-0.3333333,0.6666667,0.6666667)
     val q1 = Quaternion.fromAxes(x, y, z)
-    Matrix43.worldRot(q1, Vector3(1.0, 2.0, 3.0), Vector3(4.0, 5.0, 6.0))
+    val af = AffineTransform(Vector3(4.0, 5.0, 6.0), Vector3(1.0, 2.0, 3.0), q1)
+    Matrix43.affine(af)
   }
 
   val MatB = {
@@ -24,7 +25,8 @@ class Matrix43Test extends FlatSpec with Matchers {
     val y = Vector3(-0.9182390,-0.2704403,0.2893082)
     val z = Vector3(-0.1383648,-0.4654088,-0.8742138)
     val q1 = Quaternion.fromAxes(x, y, z)
-    Matrix43.worldRot(q1, Vector3(-0.3, 0.5, 0.3), Vector3(0.4, 25.0, -7.0))
+    val af = AffineTransform(Vector3(0.4, 25.0, -7.0), Vector3(-0.3, 0.5, 0.3), q1)
+    Matrix43.affine(af)
   }
 
   val MatAB = MatA * MatB
@@ -48,15 +50,39 @@ class Matrix43Test extends FlatSpec with Matchers {
     }
   }
 
-  "worldRot" should "round trip with Quaternion.fromAxes" in {
+  "affine" should "round trip with Quaternion.fromAxes" in {
     val x = Vector3(0.1333333,-0.6666667,0.7333333)
     val y = Vector3(0.9333333,0.3333333,0.1333333)
     val z = Vector3(-0.3333333,0.6666667,0.6666667)
     val q1 = Quaternion.fromAxes(x, y, z)
-    val mat = Matrix43.worldRot(q1, Vector3.One, Vector3.Zero)
+    val mat = Matrix43.affine(Vector3.Zero, Vector3.One, q1)
     assertEqual(x, mat.right)
     assertEqual(y, mat.up)
     assertEqual(z, mat.forward)
+  }
+
+  it should "round trip with advanced fixures" in {
+    {
+      val x = Vector3(0.1333333,0.9333333,-0.3333333)
+      val y = Vector3(-0.6666667,0.3333333,0.6666667)
+      val z = Vector3(0.7333333,0.1333333,0.6666667)
+      val q1 = Quaternion.fromAxes(x, y, z)
+      val mat = Matrix43.affine(Vector3.Zero, Vector3.One, q1)
+      assertEqual(x, mat.right)
+      assertEqual(y, mat.up)
+      assertEqual(z, mat.forward)
+    }
+
+    {
+      val x = Vector3(0.3710692,-0.9182390,-0.1383648)
+      val y = Vector3(-0.8427673,-0.2704403,-0.4654088)
+      val z = Vector3(0.3899371,0.2893082,-0.8742138)
+      val q1 = Quaternion.fromAxes(x, y, z)
+      val mat = Matrix43.affine(Vector3.Zero, Vector3.One, q1)
+      assertEqual(x, mat.right)
+      assertEqual(y, mat.up)
+      assertEqual(z, mat.forward)
+    }
   }
 
   "determinant" should "be one for rotation matrices" in {
@@ -64,12 +90,12 @@ class Matrix43Test extends FlatSpec with Matchers {
     val y = Vector3(0.9333333,0.3333333,0.1333333)
     val z = Vector3(-0.3333333,0.6666667,0.6666667)
     val q1 = Quaternion.fromAxes(x, y, z)
-    val mat = Matrix43.worldRot(q1, Vector3.One, Vector3.Zero)
+    val mat = Matrix43.affine(Vector3.Zero, Vector3.One, q1)
     assert(mat.determinant === 1.0)
   }
 
   it should "be the cube of the scale factor for uniform scaling" in {
-    val mat = Matrix43.worldRot(Quaternion.Identity, Vector3.One * 3.0, Vector3.Zero)
+    val mat = Matrix43.affine(Vector3.Zero, Vector3.One * 3.0, Quaternion.Identity)
     assert(mat.determinant === 3.0*3.0*3.0)
   }
 
@@ -78,7 +104,7 @@ class Matrix43Test extends FlatSpec with Matchers {
     val y = Vector3(0.9333333,0.3333333,0.1333333)
     val z = Vector3(-0.3333333,0.6666667,0.6666667)
     val q1 = Quaternion.fromAxes(x, y, z)
-    val mat = Matrix43.worldRot(q1, Vector3(1.0, 2.5, 7.0), Vector3(-2.0, -5.0, 3.0))
+    val mat = Matrix43.affine(Vector3(-2.0, -5.0, 3.0), Vector3(1.0, 2.5, 7.0), q1)
 
     assertEqualAndAffine(mat * mat.inverse, Matrix43.Identity)
     assertEqualAndAffine(mat.inverse * mat, Matrix43.Identity)
@@ -89,7 +115,7 @@ class Matrix43Test extends FlatSpec with Matchers {
     val y = Vector3(0.9333333,0.3333333,0.1333333)
     val z = Vector3(-0.3333333,0.6666667,0.6666667)
     val q1 = Quaternion.fromAxes(x, y, z)
-    val mat = Matrix43.worldRot(q1, Vector3(1.0, 2.5, 7.0), Vector3(-2.0, -5.0, 3.0))
+    val mat = Matrix43.affine(Vector3(-2.0, -5.0, 3.0), Vector3(1.0, 2.5, 7.0), q1)
 
     assert(mat.inverse.determinant === 1.0 / mat.determinant)
   }

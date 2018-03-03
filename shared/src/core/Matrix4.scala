@@ -294,9 +294,9 @@ class Matrix4 {
     buf.put(offset + 15, m44.toFloat)
   }
 
-  def right: Vector3 = Vector3(m11, m12, m13)
-  def up: Vector3 = Vector3(m21, m22, m23)
-  def forward: Vector3 = Vector3(m31, m32, m33)
+  def right: Vector3 = Vector3(m11, m21, m31)
+  def up: Vector3 = Vector3(m12, m22, m32)
+  def forward: Vector3 = Vector3(m13, m23, m33)
   def translation: Vector3 = Vector3(m14, m24, m34)
 
 }

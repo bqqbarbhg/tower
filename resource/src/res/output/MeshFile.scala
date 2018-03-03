@@ -37,7 +37,6 @@ object MeshFile {
       buffer.putShort(attrib.index.toShort)
     }
 
-
     buffer.put(mesh.vertexData.duplicateEx)
     buffer.put(mesh.indexData.duplicateEx)
 

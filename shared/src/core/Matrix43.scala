@@ -5,9 +5,12 @@ import java.nio.FloatBuffer
 import Matrix43._
 object Matrix43 {
 
+  /** Type alias for mutable matrices */
+  type Unsafe = Matrix43
+
   /** A singleton "identity" matrix. Do not modify! */
   val Identity: Matrix43 = {
-    val m = new Matrix43()
+    val m = new Matrix43.Unsafe()
     m.m11 = 1.0
     m.m22 = 1.0
     m.m33 = 1.0
@@ -15,8 +18,8 @@ object Matrix43 {
   }
 
   /** Create a new instance of an identity matrix. */
-  def makeIdentity: Matrix43 = {
-    val m = new Matrix43()
+  def unsafeIdentity: Matrix43.Unsafe = {
+    val m = new Matrix43.Unsafe()
     m.m11 = 1.0
     m.m22 = 1.0
     m.m33 = 1.0
@@ -25,7 +28,7 @@ object Matrix43 {
 
   /** Rotation around the X axis (angle is in radians) */
   def rotateX(angle: Double): Matrix43 = {
-    val m = Matrix43.makeIdentity
+    val m = Matrix43.unsafeIdentity
     val c = math.cos(angle)
     val s = math.sin(angle)
     m.m22 = c
@@ -37,7 +40,7 @@ object Matrix43 {
 
   /** Rotation around the Y axis (angle is in radians) */
   def rotateY(angle: Double): Matrix43 = {
-    val m = Matrix43.makeIdentity
+    val m = Matrix43.unsafeIdentity
     val c = math.cos(angle)
     val s = math.sin(angle)
     m.m11 = c
@@ -49,16 +52,25 @@ object Matrix43 {
 
   /** Uniform scale */
   def scale(amount: Double): Matrix43 = {
-    val m = new Matrix43()
+    val m = new Matrix43.Unsafe()
     m.m11 = amount
     m.m22 = amount
     m.m33 = amount
     m
   }
 
+  /** Non-uniform scale */
+  def scale(amount: Vector3): Matrix43 = {
+    val m = new Matrix43.Unsafe()
+    m.m11 = amount.x
+    m.m22 = amount.y
+    m.m33 = amount.z
+    m
+  }
+
   /** Translation */
   def translate(amount: Vector3): Matrix43 = {
-    val m = Matrix43.makeIdentity
+    val m = Matrix43.unsafeIdentity
     m.m14 = amount.x
     m.m24 = amount.y
     m.m34 = amount.z
@@ -67,7 +79,7 @@ object Matrix43 {
 
   /** Translation */
   def translate(x: Double, y: Double, z: Double): Matrix43 = {
-    val m = Matrix43.makeIdentity
+    val m = Matrix43.unsafeIdentity
     m.m14 = x
     m.m24 = y
     m.m34 = z
@@ -77,10 +89,10 @@ object Matrix43 {
   /**
     * Unsafe version of `worldRot()`: Mutates argument r!
     */
-  def unsafeWorldRot(r: Matrix43, orientation: Quaternion, scale: Vector3, origin: Vector3 = Vector3.Zero): Unit = {
-    val q = orientation
-    val s = scale
-    val o = origin
+  def unsafeAffine(r: Matrix43, affine: AffineTransform): Unit = {
+    val q = affine.rotation
+    val s = affine.scale
+    val o = affine.position
 
     {
       val ww = q.w*q.w
@@ -96,22 +108,22 @@ object Matrix43 {
     {
       val xy = q.x*q.y
       val zw = q.z*q.w
-      r.m21 = 2.0 * (xy + zw) * s.y
-      r.m12 = 2.0 * (xy - zw) * s.x
+      r.m21 = 2.0 * (xy + zw) * s.x
+      r.m12 = 2.0 * (xy - zw) * s.y
     }
 
     {
       val xz = q.x*q.z
       val yw = q.y*q.w
-      r.m31 = 2.0 * (xz - yw) * s.z
-      r.m13 = 2.0 * (xz + yw) * s.x
+      r.m31 = 2.0 * (xz - yw) * s.x
+      r.m13 = 2.0 * (xz + yw) * s.z
     }
 
     {
       val yz = q.y*q.z
       val xw = q.x*q.w
-      r.m32 = 2.0 * (yz + xw) * s.z
-      r.m23 = 2.0 * (yz - xw) * s.y
+      r.m32 = 2.0 * (yz + xw) * s.y
+      r.m23 = 2.0 * (yz - xw) * s.z
     }
 
     r.m14 = o.x
@@ -122,28 +134,53 @@ object Matrix43 {
   /**
     * Create a transform matrix from scale, rotation, and translation in that order.
     */
-  def worldRot(orientation: Quaternion, scale: Vector3, origin: Vector3 = Vector3.Zero): Matrix43 = {
-    val r = new Matrix43()
-    unsafeWorldRot(r, orientation, scale, origin)
+  def affine(affine: AffineTransform): Matrix43 = {
+    val r = new Matrix43.Unsafe()
+    unsafeAffine(r, affine)
     r
   }
 
-  /** Create the inverse of a world transform having axes `forward`, `right`, `up` and
+  /**
+    * Create a transform matrix from scale, rotation, and translation in that order.
+    */
+  def affine(position: Vector3, scale: Vector3, rotation: Quaternion): Matrix43 = {
+    affine(AffineTransform(position, scale, rotation))
+  }
+
+  /** Create a world transform having axes `x`, `y`, `z` and translation `origin`. */
+  def world(x: Vector3, y: Vector3, z: Vector3, origin: Vector3 = Vector3.Zero): Matrix43 = {
+    val r = new Matrix43.Unsafe()
+    r.m11 = x.x
+    r.m21 = x.y
+    r.m31 = x.z
+    r.m12 = y.x
+    r.m22 = y.y
+    r.m32 = y.z
+    r.m13 = z.x
+    r.m23 = z.y
+    r.m33 = z.z
+    r.m14 = origin.x
+    r.m24 = origin.y
+    r.m34 = origin.z
+    r
+  }
+
+  /** Create the inverse of a world transform having axes `x`, `y`, `z` and
     * translation `origin`. */
-  def inverseWorld(forward: Vector3, right: Vector3, up: Vector3, origin: Vector3 = Vector3.Zero): Matrix43 = {
-    val r = new Matrix43()
-    r.m11 = right.x
-    r.m12 = right.y
-    r.m13 = right.z
-    r.m14 = -origin dot right
-    r.m21 = up.x
-    r.m22 = up.y
-    r.m23 = up.z
-    r.m24 = -origin dot up
-    r.m31 = forward.x
-    r.m32 = forward.y
-    r.m33 = forward.z
-    r.m34 = -origin dot forward
+  def inverseWorld(x: Vector3, y: Vector3, z: Vector3, origin: Vector3 = Vector3.Zero): Matrix43 = {
+    val r = new Matrix43.Unsafe()
+    r.m11 = x.x
+    r.m12 = x.y
+    r.m13 = x.z
+    r.m14 = -origin dot x
+    r.m21 = y.x
+    r.m22 = y.y
+    r.m23 = y.z
+    r.m24 = -origin dot y
+    r.m31 = z.x
+    r.m32 = z.y
+    r.m33 = z.z
+    r.m34 = -origin dot z
     r
   }
 
@@ -153,7 +190,7 @@ object Matrix43 {
     val dir2 = dir.normalize
     val right = (up cross dir2).normalize
     val up2 = dir2 cross right
-    inverseWorld(dir2, right, up2, eye)
+    inverseWorld(right, up2, dir2, eye)
   }
 }
 
@@ -355,9 +392,23 @@ class Matrix43 {
     buf.put(offset + 15, 1.0f)
   }
 
-  def right: Vector3 = Vector3(m11, m12, m13)
-  def up: Vector3 = Vector3(m21, m22, m23)
-  def forward: Vector3 = Vector3(m31, m32, m33)
+  /** Decompose the matrix into an affine transform */
+  def toAffine: AffineTransform = {
+    val pos = Vector3(m14, m24, m34)
+    val scale = Vector3(
+      math.sqrt(m11*m11 + m21*m21 + m31*m31),
+      math.sqrt(m12*m12 + m22*m22 + m32*m32),
+      math.sqrt(m13*m13 + m23*m23 + m33*m33))
+    val x = Vector3(m11, m21, m31) / scale.x
+    val y = Vector3(m12, m22, m32) / scale.y
+    val z = Vector3(m13, m23, m33) / scale.z
+    val rot = Quaternion.fromAxes(x, y, z)
+    AffineTransform(pos, scale, rot)
+  }
+
+  def right: Vector3 = Vector3(m11, m21, m31)
+  def up: Vector3 = Vector3(m12, m22, m32)
+  def forward: Vector3 = Vector3(m13, m23, m33)
   def translation: Vector3 = Vector3(m14, m24, m34)
 }
 
