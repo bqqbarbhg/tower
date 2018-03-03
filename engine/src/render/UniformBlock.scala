@@ -99,9 +99,9 @@ class UniformBlock(val name: String) {
   val serial = UniformBlock.nextSerial()
 
   def sizeInBytes: Int = layoutPosition * 16
+  val uniforms = ArrayBuffer[Uniform]()
 
   private var layoutPosition = 0
-  private val uniforms = ArrayBuffer[Uniform]()
 
   private def push[T <: Uniform](uniform: T): T = {
     uniforms += uniform

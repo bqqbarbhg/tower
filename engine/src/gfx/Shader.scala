@@ -106,6 +106,20 @@ object Shader {
       // General shader header
       builder ++= "#version 330\n"
 
+      // Uniform block macros
+      if (render.opengl.OptsGl.useUniformBlocks) {
+        builder ++= "#define UboBegin(p_name) layout(std140) layout(row_major) uniform p_name {\n"
+        builder ++= "#define Ubo\n"
+        builder ++= "#define UboMat layout(row_major)\n"
+        builder ++= "#define UboEnd() };\n"
+        builder ++= "layout(row_major) uniform;\n"
+      } else {
+        builder ++= "#define UboBegin(p_name)\n"
+        builder ++= "#define Ubo uniform\n"
+        builder ++= "#define UboMat uniform\n"
+        builder ++= "#define UboEnd()\n"
+      }
+
       // Permutation defines
       for ((perm, value) <- (perms zip values)) {
         if ((perm.mask & mask) != 0) {
@@ -144,6 +158,7 @@ object Shader {
     }
 
     makePerms(0, Vector[Int]())
+
 
     new Shader(permutations, permMap.toMap)
   }

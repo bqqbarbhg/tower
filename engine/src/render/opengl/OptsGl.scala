@@ -89,7 +89,10 @@ object OptsGl {
   var vertexMap: MapMode = MapMode.Persistent
   /** If `vertexMap` mode is not supported, fallback to this mode. */
   var vertexMapFallback: MapMode = MapMode.Map
-
+  /** Should the implementation use uniform blocks or direct uniforms */
+  var useUniformBlocks = true
+  /** Should the implementation use only single VAO instead of caching */
+  var useVaoCache = true
   /** Enable glTexStorage if available */
   var useTexStorage: Boolean = true
 }

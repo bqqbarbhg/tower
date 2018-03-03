@@ -17,6 +17,7 @@ object ShaderProgramGl {
   case class UniformBind(serial: Int, shaderIndex: Int)
   case class AttribBind(nameId: Int, shaderIndex: Int)
   case class SamplerBind(index: Int, shaderIndex: Int)
+  case class UniformValueBind(blockSerial: Int, blockOffset: Int, glType: Int, shaderIndex: Int, arraySize: Int)
 
   val AttribRegex = """^a_([A-Za-z0-9]+)$""".r
 
@@ -66,10 +67,39 @@ object ShaderProgramGl {
 
     // -- List active uniform blocks
     val numUniformBlocks = glGetProgrami(program, GL_ACTIVE_UNIFORM_BLOCKS)
-    val uniformMapping = (0 until numUniformBlocks).flatMap(index => {
+    val uboMapping = (0 until numUniformBlocks).flatMap(index => {
       val name = glGetActiveUniformBlockName(program, index)
       glUniformBlockBinding(program, index, index)
       uniforms.find(_.name == name).map(ub => UniformBind(ub.serial, index))
+    }).toArray
+
+    def findUniformInBlock(name: String): Option[(Int, Int)] = {
+      for (block <- uniforms) {
+        for (uniform <- block.uniforms) {
+          if (uniform.name == name) {
+            return Some((block.serial, uniform.offsetInVec4 * 16))
+          }
+        }
+      }
+      None
+    }
+
+    // -- List active uniform values
+    val numUniforms = glGetProgrami(program, GL_ACTIVE_UNIFORMS)
+    val uniformMapping = (0 until numUniforms).flatMap(index => {
+      val psize = stack.ints(0)
+      val ptype = stack.ints(0)
+      var name = glGetActiveUniform(program, index, psize, ptype)
+      val loc = glGetUniformLocation(program, name)
+
+      if (name.contains('['))
+        name = name.take(name.indexOf('['))
+      if (name.startsWith("u_"))
+        name = name.drop(2)
+
+      findUniformInBlock(name).map({ case (serial, offset) =>
+        UniformValueBind(serial, offset, ptype.get(0), loc, psize.get(0))
+      })
     }).toArray
 
     // -- List active attributes
@@ -100,7 +130,7 @@ object ShaderProgramGl {
 
     val serial = serialCounter
     serialCounter += 1
-    new ShaderProgramGl(serial, program, uniformMapping, attribMapping, samplerMapping)
+    new ShaderProgramGl(serial, program, uboMapping, uniformMapping, attribMapping, samplerMapping)
   }
 
   private var serialCounter = 0
@@ -110,6 +140,7 @@ object ShaderProgramGl {
 class ShaderProgramGl(val serial: Int,
                       val program: Int,
                       val uniforms: Array[UniformBind],
+                      val uniformValues: Array[UniformValueBind],
                       val attribs: Array[AttribBind],
                       val samplers: Array[SamplerBind]) {
 

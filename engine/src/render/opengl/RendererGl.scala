@@ -5,12 +5,13 @@ import org.lwjgl.opengl.GL11._
 import org.lwjgl.opengl.GL13._
 import org.lwjgl.opengl.GL15._
 import org.lwjgl.opengl.GL20._
+import org.lwjgl.opengl.GL21._
 import org.lwjgl.opengl.GL30._
 import org.lwjgl.opengl.GL31._
 import org.lwjgl.opengl.GL32._
 import org.lwjgl.opengl.GL33._
-
 import core._
+import org.lwjgl.system.MemoryUtil
 import render._
 
 object RendererGl {
@@ -33,18 +34,20 @@ class RendererGl {
 
   val vaoCache = new VaoCache()
   val samplerCache = new SamplerCache()
-  val uniformAllocator = new UniformAllocator(1024*1024)
+  val uniformAllocator = if (OptsGl.useUniformBlocks) new UniformAllocator(1024*1024) else null
 
   var activeShaderEnabled: Boolean = false
   var activeShader: ShaderProgramGl = null
   var activeUniforms: Array[UniformBlockRefGl] = Array[UniformBlockRefGl]()
+  var activeUniformValues: Array[ByteBuffer] = Array[ByteBuffer]()
   var activeTextures: Array[Int] = Array[Int]()
 
   /** Needs to be called every frame */
   def advanceFrame(): Unit = {
     vaoCache.advanceFrame()
     samplerCache.advanceFrame()
-    uniformAllocator.advanceFrame()
+    if (uniformAllocator != null)
+      uniformAllocator.advanceFrame()
 
     java.util.Arrays.fill(activeUniforms.asInstanceOf[Array[AnyRef]], null)
   }
@@ -61,14 +64,36 @@ class RendererGl {
     * @param writeData Callback that should write the data to its argument
     */
   def pushUniform(uniform: UniformBlock, writeData: ByteBuffer => Unit): Unit = {
-    if (activeUniforms.length <= uniform.serial) {
-      val old = activeUniforms
-      activeUniforms = new Array[UniformBlockRefGl](UniformBlock.maxSerial)
-      java.lang.System.arraycopy(old, 0, activeUniforms, 0, old.length)
-    }
+    if (OptsGl.useUniformBlocks) {
 
-    val ref = uniformAllocator.push(uniform.sizeInBytes, writeData)
-    activeUniforms(uniform.serial) = ref
+      // Uniform block implementation: Write to GPU memory
+      if (activeUniforms.length <= uniform.serial) {
+        val old = activeUniforms
+        activeUniforms = new Array[UniformBlockRefGl](UniformBlock.maxSerial)
+        java.lang.System.arraycopy(old, 0, activeUniforms, 0, old.length)
+      }
+
+      val ref = uniformAllocator.push(uniform.sizeInBytes, writeData)
+      activeUniforms(uniform.serial) = ref
+
+    } else {
+
+      // Old-school uniform implemntation, write virtual block to CPU memory
+      // and upload the uniforms later.
+      if (activeUniformValues.length <= uniform.serial) {
+        val old = activeUniformValues
+        activeUniformValues = new Array[ByteBuffer](UniformBlock.maxSerial)
+        java.lang.System.arraycopy(old, 0, activeUniformValues, 0, old.length)
+      }
+
+      var buf = activeUniformValues(uniform.serial)
+      if (buf == null) {
+        buf = MemoryUtil.memAlloc(uniform.sizeInBytes)
+        activeUniformValues(uniform.serial) = buf
+      }
+
+      writeData(buf.sliceEx)
+    }
   }
 
   def setTexture(sampler: SamplerBlock.USampler2D, texture: TextureHandleGl): Unit = {
@@ -95,9 +120,27 @@ class RendererGl {
       }
     }
 
-    for (uniform <- activeShader.uniforms) {
-      val ref = activeUniforms(uniform.serial)
-      glBindBufferRange(GL_UNIFORM_BUFFER, uniform.shaderIndex, ref.buffer, ref.offset, ref.size)
+    if (OptsGl.useUniformBlocks) {
+
+      for (uniform <- activeShader.uniforms) {
+        val ref = activeUniforms(uniform.serial)
+        glBindBufferRange(GL_UNIFORM_BUFFER, uniform.shaderIndex, ref.buffer, ref.offset, ref.size)
+      }
+
+    } else {
+
+      for (uniform <- activeShader.uniformValues) {
+        val block = activeUniformValues(uniform.blockSerial)
+        val loc = uniform.shaderIndex
+        val off = uniform.blockOffset
+        val num = uniform.arraySize
+        uniform.glType match {
+          case GL_FLOAT_VEC4 => glUniform4fv(loc, block.slicedOffset(off, num * 16).asFloatBuffer)
+          case GL_FLOAT_MAT4x3 => glUniformMatrix4x3fv(loc, true, block.slicedOffset(off, num * 48).asFloatBuffer)
+          case GL_FLOAT_MAT4 => glUniformMatrix4fv(loc, true, block.slicedOffset(off, num * 64).asFloatBuffer)
+        }
+      }
+
     }
   }
 

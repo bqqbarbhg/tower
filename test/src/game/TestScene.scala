@@ -11,6 +11,7 @@ import com.sun.management.GarbageCollectionNotificationInfo
 
 import collection.JavaConverters._
 import core._
+import gfx.Shader.NoPermutations
 import gfx._
 import render._
 import render.UniformBlock
@@ -25,10 +26,20 @@ import scala.io.StdIn
 
 object TestScene extends App {
 
+  println("Version 1.1")
+
   core.StackAllocator.createCurrentThread(16 * 1024 * 1024)
 
-  val testPackage = new DirectoryPackage("data")
-  Package.set(testPackage)
+  val pack = new MultiPackage()
+
+  JarPackage.create("data") match {
+    case Some(jar) => pack.add(jar, 1)
+    case None => // Nop
+  }
+
+  pack.add(new DirectoryPackage("data"), 0)
+
+  Package.set(pack)
 
   object ModelTextures extends SamplerBlock {
     val Diffuse = sampler2D("Diffuse", Sampler.RepeatAnisotropic)
@@ -40,86 +51,32 @@ object TestScene extends App {
     val Bones = mat4x3("Bones", 24)
   }
 
-  val VertexShader =
-    """
-#version 150
-
-in vec3 a_Position;
-in vec2 a_TexCoord;
-in vec3 a_Normal;
-in vec3 a_Tangent;
-in vec3 a_Bitangent;
-in ivec4 a_BoneIndex;
-in vec4 a_BoneWeight;
-
-layout(row_major)
-layout(std140)
-uniform ModelUniform {
-  mat4 u_ViewProjection;
-  mat4x3 u_Bones[24];
-};
-
-out vec2 v_TexCoord;
-out vec3 v_TnX;
-out vec3 v_TnY;
-out vec3 v_TnZ;
-
-void main() {
-  mat4x3 world =
-     u_Bones[a_BoneIndex.x] * a_BoneWeight.x +
-     u_Bones[a_BoneIndex.y] * a_BoneWeight.y +
-     u_Bones[a_BoneIndex.z] * a_BoneWeight.z +
-     u_Bones[a_BoneIndex.w] * a_BoneWeight.w ;
-
-  vec3 worldPos = world * vec4(a_Position, 1.0);
-  gl_Position = u_ViewProjection * vec4(worldPos, 1.0);
-  v_TexCoord = a_TexCoord;
-
-  v_TnX = world * vec4(a_Tangent, 0.0);
-  v_TnY = world * vec4(a_Bitangent, 0.0);
-  v_TnZ = world * vec4(a_Normal, 0.0);
-}
-    """
-
-  val FragmentShader =
-    """
-#version 150
-
-uniform sampler2D u_Diffuse;
-uniform sampler2D u_Normal;
-
-in vec3 v_TnX;
-in vec3 v_TnY;
-in vec3 v_TnZ;
-
-in vec2 v_TexCoord;
-out vec4 o_Color;
-
-void main() {
-  vec3 normal;
-  normal.xy = texture(u_Normal, v_TexCoord).rg - vec2(0.5);
-  normal.z = sqrt(clamp(1.0 - normal.x*normal.x - normal.y*normal.y, 0.0, 1.0)) * 0.5;
-  normal = normalize(normal);
-  normal = normal.x * normalize(v_TnX)
-         + normal.y * normalize(-v_TnY)
-         + normal.z * normalize(v_TnZ);
-
-  float lightA = max(dot(normal, normalize(vec3(1.0, 1.0, -1.0))), 0.0);
-  vec3 ambient = mix(vec3(71.0, 67.0, 34.0) / 255.0, vec3(118.0, 139.0, 214.0) / 255.0, normal.y * 0.5 + 0.5);
-
-  vec3 color = ambient * 0.5 + lightA * vec3(0.5);
-
-  o_Color = vec4(pow(color, vec3(1.0 / 2.2)), 1.0);
-}
-    """
-
-
   val arg = util.ArgumentParser.parse(args)
+
+  if (arg.flag("gl-no-ubo")) OptsGl.useUniformBlocks = false
+  if (arg.flag("gl-no-vao")) OptsGl.useVaoCache = false
 
   if (arg.flag("gl-compat")) {
     OptsGl.uniformMap = MapMode.SubData
     OptsGl.vertexMap = MapMode.SubData
     OptsGl.useTexStorage = false
+    OptsGl.useUniformBlocks = false
+    OptsGl.useVaoCache = false
+  }
+
+  if (arg.flag("debug")) {
+    def printInfo(name: String, value: String): Unit = {
+      println(f"$name%-20s = $value")
+    }
+
+    println("GL configuration:")
+    printInfo("vertexMap", OptsGl.vertexMap.toString)
+    printInfo("vertexMapFallback", OptsGl.vertexMapFallback.toString)
+    printInfo("uniformMap", OptsGl.uniformMap.toString)
+    printInfo("uniformMapFallback", OptsGl.uniformMapFallback.toString)
+    printInfo("useTexStorage", OptsGl.useTexStorage.toString)
+    printInfo("useUniformBlocks", OptsGl.useUniformBlocks.toString)
+    printInfo("useVaoCache", OptsGl.useVaoCache.toString)
   }
 
   if (arg.flag("listen-gc")) {
@@ -144,7 +101,7 @@ void main() {
 
   val renderer = Renderer.initialize()
 
-  val shader = ShaderProgram.compile(VertexShader, FragmentShader, ModelTextures, ModelUniform)
+  val shader = Shader.load("test/test_mesh", NoPermutations, ModelTextures, ModelUniform)
 
   val viewProjection = (
       Matrix4.perspective(1280.0 / 720.0, math.Pi / 3.0, 0.01, 1000.0)
@@ -193,22 +150,23 @@ void main() {
     renderer.setDepthMode(true, true)
     renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
 
-    renderer.setShader(shader)
+    shader.use()
 
     renderer.setDepthMode(true, true)
     renderer.setBlend(false)
 
     modelState.worldTransform = world
-    animState.time = (time * 1.5) % anim.duration
+    animState.time = time % anim.duration
     animState.alpha = math.sin(time) * 0.5 + 0.5
 
-    // animState.apply(modelState)
+    animState.apply(modelState)
 
     modelState.updateMatrices()
 
     for (mesh <- model.meshes) {
       renderer.setTexture(ModelTextures.Diffuse, mesh.material.albedoTex.texture)
       renderer.setTexture(ModelTextures.Normal, mesh.material.normalTex.texture)
+
       for (part <- mesh.parts) {
 
         renderer.pushUniform(ModelUniform, u => {

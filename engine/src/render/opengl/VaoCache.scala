@@ -34,6 +34,8 @@ class VaoCache {
 
   val LruWaitFrames = 8
 
+  private var cacheDisabledGlobalVao = 0
+
   private var currentFrame: Int = 0
   private val entries = new mutable.HashMap[Tag, Entry]()
 
@@ -88,6 +90,16 @@ class VaoCache {
     * queue.
     */
   def bindVertexBuffers(shader: ShaderProgramGl, b0: VertexBufferGl, b1: VertexBufferGl): Unit = {
+
+    // If disabled, just update a single VAO
+    if (!OptsGl.useVaoCache) {
+      if (cacheDisabledGlobalVao == 0) {
+        cacheDisabledGlobalVao = glGenVertexArrays()
+      }
+      configureVao(cacheDisabledGlobalVao, shader, b0, b1)
+      return
+    }
+
     val tag = Tag(shader.serial,
       if (b0 != null) b0.serial else 0,
       if (b1 != null) b1.serial else 0)
