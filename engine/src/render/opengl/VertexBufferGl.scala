@@ -115,12 +115,12 @@ class VertexBufferGl(val spec: VertexSpec, val numVertices: Int, val dynamic: Bo
       case MapMode.Map =>
         glFlushMappedBufferRange(GL_ARRAY_BUFFER, 0, numVertices * spec.sizeInBytes)
         glUnmapBuffer(GL_ARRAY_BUFFER)
-        MemoryUtil.memFree(buf)
 
       case MapMode.SubData =>
         buf.position(0)
         buf.limit(numVertices * spec.sizeInBytes)
         glBufferSubData(GL_ARRAY_BUFFER, loc, buf)
+        MemoryUtil.memFree(buf)
 
       case MapMode.Persistent =>
         glFlushMappedBufferRange(GL_ARRAY_BUFFER, loc, numVertices * spec.sizeInBytes)
