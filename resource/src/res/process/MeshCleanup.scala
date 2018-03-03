@@ -19,7 +19,7 @@ object MeshCleanup {
   def normalizeBoneWeights(mesh: Mesh): Unit = {
     for (vert <- mesh.vertices) {
       val sum = vert.bones.map(_.weight).sum
-      vert.bones.map(b => b.copy(weight = b.weight / sum))
+      vert.bones = vert.bones.map(b => b.copy(weight = b.weight / sum))
     }
   }
 
