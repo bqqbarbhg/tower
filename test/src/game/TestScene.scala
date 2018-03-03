@@ -26,7 +26,7 @@ import scala.io.StdIn
 
 object TestScene extends App {
 
-  println("Version 1.1")
+  println("Version 1.3")
 
   core.StackAllocator.createCurrentThread(16 * 1024 * 1024)
 
@@ -98,6 +98,12 @@ object TestScene extends App {
 
   val debug = arg.flag("debug")
   AppWindow.initialize(1280, 720, "Test window", debug)
+
+  val device = GraphicsDevice.get
+  println(s"OS: ${java.lang.System.getProperty("os.name")}")
+  println(s"Version: ${device.version}")
+  println(s"Vendor: ${device.vendor}")
+  println(s"Driver: ${device.driver}")
 
   val renderer = Renderer.initialize()
 
