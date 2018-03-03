@@ -47,12 +47,16 @@ object BufferUtils {
     def readFrom(stream: InputStream): Unit = {
       val chunk = new Array[Byte](4096)
 
-      var toRead = math.min(chunk.length, math.max(buffer.remaining, 1))
+      if (buffer.remaining == 0) return
+
+      var toRead = math.min(chunk.length, buffer.remaining)
       var num = stream.read(chunk, 0, toRead)
       while (num > 0) {
-        buffer.put(chunk, 0, toRead)
-        toRead = math.min(chunk.length, math.max(buffer.remaining, 1))
-        num = stream.read(chunk, 0, chunk.length)
+        buffer.put(chunk, 0, num)
+        if (buffer.remaining == 0) return
+
+        toRead = math.min(chunk.length, buffer.remaining)
+        num = stream.read(chunk, 0, toRead)
       }
     }
 
