@@ -108,7 +108,7 @@ object Shader {
 
       // Uniform block macros
       if (render.opengl.OptsGl.useUniformBlocks) {
-        builder ++= "#define UboBegin(p_name) layout(std140) layout(row_major) uniform p_name {\n"
+        builder ++= "#define UboBegin(p_name) layout(std140, row_major) uniform p_name {\n"
         builder ++= "#define Ubo\n"
         builder ++= "#define UboMat layout(row_major)\n"
         builder ++= "#define UboEnd() };\n"
