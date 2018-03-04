@@ -30,6 +30,15 @@ object TestScene extends App {
 
   core.StackAllocator.createCurrentThread(16 * 1024 * 1024)
 
+  val alOutput = new audio.output.OpenAlOutput(44100, true)
+  val fileOutput = new audio.output.FileAudioOutput("audiodump.bin")
+  val audioOutput = new audio.output.MultiAudioOutput(
+    Seq(
+      alOutput,
+      fileOutput,
+    )
+  )
+
   val pack = new MultiPackage()
 
   JarPackage.create("data") match {
@@ -98,6 +107,101 @@ object TestScene extends App {
 
   val debug = arg.flag("debug")
   AppWindow.initialize(1280, 720, "Test window", debug)
+
+  @volatile var closeAudio: Boolean = false
+
+  var audioTime = 0.0
+  def renderAudio(buffer: Array[Float], numFrames: Int): Unit = {
+    for (i <- 0 until numFrames) {
+      val s = i * 2
+      audioTime += 1.0 / 44100.0
+
+      val f = math.sin(audioTime * math.Pi * 2 * 440.0) * 0.2
+      buffer(s + 0) = f.toFloat
+      buffer(s + 1) = f.toFloat
+    }
+  }
+
+  val audioThread = new Thread {
+    override def run(): Unit = {
+      core.StackAllocator.createCurrentThread(2 * 1024 * 1024)
+      audioOutput.open()
+
+      val MaxAudioLatency = 44100 / 10
+      var framesWritten: Long = 0
+
+      val BeginSilenceLength = 1500
+      val EndSilenceLength = 1500
+      val FadeInLength = 500
+      val FadeOutLength = 500
+
+      val ChunkSize = 1000
+      val chunk = new Array[Float](ChunkSize * 2)
+
+      {
+        java.util.Arrays.fill(chunk, 0.0f)
+        var silenceWritten = 0
+        while (silenceWritten < BeginSilenceLength) {
+          val toWrite = math.min(BeginSilenceLength - silenceWritten, ChunkSize)
+          framesWritten += toWrite
+          audioOutput.write(chunk, toWrite)
+          silenceWritten += toWrite
+        }
+      }
+
+      renderAudio(chunk, FadeInLength)
+      framesWritten += FadeInLength
+      for (i <- 0 until FadeInLength) {
+        val s = i * 2
+        val fade = i.toFloat / FadeInLength.toFloat
+        chunk(s + 0) *= fade
+        chunk(s + 1) *= fade
+      }
+      audioOutput.write(chunk, FadeInLength)
+
+      audioOutput.start()
+
+      while (!closeAudio) {
+        val playPos = audioOutput.playbackFrame
+        val lead = framesWritten - playPos
+        val maxWrite = math.max(MaxAudioLatency - lead, 0)
+        if (maxWrite > 0) {
+          val toWrite = math.min(maxWrite, ChunkSize).toInt
+          renderAudio(chunk, toWrite)
+          framesWritten += toWrite
+          audioOutput.write(chunk, toWrite)
+        } else {
+          Thread.sleep(5)
+        }
+      }
+
+      renderAudio(chunk, FadeOutLength)
+      framesWritten += FadeOutLength
+      for (i <- 0 until FadeOutLength) {
+        val s = i * 2
+        val fade = 1.0f - i.toFloat / FadeOutLength.toFloat
+        chunk(s + 0) *= fade
+        chunk(s + 1) *= fade
+      }
+      audioOutput.write(chunk, FadeOutLength)
+
+      {
+        java.util.Arrays.fill(chunk, 0.0f)
+        var silenceWritten = 0
+        while (silenceWritten < EndSilenceLength) {
+          val toWrite = math.min(EndSilenceLength - silenceWritten, ChunkSize)
+          framesWritten += toWrite
+          audioOutput.write(chunk, toWrite)
+          silenceWritten += toWrite
+        }
+      }
+
+      println("Closing audio")
+      audioOutput.close()
+    }
+  }
+  audioThread.start()
+
 
   val device = GraphicsDevice.get
   println(s"OS: ${java.lang.System.getProperty("os.name")}")
@@ -239,6 +343,9 @@ object TestScene extends App {
     }
 
   }
-
   AppWindow.unload()
+
+  closeAudio = true
+  audioThread.join()
+
 }

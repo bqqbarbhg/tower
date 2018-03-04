@@ -43,6 +43,8 @@ class OpenAlOutput(val sampleRate: Int, val debug: Boolean) extends AudioOutput 
   private var numBuffersQueued = 0
   private var numFramesPlayed = 0
 
+  private var shouldPlay = false
+
   /** Check for AL errors */
   private def check(): Unit = {
     if (!debug) return
@@ -52,19 +54,20 @@ class OpenAlOutput(val sampleRate: Int, val debug: Boolean) extends AudioOutput 
 
   /** Unqueue all the buffers that are free */
   private def unqueueBuffers(): Unit = withStack {
-    if (numBuffersQueued == 0) return
-    check()
+    if (numBuffersQueued > 0) {
+      check()
 
-    var numFree = alGetSourcei(source, AL_BUFFERS_PROCESSED)
-    val bufs = alloca(numFree * 4).asIntBuffer
-    alSourceUnqueueBuffers(source, bufs)
-    check()
+      var numFree = alGetSourcei(source, AL_BUFFERS_PROCESSED)
+      val bufs = alloca(numFree * 4).asIntBuffer
+      alSourceUnqueueBuffers(source, bufs)
+      check()
 
-    for (i <- 0 until numFree) {
-      bufferPool.push(bufs.get(i))
+      for (i <- 0 until numFree) {
+        bufferPool.push(bufs.get(i))
+      }
+      numBuffersQueued -= numFree
+      numFramesPlayed += FramesPerChunk * numFree
     }
-    numBuffersQueued -= numFree
-    numFramesPlayed += FramesPerChunk * numFree
   }
 
   /** Write the contents of `chunkBuffer` to OpenAL */
@@ -91,23 +94,35 @@ class OpenAlOutput(val sampleRate: Int, val debug: Boolean) extends AudioOutput 
     // Make sure the source is playing
     val state = alGetSourcei(source, AL_SOURCE_STATE)
     check()
-    if (state != AL_PLAYING) {
+    if (state != AL_PLAYING && shouldPlay) {
+      if (debug) {
+        println("OpenAL warning: Source ran out and will be restarted.")
+      }
+
       alSourcePlay(source)
       check()
     }
 
     // Reset the size of the chunk buffer
     chunkBufferNumFrames = 0
+    numBuffersQueued += 1
   }
 
   /** Initialize AL and allocate memory */
-  def open(): Unit = {
+  override def open(): Unit = {
     chunkBuffer = MemoryUtil.memAllocShort(SamplesPerChunk)
 
     val deviceName = alcGetString(0, ALC_DEFAULT_DEVICE_SPECIFIER)
     device = alcOpenDevice(deviceName)
     context = alcCreateContext(device, Array(0))
+    if (debug) {
+      val error = alcGetError(device)
+      assert(error == 0, s"OpenAL context error: $error")
+    }
+
     alcMakeContextCurrent(context)
+    val alcCapabilities = ALC.createCapabilities(device)
+    val alCapabilities = AL.createCapabilities(alcCapabilities)
     check()
 
     source = alGenSources()
@@ -115,7 +130,7 @@ class OpenAlOutput(val sampleRate: Int, val debug: Boolean) extends AudioOutput 
   }
 
   /** Unqueue all buffers, close AL, and free memory */
-  def close(): Unit = {
+  override def close(): Unit = {
     check()
 
     // Write the pending data in the chunk buffer (if not empty)
@@ -155,17 +170,35 @@ class OpenAlOutput(val sampleRate: Int, val debug: Boolean) extends AudioOutput 
     check()
 
     // Close the source, context and device
-    alSourceStop(source);       check()
-    alDeleteSources(source);    check()
-    alcDestroyContext(context); check()
-    alcCloseDevice(device);     check()
+    if (source != 0) {
+      alSourceStop(source);    check()
+      alDeleteSources(source); check()
+    }
+
+    // Detach the current context
+    alcMakeContextCurrent(0)
+
+    // Release the context and the device
+    alcDestroyContext(context)
+    if (debug) {
+      val error = alcGetError(device)
+      assert(error == 0, s"OpenAL context error: $error")
+    }
+
+    alcCloseDevice(device)
 
     MemoryUtil.memFree(chunkBuffer)
     chunkBuffer = null
   }
 
+  /** Start the source and flag it to be restarted if it runs out */
+  override def start(): Unit = {
+    alSourcePlay(source)
+    shouldPlay = true
+  }
+
   /** Write data to buffers and queue them */
-  def write(data: Array[Float], numFrames: Int): Unit = {
+  override def write(data: Array[Float], numFrames: Int): Unit = {
     // Unqueue buffers to potentially re-use buffers
     unqueueBuffers()
 
@@ -194,7 +227,7 @@ class OpenAlOutput(val sampleRate: Int, val debug: Boolean) extends AudioOutput 
     }
   }
 
-  def playbackFrame: Long = {
+  override def playbackFrame: Long = {
     // Unqueue buffers to update playback cursor
     unqueueBuffers()
     numFramesPlayed

@@ -23,6 +23,12 @@ trait AudioOutput {
   def close(): Unit
 
   /**
+    * Signals the audio output that it should start playing the buffered sounds.
+    * Implementations may start immediately after `open()` and ignore this.
+    */
+  def start(): Unit
+
+  /**
     * Write sample data to the audio output.
     *
     * @param data Interleaved stereo PCM data with the range [-1.0, 1.0]
