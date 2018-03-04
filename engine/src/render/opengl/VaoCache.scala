@@ -17,6 +17,7 @@ object VaoCache {
     var tag: Tag = null
     var lastFrameUsed: Int = 0
     var vao: Int = 0
+    var mask: Int = 0
 
     var prev: Entry = null
     var next: Entry = null
@@ -35,6 +36,7 @@ class VaoCache {
   val LruWaitFrames = 8
 
   private var cacheDisabledGlobalVao = 0
+  private var cacheDisabledGlobalMask = 0
 
   private var currentFrame: Int = 0
   private val entries = new mutable.HashMap[Tag, Entry]()
@@ -42,15 +44,20 @@ class VaoCache {
   private var lruHead: Entry = null
   private var lruTail: Entry = null
 
-  private def configureVertexBuffer(shader: ShaderProgramGl, buf: VertexBufferGl): Unit = {
+  private def configureVertexBuffer(maskIn: Int, shader: ShaderProgramGl, buf: VertexBufferGl): Int = {
     import VertexSpec.DataFmt._
+    var mask = 0
     val stride = buf.spec.sizeInBytes
     var offset = 0
     glBindBuffer(GL_ARRAY_BUFFER, buf.buffer)
     for (attrib <- buf.spec.attribs) {
       val ix = shader.getAttributeIndex(attrib.nameInShader)
       if (ix >= 0) {
-        glEnableVertexAttribArray(ix)
+        val bit = 1 << ix
+        if ((maskIn & bit) == 0) {
+          glEnableVertexAttribArray(ix)
+        }
+        mask |= bit
         val num = attrib.num
         attrib.fmt match {
           case F32  => glVertexAttribPointer (ix, num, GL_FLOAT,          false, stride, offset)
@@ -66,13 +73,30 @@ class VaoCache {
       }
       offset += attrib.sizeInBytes
     }
+
+    mask
   }
 
-  private def configureVao(vao: Int, shader: ShaderProgramGl, b0: VertexBufferGl, b1: VertexBufferGl): Unit = {
+  private def configureVao(maskIn: Int, vao: Int, shader: ShaderProgramGl, b0: VertexBufferGl, b1: VertexBufferGl): Int = {
+    var mask0 = 0
+    var mask1 = 0
+
     glBindVertexArray(vao)
-    for (i <- 0 until 8) glDisableVertexAttribArray(i)
-    if (b0 != null) configureVertexBuffer(shader, b0)
-    if (b1 != null) configureVertexBuffer(shader, b1)
+    if (b0 != null) mask0 = configureVertexBuffer(maskIn, shader, b0)
+    if (b1 != null) mask1 = configureVertexBuffer(maskIn, shader, b1)
+    assert((mask0 & mask1) == 0, "Vertex array specified in multiple streams")
+
+    val mask = mask0 | mask1
+
+    var toDisable = maskIn & ~mask
+    while (toDisable != 0) {
+      val ix = java.lang.Integer.numberOfTrailingZeros(toDisable)
+      val bit = 1 << ix
+      toDisable &= ~bit
+      glDisableVertexAttribArray(ix)
+    }
+
+    mask
   }
 
   /** Needs to be called every frame */
@@ -96,7 +120,7 @@ class VaoCache {
       if (cacheDisabledGlobalVao == 0) {
         cacheDisabledGlobalVao = glGenVertexArrays()
       }
-      configureVao(cacheDisabledGlobalVao, shader, b0, b1)
+      cacheDisabledGlobalMask = configureVao(cacheDisabledGlobalMask, cacheDisabledGlobalVao, shader, b0, b1)
       return
     }
 
@@ -122,7 +146,7 @@ class VaoCache {
       }
 
       entry.tag = tag
-      configureVao(entry.vao, shader, b0, b1)
+      entry.mask = configureVao(entry.mask, entry.vao, shader, b0, b1)
 
       entry
     })
