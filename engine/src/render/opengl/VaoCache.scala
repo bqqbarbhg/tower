@@ -11,7 +11,7 @@ import VaoCache._
 
 object VaoCache {
 
-  private case class Tag(shader: Int, b0: Int, b1: Int)
+  private case class Tag(shader: Int, b0: Int, b1: Int, ib: Int)
 
   private class Entry {
     var tag: Tag = null
@@ -77,7 +77,7 @@ class VaoCache {
     mask
   }
 
-  private def configureVao(maskIn: Int, vao: Int, shader: ShaderProgramGl, b0: VertexBufferGl, b1: VertexBufferGl): Int = {
+  private def configureVao(maskIn: Int, vao: Int, shader: ShaderProgramGl, b0: VertexBufferGl, b1: VertexBufferGl, ib: IndexBufferGl): Int = {
     var mask0 = 0
     var mask1 = 0
 
@@ -85,6 +85,9 @@ class VaoCache {
     if (b0 != null) mask0 = configureVertexBuffer(maskIn, shader, b0)
     if (b1 != null) mask1 = configureVertexBuffer(maskIn, shader, b1)
     assert((mask0 & mask1) == 0, "Vertex array specified in multiple streams")
+
+    if (ib != null) glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib.buffer)
+    else            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
 
     val mask = mask0 | mask1
 
@@ -113,20 +116,21 @@ class VaoCache {
     * in `LruWaitFrames` it is possible to reclaim in a least-recently-used
     * queue.
     */
-  def bindVertexBuffers(shader: ShaderProgramGl, b0: VertexBufferGl, b1: VertexBufferGl): Unit = {
+  def bindVertexBuffers(shader: ShaderProgramGl, b0: VertexBufferGl, b1: VertexBufferGl, ib: IndexBufferGl): Unit = {
 
     // If disabled, just update a single VAO
     if (!OptsGl.useVaoCache) {
       if (cacheDisabledGlobalVao == 0) {
         cacheDisabledGlobalVao = glGenVertexArrays()
       }
-      cacheDisabledGlobalMask = configureVao(cacheDisabledGlobalMask, cacheDisabledGlobalVao, shader, b0, b1)
+      cacheDisabledGlobalMask = configureVao(cacheDisabledGlobalMask, cacheDisabledGlobalVao, shader, b0, b1, ib)
       return
     }
 
     val tag = Tag(shader.serial,
       if (b0 != null) b0.serial else 0,
-      if (b1 != null) b1.serial else 0)
+      if (b1 != null) b1.serial else 0,
+      if (ib != null) ib.serial else 0)
 
     val entry = entries.getOrElseUpdate(tag, {
 
@@ -146,7 +150,7 @@ class VaoCache {
       }
 
       entry.tag = tag
-      entry.mask = configureVao(entry.mask, entry.vao, shader, b0, b1)
+      entry.mask = configureVao(entry.mask, entry.vao, shader, b0, b1, ib)
 
       entry
     })

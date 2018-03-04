@@ -180,14 +180,12 @@ class RendererGl {
 
   def drawElements(num: Int, ib: IndexBufferGl, vb0: VertexBufferGl, vb1: VertexBufferGl = null, baseVertex: Int = 0): Unit = {
     applyState()
-    vaoCache.bindVertexBuffers(activeShader, vb0, vb1)
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib.buffer)
+    vaoCache.bindVertexBuffers(activeShader, vb0, vb1, ib)
     if (baseVertex != 0) {
       glDrawElementsBaseVertex(GL_TRIANGLES, num, GL_UNSIGNED_SHORT, 0, baseVertex)
     } else {
       glDrawElements(GL_TRIANGLES, num, GL_UNSIGNED_SHORT, 0)
     }
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
     glBindVertexArray(0)
   }
 
