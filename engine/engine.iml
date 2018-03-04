@@ -48,5 +48,18 @@
         <jarDirectory url="file://$MODULE_DIR$/../external/lwjgl/lwjgl-glfw" recursive="false" type="SOURCES" />
       </library>
     </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="file://$MODULE_DIR$/../external/lwjgl/lwjgl-openal" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="file://$MODULE_DIR$/../external/lwjgl/lwjgl-openal" />
+        </SOURCES>
+        <jarDirectory url="file://$MODULE_DIR$/../external/lwjgl/lwjgl-openal" recursive="false" />
+        <jarDirectory url="file://$MODULE_DIR$/../external/lwjgl/lwjgl-openal" recursive="false" type="SOURCES" />
+      </library>
+    </orderEntry>
   </component>
 </module>
