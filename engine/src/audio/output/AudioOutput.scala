@@ -1,6 +1,4 @@
-package audio.ouptut
-
-import AudioOutput._
+package audio.output
 
 /**
   * An abstract device that audio data can be written to.

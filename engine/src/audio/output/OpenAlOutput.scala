@@ -77,8 +77,8 @@ class OpenAlOutput(val sampleRate: Int, val debug: Boolean) extends AudioOutput 
       bufferPool.pop()
     } else {
       alGenBuffers()
-      check()
     }
+    check()
 
     // Copy the data to the buffer
     alBufferData(buffer, AL_FORMAT_STEREO16, chunkBuffer, sampleRate)
@@ -181,7 +181,7 @@ class OpenAlOutput(val sampleRate: Int, val debug: Boolean) extends AudioOutput 
       var dstBase = chunkBufferNumFrames * 2
       while (i < samplesToWrite) {
         val sample = data(srcBase + i)
-        val sampleI = clamp((sample * 32767.0f).toInt, –32767, 32767)
+        val sampleI = clamp((sample * 32767.0f).toInt, -32767, 32767)
         chunkBuffer.put(dstBase + i, sampleI.toShort)
         i += 1
       }
