@@ -8,7 +8,7 @@ import javax.management.openmbean.CompositeData
 import javax.management.{Notification, NotificationEmitter, NotificationListener}
 
 import audio._
-import audio.effect.Limiter
+import audio.effect.{Limiter, SimpleLowPass}
 import com.sun.management.GarbageCollectionNotificationInfo
 
 import collection.JavaConverters._
@@ -115,8 +115,10 @@ object TestScene extends App {
 
   val mixer = new Mixer()
 
-  mixer.add(musicInstance)
-  mixer.add(soundInstance)
+  val lowPass = new SimpleLowPass(soundInstance, 0.99)
+
+  mixer.add(lowPass)
+  // mixer.add(soundInstance)
 
   soundInstance.volume = 0.0
   soundInstance.copyParameters()
