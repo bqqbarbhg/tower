@@ -12,16 +12,38 @@ object UniformBlock {
     * Uniform variable passed to the shader.
     *
     * @param name Name of the uniform in the shader
-    * @param offsetInVec4 Offset of the uniform (in units of vec4 ie. 16 bytes)
+    * @param offsetInBytes Offset of the uniform in bytes
     * @param arraySize Number of elements in an array (0 for scalar)
     */
-  sealed abstract class Uniform(val name: String, val offsetInVec4: Int, val arraySize: Int) {
-    def elementSizeInVec4: Int
-    def sizeInVec4: Int = math.max(arraySize, 1) * elementSizeInVec4
+  sealed abstract class Uniform(val name: String, var offsetInBytes: Int, val arraySize: Int) {
+
+    protected var arrayStrideInBytes = elementSizeInBytes
+    protected var matrixStrideInBytes = 16
+
+    /** Is the uniform some kind of a matrix */
+    def isMatrix: Boolean
+
+    /**
+      * Update the layout of this uniform with queried values. Not necessary
+      * when using std140, as the precomputed layout matches it.
+      *
+      * @param offset Offset from the beginning of the block in bytes
+      * @param arrayStride Distance between elements in an array in bytes
+      * @param matrixStride Distance between rows/columns of a matrix in bytes
+      */
+    def updateLayout(offset: Int, arrayStride: Int, matrixStride: Int): Unit = {
+      offsetInBytes = offset
+      arrayStrideInBytes = arrayStride
+      matrixStrideInBytes = matrixStride
+    }
+
+    def elementSizeInBytes: Int
+    def sizeInBytes: Int = math.max(arraySize, 1) * elementSizeInBytes
   }
 
   class UVec4(name: String, offset: Int, array: Int) extends Uniform(name, offset, array) {
-    def elementSizeInVec4: Int = 1
+    override def isMatrix: Boolean = false
+    override def elementSizeInBytes: Int = 16
 
     def setSrgb(buffer: ByteBuffer, color: Color): Unit = setSrgb(buffer, 0, color)
     def setSrgb(buffer: ByteBuffer, index: Int, color: Color): Unit = {
@@ -33,57 +55,66 @@ object UniformBlock {
 
     def set(buffer: ByteBuffer, x: Float, y: Float, z: Float, w: Float): Unit = set(buffer, 0, x, y, z, w)
     def set(buffer: ByteBuffer, index: Int, x: Float, y: Float, z: Float, w: Float): Unit = {
-      val base = offsetInVec4 * 16 + index * 16
-      buffer.putFloat(base + 0 *4, x)
-      buffer.putFloat(base + 1 *4, y)
-      buffer.putFloat(base + 2 *4, z)
-      buffer.putFloat(base + 3 *4, w)
+      val base = offsetInBytes + index * arrayStrideInBytes
+      buffer.putFloat(base + 0*4, x)
+      buffer.putFloat(base + 1*4, y)
+      buffer.putFloat(base + 2*4, z)
+      buffer.putFloat(base + 3*4, w)
     }
   }
 
   class UMat4(name: String, offset: Int, array: Int) extends Uniform(name, offset, array) {
-    def elementSizeInVec4: Int = 4
+    override def isMatrix: Boolean = true
+    override def elementSizeInBytes: Int = 64
 
     def set(buffer: ByteBuffer, value: Matrix4): Unit = set(buffer, 0, value)
     def set(buffer: ByteBuffer, index: Int, value: Matrix4): Unit = {
-      val base = offsetInVec4 * 16 + index * 64
-      buffer.putFloat(base + 0 *4, value.m11.toFloat)
-      buffer.putFloat(base + 1 *4, value.m12.toFloat)
-      buffer.putFloat(base + 2 *4, value.m13.toFloat)
-      buffer.putFloat(base + 3 *4, value.m14.toFloat)
-      buffer.putFloat(base + 4 *4, value.m21.toFloat)
-      buffer.putFloat(base + 5 *4, value.m22.toFloat)
-      buffer.putFloat(base + 6 *4, value.m23.toFloat)
-      buffer.putFloat(base + 7 *4, value.m24.toFloat)
-      buffer.putFloat(base + 8 *4, value.m31.toFloat)
-      buffer.putFloat(base + 9 *4, value.m32.toFloat)
-      buffer.putFloat(base + 10*4, value.m33.toFloat)
-      buffer.putFloat(base + 11*4, value.m34.toFloat)
-      buffer.putFloat(base + 12*4, value.m41.toFloat)
-      buffer.putFloat(base + 13*4, value.m42.toFloat)
-      buffer.putFloat(base + 14*4, value.m43.toFloat)
-      buffer.putFloat(base + 15*4, value.m44.toFloat)
+      val base = offsetInBytes + index * arrayStrideInBytes
+      var b = base
+      buffer.putFloat(b + 0*4, value.m11.toFloat)
+      buffer.putFloat(b + 1*4, value.m12.toFloat)
+      buffer.putFloat(b + 2*4, value.m13.toFloat)
+      buffer.putFloat(b + 3*4, value.m14.toFloat)
+      b += matrixStrideInBytes
+      buffer.putFloat(b + 0*4, value.m21.toFloat)
+      buffer.putFloat(b + 1*4, value.m22.toFloat)
+      buffer.putFloat(b + 2*4, value.m23.toFloat)
+      buffer.putFloat(b + 3*4, value.m24.toFloat)
+      b += matrixStrideInBytes
+      buffer.putFloat(b + 0*4, value.m31.toFloat)
+      buffer.putFloat(b + 1*4, value.m32.toFloat)
+      buffer.putFloat(b + 2*4, value.m33.toFloat)
+      buffer.putFloat(b + 3*4, value.m34.toFloat)
+      b += matrixStrideInBytes
+      buffer.putFloat(b + 0*4, value.m41.toFloat)
+      buffer.putFloat(b + 1*4, value.m42.toFloat)
+      buffer.putFloat(b + 2*4, value.m43.toFloat)
+      buffer.putFloat(b + 3*4, value.m44.toFloat)
     }
   }
 
   class UMat4x3(name: String, offset: Int, array: Int) extends Uniform(name, offset, array) {
-    def elementSizeInVec4: Int = 3
+    override def isMatrix: Boolean = true
+    override def elementSizeInBytes: Int = 48
 
     def set(buffer: ByteBuffer, value: Matrix43): Unit = set(buffer, 0, value)
     def set(buffer: ByteBuffer, index: Int, value: Matrix43): Unit = {
-      val base = offsetInVec4 * 16 + index * 48
-      buffer.putFloat(base + 0 *4, value.m11.toFloat)
-      buffer.putFloat(base + 1 *4, value.m12.toFloat)
-      buffer.putFloat(base + 2 *4, value.m13.toFloat)
-      buffer.putFloat(base + 3 *4, value.m14.toFloat)
-      buffer.putFloat(base + 4 *4, value.m21.toFloat)
-      buffer.putFloat(base + 5 *4, value.m22.toFloat)
-      buffer.putFloat(base + 6 *4, value.m23.toFloat)
-      buffer.putFloat(base + 7 *4, value.m24.toFloat)
-      buffer.putFloat(base + 8 *4, value.m31.toFloat)
-      buffer.putFloat(base + 9 *4, value.m32.toFloat)
-      buffer.putFloat(base + 10*4, value.m33.toFloat)
-      buffer.putFloat(base + 11*4, value.m34.toFloat)
+      val base = offsetInBytes + index * arrayStrideInBytes
+      var b = base
+      buffer.putFloat(b + 0*4, value.m11.toFloat)
+      buffer.putFloat(b + 1*4, value.m12.toFloat)
+      buffer.putFloat(b + 2*4, value.m13.toFloat)
+      buffer.putFloat(b + 3*4, value.m14.toFloat)
+      b += matrixStrideInBytes
+      buffer.putFloat(b + 0*4, value.m21.toFloat)
+      buffer.putFloat(b + 1*4, value.m22.toFloat)
+      buffer.putFloat(b + 2*4, value.m23.toFloat)
+      buffer.putFloat(b + 3*4, value.m24.toFloat)
+      b += matrixStrideInBytes
+      buffer.putFloat(b + 0*4, value.m31.toFloat)
+      buffer.putFloat(b + 1*4, value.m32.toFloat)
+      buffer.putFloat(b + 2*4, value.m33.toFloat)
+      buffer.putFloat(b + 3*4, value.m34.toFloat)
     }
   }
 
@@ -98,14 +129,14 @@ object UniformBlock {
 class UniformBlock(val name: String) {
   val serial = UniformBlock.nextSerial()
 
-  def sizeInBytes: Int = layoutPosition * 16
+  def sizeInBytes: Int = layoutPosition
   val uniforms = ArrayBuffer[Uniform]()
 
   private var layoutPosition = 0
 
   private def push[T <: Uniform](uniform: T): T = {
     uniforms += uniform
-    layoutPosition += uniform.sizeInVec4
+    layoutPosition += uniform.sizeInBytes
     uniform
   }
 

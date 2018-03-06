@@ -8,6 +8,7 @@ import util.BufferUtils._
 import Shader._
 import io.content.Package
 import org.lwjgl.system.MemoryUtil
+import render.opengl.OptsGl
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -108,7 +109,10 @@ object Shader {
 
       // Uniform block macros
       if (render.opengl.OptsGl.useUniformBlocks) {
-        builder ++= "#define UboBegin(p_name) layout(std140, row_major) uniform p_name {\n"
+        if (OptsGl.useUboStd140)
+          builder ++= "#define UboBegin(p_name) layout(std140, row_major) uniform p_name {\n"
+        else
+          builder ++= "#define UboBegin(p_name) layout(shared, row_major) uniform p_name {\n"
         builder ++= "#define Ubo\n"
         builder ++= "#define UboMat layout(row_major)\n"
         builder ++= "#define UboEnd() };\n"

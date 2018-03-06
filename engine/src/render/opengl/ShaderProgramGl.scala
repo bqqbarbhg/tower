@@ -73,11 +73,11 @@ object ShaderProgramGl {
       uniforms.find(_.name == name).map(ub => UniformBind(ub.serial, index))
     }).toArray
 
-    def findUniformInBlock(name: String): Option[(Int, Int)] = {
+    def findUniformInBlock(name: String): Option[(UniformBlock, UniformBlock.Uniform)] = {
       for (block <- uniforms) {
         for (uniform <- block.uniforms) {
           if (uniform.name == name) {
-            return Some((block.serial, uniform.offsetInVec4 * 16))
+            return Some((block, uniform))
           }
         }
       }
@@ -97,8 +97,21 @@ object ShaderProgramGl {
       if (name.startsWith("u_"))
         name = name.drop(2)
 
-      findUniformInBlock(name).map({ case (serial, offset) =>
-        UniformValueBind(serial, offset, ptype.get(0), loc, psize.get(0))
+      findUniformInBlock(name).flatMap({ case (block, uniform) =>
+
+        if (OptsGl.useUniformBlocks && !OptsGl.useUboStd140) {
+          val offset = glGetActiveUniformsi(program, index, GL_UNIFORM_OFFSET)
+          val arrayStride = if (uniform.arraySize > 0)
+            glGetActiveUniformsi(program, index, GL_UNIFORM_ARRAY_STRIDE) else 0
+          val matrixStride = if (uniform.isMatrix)
+            glGetActiveUniformsi(program, index, GL_UNIFORM_MATRIX_STRIDE) else 0
+          uniform.updateLayout(offset, arrayStride, matrixStride)
+        }
+
+        if (loc >= 0)
+          Some(UniformValueBind(block.serial, uniform.offsetInBytes, ptype.get(0), loc, psize.get(0)))
+        else
+          None
       })
     }).toArray
 

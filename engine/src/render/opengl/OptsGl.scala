@@ -95,5 +95,7 @@ object OptsGl {
   var useVaoCache = true
   /** Enable glTexStorage if available */
   var useTexStorage: Boolean = true
+  /** Use the `std140` layout for UBOs without querying the layout */
+  var useUboStd140 = false
 }
 
