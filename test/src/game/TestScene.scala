@@ -8,6 +8,7 @@ import javax.management.openmbean.CompositeData
 import javax.management.{Notification, NotificationEmitter, NotificationListener}
 
 import audio._
+import audio.effect.Limiter
 import com.sun.management.GarbageCollectionNotificationInfo
 
 import collection.JavaConverters._
@@ -16,7 +17,7 @@ import gfx.Shader.NoPermutations
 import gfx._
 import render._
 import render.UniformBlock
-import platform.AppWindow
+import platform.{AppWindow, Intrinsic}
 import ui.{Atlas, Font, Sprite, SpriteBatch}
 import io.content._
 import render.opengl._
@@ -114,20 +115,24 @@ object TestScene extends App {
   soundInstance.copyParameters()
   soundInstance.setLoop()
 
+  val limiter = new Limiter(soundInstance)
+
   val debug = arg.flag("debug")
   AppWindow.initialize(1280, 720, "Test window", debug)
 
   @volatile var closeAudio: Boolean = false
 
-
   def renderAudio(buffer: Array[Float], numFrames: Int): Unit = {
     TestScene.synchronized {
-      soundInstance.advance(buffer, 0, numFrames, SampleRate)
+      limiter.advance(buffer, 0, numFrames, SampleRate)
     }
   }
 
   val audioThread = new Thread {
     override def run(): Unit = {
+      // Disable denormals for audio performance
+      Intrinsic.disableDenormals()
+
       core.StackAllocator.createCurrentThread(2 * 1024 * 1024)
       audioOutput.open()
 
@@ -250,19 +255,20 @@ object TestScene extends App {
   val modelState = new ModelState(model)
   val animState = new AnimationState(model, anim)
 
+  val startTime = AppWindow.currentTime
   var time = 0.0
   while (AppWindow.running) {
     val begin = java.lang.System.nanoTime()
 
     TestScene.synchronized {
-      soundInstance.volume = 1.0
-      soundInstance.pan = math.sin(time * 5.0)
+      soundInstance.volume = 1.0 + math.max(math.sin(time * 3.0), 0.0) * 15.0
+      // soundInstance.pan = math.sin(time * 5.0)
       soundInstance.copyParameters()
     }
 
     AppWindow.pollEvents()
 
-    time = AppWindow.currentTime
+    time = AppWindow.currentTime - startTime
     val world = Matrix43.translate(0.0, -4.0, 0.0) * Matrix43.rotateY(time * 0.5) * Matrix43.scale(0.01)
 
     renderer.advanceFrame()
@@ -317,6 +323,9 @@ object TestScene extends App {
     draws += TextDraw("spans many lines but is currently", 0, "spans many lines but is currently".length, Vector2(100.0, 128.0), 22.0, fg, 0.0, 1)
     draws += TextDraw("Hello world!", 0, "Hello world!".length, Vector2(100.0, 90.0), 82.0, bg, 2.0, 0)
     draws += TextDraw("manually wrapped...", 0, "manually wrapped...".length, Vector2(100.0, 142.0), 22.0, fg, 0.0, 1)
+
+    val text = f"Volume: ${soundInstance.volume*100.0}%.0f%%"
+    draws += TextDraw(text, 0, text.length, Vector2(100.0, 400.0), 30.0, Color.rgb(0xFFFFFF), 0.0, 0)
 
     font.render(draws)
 
