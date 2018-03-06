@@ -193,4 +193,8 @@ class SoundInstance(val sound: Sound) extends Input {
 
   }
 
+  def close(): Unit = {
+    cursor.close()
+  }
+
 }
