@@ -7,6 +7,7 @@ import java.nio.{ByteBuffer, ByteOrder}
 import javax.management.openmbean.CompositeData
 import javax.management.{Notification, NotificationEmitter, NotificationListener}
 
+import audio._
 import com.sun.management.GarbageCollectionNotificationInfo
 
 import collection.JavaConverters._
@@ -30,7 +31,8 @@ object TestScene extends App {
 
   core.StackAllocator.createCurrentThread(16 * 1024 * 1024)
 
-  val alOutput = new audio.output.OpenAlOutput(44100, true)
+  val SampleRate = 44100
+  val alOutput = new audio.output.OpenAlOutput(SampleRate, true)
   val fileOutput = new audio.output.FileAudioOutput("audiodump.bin")
   val audioOutput = new audio.output.MultiAudioOutput(
     Seq(
@@ -105,20 +107,22 @@ object TestScene extends App {
     }
   }
 
+  val sound = Sound.load(Identifier("test/music.ogg.s2au")).get
+  val soundInstance = new SoundInstance(sound)
+
+  soundInstance.volume = 0.0
+  soundInstance.copyParameters()
+  soundInstance.setLoop()
+
   val debug = arg.flag("debug")
   AppWindow.initialize(1280, 720, "Test window", debug)
 
   @volatile var closeAudio: Boolean = false
 
-  var audioTime = 0.0
-  def renderAudio(buffer: Array[Float], numFrames: Int): Unit = {
-    for (i <- 0 until numFrames) {
-      val s = i * 2
-      audioTime += 1.0 / 44100.0
 
-      val f = math.sin(audioTime * math.Pi * 2 * 440.0) * 0.2
-      buffer(s + 0) = f.toFloat
-      buffer(s + 1) = f.toFloat
+  def renderAudio(buffer: Array[Float], numFrames: Int): Unit = {
+    TestScene.synchronized {
+      soundInstance.advance(buffer, 0, numFrames, SampleRate)
     }
   }
 
@@ -249,6 +253,12 @@ object TestScene extends App {
   var time = 0.0
   while (AppWindow.running) {
     val begin = java.lang.System.nanoTime()
+
+    TestScene.synchronized {
+      soundInstance.volume = 1.0
+      soundInstance.pan = math.sin(time * 5.0)
+      soundInstance.copyParameters()
+    }
 
     AppWindow.pollEvents()
 
