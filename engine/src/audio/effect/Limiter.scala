@@ -43,7 +43,7 @@ class Limiter(val input: Input) extends Input {
     }
 
     gain = prevGain
-    gainVel = (nextGain - prevGain) / ChunkSize
+    gainDelta = (nextGain - prevGain) / ChunkSize
 
     {
       var temp = writeOffset

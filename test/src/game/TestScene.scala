@@ -108,14 +108,23 @@ object TestScene extends App {
     }
   }
 
-  val sound = Sound.load(Identifier("test/music.ogg.s2au")).get
+  val music = Sound.load(Identifier("test/music.ogg.s2au")).get
+  val musicInstance = new SoundInstance(music)
+  val sound = Sound.load(Identifier("test/beep.wav.s2au")).get
   val soundInstance = new SoundInstance(sound)
+
+  val mixer = new Mixer()
+
+  mixer.add(musicInstance)
+  mixer.add(soundInstance)
 
   soundInstance.volume = 0.0
   soundInstance.copyParameters()
   soundInstance.setLoop()
 
-  val limiter = new Limiter(soundInstance)
+  musicInstance.copyParameters()
+
+  val limiter = new Limiter(mixer)
 
   val debug = arg.flag("debug")
   AppWindow.initialize(1280, 720, "Test window", debug)
@@ -261,7 +270,7 @@ object TestScene extends App {
     val begin = java.lang.System.nanoTime()
 
     TestScene.synchronized {
-      soundInstance.volume = 1.0 + math.max(math.sin(time * 3.0), 0.0) * 15.0
+      soundInstance.volume = 1.0 + math.max(math.sin(time * 1.0), 0.0) * 15.0
       // soundInstance.pan = math.sin(time * 5.0)
       soundInstance.copyParameters()
     }
