@@ -21,15 +21,17 @@ object LocaleFile {
     buffer.putMagic("s2lc")
     buffer.putVersion(Version)
 
+    buffer.putMagic("s2li")
+    buffer.putIdentifier(locale.info.code)
+    buffer.putString(locale.info.language)
+    buffer.putMagic("E.li")
+
     val sortedSimpleKeys = locale.simpleKeys.toSeq.sortBy(_._1)
     val sortedExprKeys = locale.expressionKeys.toSeq.sortBy(_._1)
 
     buffer.putInt(sortedSimpleKeys.size)
     buffer.putInt(sortedExprKeys.size)
     buffer.putInt(locale.expressionStringPool.length)
-
-    buffer.putIdentifier(locale.info.code)
-    buffer.putString(locale.info.language)
 
     for ((key, value) <- sortedSimpleKeys) {
       buffer.putString(key)

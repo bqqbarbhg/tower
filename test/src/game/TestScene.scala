@@ -20,6 +20,7 @@ import render.UniformBlock
 import platform.{AppWindow, Intrinsic}
 import ui.{Atlas, Font, Sprite, SpriteBatch}
 import io.content._
+import locale.LocaleInfo
 import render.opengl._
 import ui.Font.TextDraw
 
@@ -52,6 +53,19 @@ object TestScene extends App {
   pack.add(new DirectoryPackage("data"), 0)
 
   Package.set(pack)
+
+  val LC = TestLocale
+
+  LocaleInfo.load()
+
+  for (locale <- LocaleInfo.locales) {
+    println(s"${locale.code} -> ${locale.language} (${locale.file})")
+  }
+
+  {
+    val code = Identifier("fi")
+    locale.Locale.load(LocaleInfo.locales.find(_.code == code).getOrElse(LocaleInfo.locales.head))
+  }
 
   object ModelTextures extends SamplerBlock {
     val Diffuse = sampler2D("Diffuse", Sampler.RepeatAnisotropic)
@@ -137,7 +151,7 @@ object TestScene extends App {
 
   def renderAudio(buffer: Array[Float], numFrames: Int): Unit = {
     TestScene.synchronized {
-      limiter.advance(buffer, 0, numFrames, SampleRate)
+      // limiter.advance(buffer, 0, numFrames, SampleRate)
     }
   }
 
@@ -223,7 +237,6 @@ object TestScene extends App {
     }
   }
   audioThread.start()
-
 
   val device = GraphicsDevice.get
   println(s"OS: ${java.lang.System.getProperty("os.name")}")
@@ -349,6 +362,11 @@ object TestScene extends App {
     {
       val text = s"Row major: ${OptsGl.useRowMajorMatrix}"
       draws += TextDraw(text, 0, text.length, Vector2(100.0, 440.0), 30.0, Color.rgb(0xFFFFFF), 0.0, 0)
+    }
+
+    {
+      val text = LC.Test.welcome(name = "Player")
+      draws += TextDraw(text, 0, text.length, Vector2(100.0, 480.0), 30.0, Color.rgb(0xFFFFFF), 0.0, 0)
     }
 
     font.render(draws)
