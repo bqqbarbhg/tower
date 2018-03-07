@@ -70,7 +70,15 @@ object ShaderProgramGl {
     val uboMapping = (0 until numUniformBlocks).flatMap(index => {
       val name = glGetActiveUniformBlockName(program, index)
       glUniformBlockBinding(program, index, index)
-      uniforms.find(_.name == name).map(ub => UniformBind(ub.serial, index))
+
+      uniforms.find(_.name == name).map(ub => {
+        if (OptsGl.useUniformBlocks && !OptsGl.useUboStd140) {
+          val size = glGetActiveUniformBlocki(program, index, GL_UNIFORM_BLOCK_DATA_SIZE)
+          ub.updateLayoutSize(size)
+        }
+
+        UniformBind(ub.serial, index)
+      })
     }).toArray
 
     def findUniformInBlock(name: String): Option[(UniformBlock, UniformBlock.Uniform)] = {

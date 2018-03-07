@@ -140,6 +140,13 @@ class UniformBlock(val name: String) {
     uniform
   }
 
+  /**
+    * Update the this uniform block with a queried actual size.
+    */
+  def updateLayoutSize(size: Int): Unit = {
+    layoutPosition = size
+  }
+
   def vec4(name: String): UVec4 = push(new UVec4(name, layoutPosition, 0))
   def vec4(name: String, arraySize: Int): UVec4 = push(new UVec4(name, layoutPosition, arraySize))
   def mat4(name: String): UMat4 = push(new UMat4(name, layoutPosition, 0))
