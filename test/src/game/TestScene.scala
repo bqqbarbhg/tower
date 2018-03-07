@@ -144,8 +144,11 @@ object TestScene extends App {
 
   val limiter = new Limiter(mixer)
 
+  val CreateWidth = 1280
+  val CreateHeight = 720
+
   val debug = arg.flag("debug")
-  AppWindow.initialize(1280, 720, "Test window", debug)
+  AppWindow.initialize(CreateWidth, CreateHeight, "Test window", debug)
 
   @volatile var closeAudio: Boolean = false
 
@@ -252,10 +255,6 @@ object TestScene extends App {
 
   val shader = Shader.load("test/test_mesh", NoPermutations, ModelTextures, ModelUniform)
 
-  val viewProjection = (
-      Matrix4.perspective(1280.0 / 720.0, math.Pi / 3.0, 0.01, 1000.0)
-      * Matrix43.look(Vector3(0.0, 0.0, -10.0), Vector3(0.0, 0.0, 1.0)))
-
   val buffer = ByteBuffer.allocateDirect(16 * 1024 * 1024)
 
   val model = gfx.Model.load(Identifier("test/sausageman/sausagemanWithTex.fbx.s2md")).get
@@ -285,6 +284,9 @@ object TestScene extends App {
   val modelState = new ModelState(model)
   val animState = new AnimationState(model, anim)
 
+  var prevWidth = -1
+  var prevHeight = -1
+
   val startTime = AppWindow.currentTime
   var time = 0.0
   while (AppWindow.running) {
@@ -298,10 +300,24 @@ object TestScene extends App {
 
     AppWindow.pollEvents()
 
+    val viewWidth = AppWindow.width
+    val viewHeight = AppWindow.height
+
+    if (viewWidth != prevWidth || viewHeight != prevHeight)
+      renderer.resizeBackbuffer(viewWidth, viewHeight)
+    val viewProjection = (
+      Matrix4.perspective(viewWidth.toDouble / viewHeight.toDouble, math.Pi / 3.0, 0.01, 1000.0)
+        * Matrix43.look(Vector3(0.0, 0.0, -10.0), Vector3(0.0, 0.0, 1.0)))
+
+    prevWidth = viewWidth
+    prevHeight = viewHeight
+
     time = AppWindow.currentTime - startTime
     val world = Matrix43.translate(0.0, -4.0, 0.0) * Matrix43.rotateY(time * 0.5) * Matrix43.scale(0.01)
 
     renderer.advanceFrame()
+
+    renderer.setRenderTarget(RenderTarget.Backbuffer)
 
     renderer.setDepthMode(true, true)
     renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))

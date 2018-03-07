@@ -6,6 +6,7 @@ package object render {
   type VertexBuffer = render.opengl.VertexBufferGl
   type IndexBuffer = render.opengl.IndexBufferGl
   type TextureHandle = render.opengl.TextureHandleGl
+  type RenderTarget = render.opengl.RenderTargetGl
 
   val GraphicsDevice = render.opengl.GraphicsDeviceGl
   val Renderer = render.opengl.RendererGl
@@ -13,5 +14,6 @@ package object render {
   val VertexBuffer = render.opengl.VertexBufferGl
   val IndexBuffer = render.opengl.IndexBufferGl
   val TextureHandle = render.opengl.TextureHandleGl
+  val RenderTarget = render.opengl.RenderTargetGl
 
 }

@@ -150,12 +150,16 @@ class SpriteBatch {
     renderer.setTexture(SpriteTextures.FinalTex, currentAtlas.lastTexture.get.texture)
 
     renderer.pushUniform(SpriteVertexUniform, b => {
+      val target = renderer.currentRenderTarget
+      val targetW = target.width.toFloat
+      val targetH = target.height.toFloat
+
       val texScaleX = 1.0f / currentAtlas.lastTexture.get.width.toFloat
       val texScaleY = 1.0f / currentAtlas.lastTexture.get.height.toFloat
       val texScaleZ = if (useArray) 1.0f / currentAtlas.textureArray.get.width.toFloat else 1.0f
       val texScaleW = if (useArray) 1.0f / currentAtlas.textureArray.get.height.toFloat else 1.0f
-      val screenX = 2.0f / 1280.0f
-      val screenY = -2.0f / 720.0f
+      val screenX = 2.0f / targetW
+      val screenY = -2.0f / targetH
 
       SpriteVertexUniform.TexCoordScale.set(b, texScaleX, texScaleY, texScaleZ, texScaleW)
       SpriteVertexUniform.PosScale.set(b, screenX, screenY, 0.0f, 0.0f)

@@ -1,6 +1,7 @@
 package render.opengl
 import java.nio.ByteBuffer
 
+import com.sun.prism.RenderTarget
 import org.lwjgl.opengl.GL11._
 import org.lwjgl.opengl.GL13._
 import org.lwjgl.opengl.GL15._
@@ -41,6 +42,27 @@ class RendererGl {
   var activeUniforms: Array[UniformBlockRefGl] = Array[UniformBlockRefGl]()
   var activeUniformValues: Array[ByteBuffer] = Array[ByteBuffer]()
   var activeTextures: Array[Int] = Array[Int]()
+
+  private var activeTarget: RenderTargetGl = null
+
+  /** Returns the current render target */
+  def currentRenderTarget: RenderTargetGl = {
+    require(activeTarget != null)
+    activeTarget
+  }
+
+  /** Set the current target to render to */
+  def setRenderTarget(target: RenderTargetGl): Unit = {
+    require(target != null)
+    activeTarget = target
+    glBindFramebuffer(GL_FRAMEBUFFER, target.fbo)
+    glViewport(0, 0, target.width, target.height)
+  }
+
+  /** Resizes and initializes the backbuffer */
+  def resizeBackbuffer(width: Int, height: Int): Unit = {
+    RenderTargetGl.Backbuffer = new RenderTargetGl(width, height, Array[String](), None, false)
+  }
 
   /** Needs to be called every frame */
   def advanceFrame(): Unit = {

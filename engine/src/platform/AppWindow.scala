@@ -73,5 +73,21 @@ object AppWindow {
     glfwSwapBuffers(window)
   }
 
+  /** Width of the window inner area in pixels */
+  def width: Int = {
+    val x = Array(0)
+    val y = Array(0)
+    glfwGetFramebufferSize(window, x, y)
+    x(0)
+  }
+
+  /** Height of the window inner area in pixels */
+  def height: Int = {
+    val x = Array(0)
+    val y = Array(0)
+    glfwGetFramebufferSize(window, x, y)
+    y(0)
+  }
+
   def currentTime: Double = glfwGetTime
 }

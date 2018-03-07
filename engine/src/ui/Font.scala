@@ -387,12 +387,16 @@ class Font {
 
     // Setup the vertex uniform
     renderer.pushUniform(FontVertexUniform, b => {
+      val target = renderer.currentRenderTarget
+      val targetW = target.width.toFloat
+      val targetH = target.height.toFloat
+
       val texScaleX = 1.0f / texture.width.toFloat
       val texScaleY = 1.0f / texture.height.toFloat
-      val texCoordRatioX = 1280.0f / texture.width.toFloat
-      val texCoordRatioY = 720.0f / texture.height.toFloat
-      val screenX = 2.0f / 1280.0f
-      val screenY = -2.0f / 720.0f
+      val texCoordRatioX = targetW / texture.width.toFloat
+      val texCoordRatioY = targetH / texture.height.toFloat
+      val screenX = 2.0f / targetW
+      val screenY = -2.0f / targetH
 
       FontVertexUniform.TexCoordScale.set(b, texScaleX, texScaleY, texCoordRatioX, texCoordRatioY)
       FontVertexUniform.PosScale.set(b, screenX, screenY, 0.0f, 0.0f)
