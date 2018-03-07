@@ -36,8 +36,12 @@ class UniformAllocator(val bufferSize: Int) {
 
     if (mapMode.persistent) {
       if (GL.getCapabilities.GL_ARB_buffer_storage) {
-        glBufferStorage(GL_UNIFORM_BUFFER, alignedBufferSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT)
-        persistentMap = glMapBufferRange(GL_UNIFORM_BUFFER, 0, alignedBufferSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT)
+        var flag = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT
+        if (mapMode.coherent) flag |= GL_MAP_COHERENT_BIT
+        var mapFlag = flag
+        if (!mapMode.coherent) mapFlag |= GL_MAP_FLUSH_EXPLICIT_BIT
+        glBufferStorage(GL_UNIFORM_BUFFER, alignedBufferSize, flag)
+        persistentMap = glMapBufferRange(GL_UNIFORM_BUFFER, 0, alignedBufferSize, mapFlag)
       } else {
         mapMode = OptsGl.uniformMapFallback
       }
@@ -78,18 +82,20 @@ class UniformAllocator(val bufferSize: Int) {
         buf.position(0)
         glBufferSubData(GL_UNIFORM_BUFFER, loc, buf)
 
-      case MapMode.Persistent =>
+      case MapMode.Persistent|MapMode.PersistentCoherent =>
         val buf = persistentMap.sliced(loc, size)
         writeData(buf)
-        glFlushMappedBufferRange(GL_UNIFORM_BUFFER, loc, size)
+        if (!mapMode.coherent)
+          glFlushMappedBufferRange(GL_UNIFORM_BUFFER, loc, size)
 
-      case MapMode.PersistentCopy =>
+      case MapMode.PersistentCopy|MapMode.PersistentCopyCoherent =>
         val buf = alloca(size)
         writeData(buf)
         buf.position(0)
         val copy = persistentMap.slicedOffset(loc, size)
         MemoryUtil.memCopy(buf, copy)
-        glFlushMappedBufferRange(GL_UNIFORM_BUFFER, loc, size)
+        if (!mapMode.coherent)
+          glFlushMappedBufferRange(GL_UNIFORM_BUFFER, loc, size)
     }
 
     glBindBuffer(GL_UNIFORM_BUFFER, 0)

@@ -7,6 +7,7 @@ package render.opengl
   */
 abstract class MapMode {
   def persistent: Boolean
+  def coherent: Boolean
 }
 
 object MapMode {
@@ -25,6 +26,7 @@ object MapMode {
     */
   case object Map extends MapMode {
     def persistent = false
+    def coherent = false
   }
 
   /**
@@ -39,6 +41,7 @@ object MapMode {
     */
   case object SubData extends MapMode {
     def persistent = false
+    def coherent = false
   }
 
   /**
@@ -62,6 +65,7 @@ object MapMode {
     */
   case object Persistent extends MapMode {
     def persistent = true
+    def coherent = false
   }
 
   /**
@@ -77,16 +81,53 @@ object MapMode {
     */
   case object PersistentCopy extends MapMode {
     def persistent = true
+    def coherent = false
+  }
+
+  /**
+    * Behaves like MapMode.Persistent, but instead of being manually flushed with
+    * `glFlushMappedRange()` the buffer is created with `GL_COHERENT` bit
+    * which guarantees that the memory writes are uncached.
+    *
+    * glBufferStorage(GL_BUFFER, GL_PERSISTENT_MAP_BIT|GL_COHERENT_BIT)
+    * persitentBuf = glMapBuffer(GL_BUFFER, GL_PERSISTENT_MAP_BIT)
+    *
+    * ...
+    *
+    * writeData(persistentBuf)
+    */
+  case object PersistentCoherent extends MapMode {
+    def persistent = true
+    def coherent = true
+  }
+
+  /**
+    * Behaves like MapMode.PersistentCopy, but instead of being manually
+    * flushed `glFlushMappedRange()` the buffer is created with `GL_COHERENT`
+    * bit which guarantees that the memory writes are uncached.
+    *
+    * glBufferStorage(GL_BUFFER, GL_PERSISTENT_MAP_BIT|GL_COHERENT_BIT)
+    * persitentBuf = glMapBuffer(GL_BUFFER, GL_PERSISTENT_MAP_BIT)
+    *
+    * ...
+    *
+    * buf = alloca()
+    * writeData(buf)
+    * MemoryUtil.memCopy(persistentBuf, buf)
+    */
+  case object PersistentCopyCoherent extends MapMode {
+    def persistent = true
+    def coherent = true
   }
 }
 
 object OptsGl {
   /** How to map uniform block buffers */
-  var uniformMap: MapMode = MapMode.PersistentCopy
+  var uniformMap: MapMode = MapMode.PersistentCopyCoherent
   /** If `uniformMap` mode is not supported, fallback to this mode. */
   var uniformMapFallback: MapMode = MapMode.SubData
   /** How to map dynamic vertex buffers */
-  var vertexMap: MapMode = MapMode.Persistent
+  var vertexMap: MapMode = MapMode.PersistentCoherent
   /** If `vertexMap` mode is not supported, fallback to this mode. */
   var vertexMapFallback: MapMode = MapMode.Map
   /** Should the implementation use uniform blocks or direct uniforms */
