@@ -201,12 +201,74 @@ if (hasUboSupport) {
 }
 ```
 
+### Buffer mappings
+
+As explained above, the engine uses uniform buffer objects where available.
+This raises the question: How do you transfer the UBO data to the GPU?
+It turns out that as is with most of OpenGL there is no clear solution.
+Different styles are faster on different hardware and drivers, some things
+can be flat out broken, the usual. So to deal with this there are lots of
+ways to map buffers in the engine. Not only for uniform buffers, but for
+example dynamic vertex data needs to be transferred somehow.
+
+The two cases (uniform buffer objects and dynamic vertex buffers) have different
+write patterns which affects the type of mapping we want. Uniforms tend to be
+written out of order to the buffer and may even leave gaps. In contrast, vertex
+data tends to be streamed out in a very linear fashion. The reason this matters
+is that if the driver hands out a mapping to the GPU memory, it will most likely
+be [write combined][wiki-wc]. Write combined memory doesn't behave well with
+[erratic write patterns][ryg-wc]: While a perfect match for vertex data it
+is not suitable uniform buffers. The solution the engine takes is that uniform
+data is first written to a CPU local buffer and then copied to GPU memory in one
+piece.
+
+![
+Writing uniform buffers with glSubData().
+Mapping vertex buffers with glMapBuffer and glUnmapBuffer().
+](image/map-01-old.png)&shy;
+
+When working with older drivers the engine uses `glBufferSubData()` for uniform buffers.
+The `glBufferSubData()` call copies data to a GPU buffer in a pretty unspecified way,
+which isn't ideal but it's better than doing tons of tiny mappings for every UBO.
+Vertex data uses the `glMapBuffer()` API with `GL_UNSYNCHRONIZED_BIT`, which
+should give the application a chunk of write combined GPU memory. The drawback is
+that this can (ironically) cause synchronization stalls especially in multithreaded drivers.
+
+![
+Copying local buffer to uniform persistent mapping.
+Writing data directly to vertex persistent mapping.
+The mappings are optionally flushed with glFlushMappedBufferRange()
+](image/map-02-new.png)&shy;
+
+While the game only requires OpenGL 3.3, if the presence of the [`GL_ARB_buffer_storage`][gl-arb-buffer-storage]
+extension is detected the engine uses persistent mapping. As the name implies
+persistent mapping lets the application map the buffer into memory _once_ and
+write to it even while the driver is using it. As with the legacy case uniform
+buffers are not written directly to the GPU, but this time manually copied through
+a local buffer. Vertex data is written directly to the GPU without almost any
+API overhead from OpenGL.
+
+OpenGL still needs some way to know when to flush the data from the mapping to
+the GPU. To do this there are two options: Explicit flushing and coherent buffers.
+When the buffers are created and mapped with explicit flushing enabled the
+application needs to call `glFlushMappedBufferRange()` after writing to guarantee
+that the data is visible to the GPU. If the buffer is coherent, this is not
+required and the data is automatically guaranteed to reach the GPU. There is
+no clear winner here: The two approaches need to be benchmarked and unfortunately,
+most likely different drivers and hardware will have wildly different results.
+
+There is one exception to the mapping of buffers: If OpenGL compatability mode
+is requested, for example with `--gl-compat` __everything__ is mapped with
+`glBufferSubData()`. This is due to it being the most foolproof API.
 
 [wiki-sprite-sheet]: https://en.wikipedia.org/wiki/Texture_atlas
 [wiki-texture-compression]: https://en.wikipedia.org/wiki/Texture_compression
 [wiki-mipmap]: https://en.wikipedia.org/wiki/Mipmap
+[wiki-wc]: https://en.wikipedia.org/wiki/Write_combining
 [gh-toml]: https://github.com/toml-lang/toml
 [about-opengl]: https://www.opengl.org/about/
 [gl-uniform]: https://www.khronos.org/opengl/wiki/Uniform_(GLSL)
 [gl-ubo]: https://www.khronos.org/opengl/wiki/Uniform_Buffer_Object
 [gl-persistent]: https://www.khronos.org/opengl/wiki/Buffer_Object#Persistent_mapping
+[gl-arb-buffer-storage]: https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_buffer_storage.txt
+[ryg-wc]: https://fgiesen.wordpress.com/2013/01/29/write-combining-is-not-your-friend/
