@@ -131,6 +131,20 @@ class RendererGl {
     glBindSampler(sampler.index, samplerObj)
   }
 
+  def setTextureTargetColor(sampler: SamplerBlock.USampler2D, target: RenderTarget, index: Int): Unit = {
+    val samplerObj = samplerCache.getSampler(sampler.sampler)
+    glActiveTexture(GL_TEXTURE0 + sampler.index)
+    glBindTexture(GL_TEXTURE_2D, target.colorHandles(index))
+    glBindSampler(sampler.index, samplerObj)
+  }
+
+  def setTextureTargetDepth(sampler: SamplerBlock.USampler2D, target: RenderTarget): Unit = {
+    val samplerObj = samplerCache.getSampler(sampler.sampler)
+    glActiveTexture(GL_TEXTURE0 + sampler.index)
+    glBindTexture(GL_TEXTURE_2D, target.depthTexture.get)
+    glBindSampler(sampler.index, samplerObj)
+  }
+
   def applyState(): Unit = {
     if (!activeShaderEnabled) {
       glUseProgram(activeShader.program)

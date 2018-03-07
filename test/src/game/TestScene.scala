@@ -21,6 +21,7 @@ import platform.{AppWindow, Intrinsic}
 import ui.{Atlas, Font, Sprite, SpriteBatch}
 import io.content._
 import locale.LocaleInfo
+import render.SamplerBlock.NoSamplers
 import render.opengl._
 import ui.Font.TextDraw
 
@@ -70,11 +71,28 @@ object TestScene extends App {
   object ModelTextures extends SamplerBlock {
     val Diffuse = sampler2D("Diffuse", Sampler.RepeatAnisotropic)
     val Normal = sampler2D("Normal", Sampler.RepeatAnisotropic)
+    val ShadowMap = sampler2D("ShadowMap", Sampler.ClampNearestNoMip)
+  }
+
+
+  object GlobalUniform extends UniformBlock("GlobalUniform") {
+    val ViewProjection = mat4("ViewProjection")
+  }
+
+  object ModelUniformBones extends UniformBlock("ModelUniformBones") {
+    val Bones = mat4x3("Bones", 24)
   }
 
   object ModelUniform extends UniformBlock("ModelUniform") {
-    val ViewProjection = mat4("ViewProjection")
-    val Bones = mat4x3("Bones", 24)
+    val World = mat4x3("World")
+  }
+
+  object PixelGlobalUniform extends UniformBlock("PixelGlobal") {
+    val ShadowViewProj = mat4("ShadowViewProj")
+  }
+
+  object ModelPermutations extends Shader.Permutations {
+    val UseBones = vert("UseBones", 0 to 1)
   }
 
   val arg = util.ArgumentParser.parse(args)
@@ -253,12 +271,16 @@ object TestScene extends App {
 
   val renderer = Renderer.initialize()
 
-  val shader = Shader.load("test/test_mesh", NoPermutations, ModelTextures, ModelUniform)
+  val shader = Shader.load("test/test_mesh", ModelPermutations, ModelTextures, GlobalUniform, ModelUniform, ModelUniformBones, PixelGlobalUniform)
+  val shadowShader = Shader.load("test/shadow_mesh", ModelPermutations, NoSamplers, GlobalUniform, ModelUniform, ModelUniformBones)
 
   val buffer = ByteBuffer.allocateDirect(16 * 1024 * 1024)
 
   val model = gfx.Model.load(Identifier("test/sausageman/sausagemanWithTex.fbx.s2md")).get
   model.loadContent()
+
+  val ground = gfx.Model.load(Identifier("test/ground/ground.fbx.s2md")).get
+  ground.loadContent()
 
   val anim = model.anims.head
 
@@ -287,6 +309,8 @@ object TestScene extends App {
   var prevWidth = -1
   var prevHeight = -1
 
+  val shadowTarget = RenderTarget.create(1024, 1024, None, Some(TexFormat.D24S8), true)
+
   val startTime = AppWindow.currentTime
   var time = 0.0
   while (AppWindow.running) {
@@ -305,27 +329,25 @@ object TestScene extends App {
 
     if (viewWidth != prevWidth || viewHeight != prevHeight)
       renderer.resizeBackbuffer(viewWidth, viewHeight)
+
+    var viewAngle = time * 0.1
+
     val viewProjection = (
       Matrix4.perspective(viewWidth.toDouble / viewHeight.toDouble, math.Pi / 3.0, 0.01, 1000.0)
-        * Matrix43.look(Vector3(0.0, 0.0, -10.0), Vector3(0.0, 0.0, 1.0)))
+        * Matrix43.look(Vector3(10.0 * math.sin(viewAngle), 4.0, -10.0 * math.cos(viewAngle)), Vector3(-math.sin(viewAngle), 0.0, math.cos(viewAngle))))
+
+    val shadowViewProjection = (
+      Matrix4.orthographic(40.0, 40.0, 0.1, 100.0)
+        * Matrix43.look(Vector3(10.0, 10.0, -10.0), Vector3(-1.0, -1.0, 1.0)))
 
     prevWidth = viewWidth
     prevHeight = viewHeight
 
     time = AppWindow.currentTime - startTime
-    val world = Matrix43.translate(0.0, -4.0, 0.0) * Matrix43.rotateY(time * 0.5) * Matrix43.scale(0.01)
+    val world = Matrix43.translate(0.0, 0.0, 0.0) * Matrix43.rotateY(time * 0.5) * Matrix43.scale(0.01)
+    val groundWorld = Matrix43.translate(0.0, 0.0, 0.0) * Matrix43.scale(0.02)
 
     renderer.advanceFrame()
-
-    renderer.setRenderTarget(RenderTarget.Backbuffer)
-
-    renderer.setDepthMode(true, true)
-    renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
-
-    shader.use()
-
-    renderer.setDepthMode(true, true)
-    renderer.setBlend(false)
 
     modelState.worldTransform = world
     animState.time = time % anim.duration
@@ -335,22 +357,94 @@ object TestScene extends App {
 
     modelState.updateMatrices()
 
-    for (mesh <- model.meshes) {
-      renderer.setTexture(ModelTextures.Diffuse, mesh.material.albedoTex.texture)
-      renderer.setTexture(ModelTextures.Normal, mesh.material.normalTex.texture)
+    renderer.setRenderTarget(shadowTarget)
+    renderer.setDepthMode(true, true)
+    renderer.clear(None, Some(1.0))
 
+    renderer.pushUniform(GlobalUniform, u => {
+      import GlobalUniform._
+      ViewProjection.set(u, shadowViewProjection)
+    })
+
+    shadowShader.use(p => {
+      p(ModelPermutations.UseBones) = 1
+    })
+
+    for (mesh <- model.meshes) {
       for (part <- mesh.parts) {
 
-        renderer.pushUniform(ModelUniform, u => {
-          import ModelUniform._
-          ViewProjection.set(u, viewProjection)
+        renderer.pushUniform(ModelUniformBones, u => {
+          import ModelUniformBones._
 
           for ((name, index) <- part.boneName.zipWithIndex) {
             val node = model.findNodeByName(new Identifier(name))
             val transform = modelState.nodeWorldTransform(node) * part.boneMeshToBone(index)
             Bones.set(u, index, transform)
           }
+        })
 
+        part.draw()
+      }
+    }
+
+    renderer.setRenderTarget(RenderTarget.Backbuffer)
+    renderer.setDepthMode(true, true)
+    renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
+
+    renderer.setDepthMode(true, true)
+    renderer.setBlend(false)
+
+
+    renderer.pushUniform(GlobalUniform, u => {
+      import GlobalUniform._
+      ViewProjection.set(u, viewProjection)
+    })
+
+    renderer.pushUniform(PixelGlobalUniform, u => {
+      import PixelGlobalUniform._
+      ShadowViewProj.set(u, shadowViewProjection)
+    })
+
+    shader.use(p => {
+      p(ModelPermutations.UseBones) = 0
+    })
+
+    for ((mesh, parent) <- (ground.meshes zip ground.meshParentNode)) {
+      renderer.setTexture(ModelTextures.Diffuse, mesh.material.albedoTex.texture)
+      renderer.setTexture(ModelTextures.Normal, mesh.material.normalTex.texture)
+      renderer.setTextureTargetDepth(ModelTextures.ShadowMap, shadowTarget)
+
+      val transform = ground.transformToRoot(parent)
+
+      renderer.pushUniform(ModelUniform, u => {
+        import ModelUniform._
+        World.set(u, groundWorld * transform)
+      })
+
+      for (part <- mesh.parts) {
+        part.draw()
+      }
+    }
+
+    shader.use(p => {
+      p(ModelPermutations.UseBones) = 1
+    })
+
+    for (mesh <- model.meshes) {
+      renderer.setTexture(ModelTextures.Diffuse, mesh.material.albedoTex.texture)
+      renderer.setTexture(ModelTextures.Normal, mesh.material.normalTex.texture)
+      renderer.setTextureTargetDepth(ModelTextures.ShadowMap, shadowTarget)
+
+      for (part <- mesh.parts) {
+
+        renderer.pushUniform(ModelUniformBones, u => {
+          import ModelUniformBones._
+
+          for ((name, index) <- part.boneName.zipWithIndex) {
+            val node = model.findNodeByName(new Identifier(name))
+            val transform = modelState.nodeWorldTransform(node) * part.boneMeshToBone(index)
+            Bones.set(u, index, transform)
+          }
         })
 
         part.draw()

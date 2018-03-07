@@ -45,6 +45,26 @@ object Matrix4 {
 
     r
   }
+
+  /**
+    * Create a matrix that can be used for orthographic projection.
+    *
+    * @param width Width of the projectino box
+    * @param height Width of the projectino box
+    * @param near Near clip plane
+    * @param far Far clip plane
+    */
+  def orthographic(width: Double, height: Double, near: Double, far: Double): Matrix4 = {
+    val r = new Matrix4()
+
+    r.m11 = 2.0 / width
+    r.m22 = 2.0 / height
+    r.m33 = 1.0 / (far - near)
+    r.m34 = -near / (far - near)
+    r.m44 = 1.0
+
+    r
+  }
 }
 
 class Matrix4 {

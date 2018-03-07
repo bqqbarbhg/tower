@@ -115,7 +115,7 @@ class Model {
     buffer.verifyMagic("E.md")
 
     // -- Compute transform to root
-    this.transformToRoot(0) = Matrix43.Identity
+    this.transformToRoot(0) = Matrix43.affine(this.transformToParent(0))
     for (i <- 1 until this.numNodes) {
       val parent = this.parentIndex(i)
       this.transformToRoot(i) = Matrix43.affine(this.transformToParent(i)) * this.transformToRoot(parent)

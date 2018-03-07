@@ -6,6 +6,9 @@ import SamplerBlock._
 
 object SamplerBlock {
 
+  object NoSamplers extends SamplerBlock {
+  }
+
   sealed abstract class USampler(val name: String, val index: Int, val sampler: Sampler)
   class USampler2D(name: String, index: Int, sampler: Sampler) extends USampler(name, index, sampler)
   class USampler2DArray(name: String, index: Int, sampler: Sampler) extends USampler(name, index, sampler)

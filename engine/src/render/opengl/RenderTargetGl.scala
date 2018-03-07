@@ -5,6 +5,10 @@ import org.lwjgl.opengl.GL30._
 
 object RenderTargetGl {
   var Backbuffer: RenderTargetGl = null
+
+  def create(width: Int, height: Int, colorFormat: Iterable[String], depthFormat: Option[String], readableDepth: Boolean): RenderTargetGl = {
+    new RenderTargetGl(width, height, colorFormat.toArray, depthFormat, readableDepth)
+  }
 }
 
 class RenderTargetGl(val width: Int, val height: Int, val colorFormat: Array[String], val depthFormat: Option[String], val readableDepth: Boolean) {
