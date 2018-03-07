@@ -1,7 +1,6 @@
 package render.opengl
 import java.nio.ByteBuffer
 
-import com.sun.prism.RenderTarget
 import org.lwjgl.opengl.GL11._
 import org.lwjgl.opengl.GL13._
 import org.lwjgl.opengl.GL15._
