@@ -35,6 +35,11 @@
       <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-stb/lwjgl-stb-natives-linux.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-stb/lwjgl-stb-natives-macos.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-stb/lwjgl-stb-natives-windows.jar" path-in-jar="/" />
+      <element id="directory" name="resources">
+        <element id="directory" name="data">
+          <element id="dir-copy" path="$PROJECT_DIR$/../tower-data/data" />
+        </element>
+      </element>
     </root>
   </artifact>
 </component>
