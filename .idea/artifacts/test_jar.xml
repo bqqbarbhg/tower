@@ -23,6 +23,18 @@
       <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-opengl/lwjgl-opengl-natives-linux.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-opengl/lwjgl-opengl-natives-macos.jar" path-in-jar="/" />
       <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-opengl/lwjgl-opengl-natives-windows.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-sse/lwjgl-sse-natives-linux.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-sse/lwjgl-sse-natives-macos.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-sse/lwjgl-sse-natives-windows.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-sse/lwjgl-sse.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-openal/lwjgl-openal-natives-linux.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-openal/lwjgl-openal-natives-macos.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-openal/lwjgl-openal-natives-windows.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-openal/lwjgl-openal.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-stb/lwjgl-stb.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-stb/lwjgl-stb-natives-linux.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-stb/lwjgl-stb-natives-macos.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-stb/lwjgl-stb-natives-windows.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>
