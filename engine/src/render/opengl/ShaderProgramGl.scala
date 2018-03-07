@@ -113,7 +113,9 @@ object ShaderProgramGl {
             glGetActiveUniformsi(program, index, GL_UNIFORM_ARRAY_STRIDE) else 0
           val matrixStride = if (uniform.isMatrix)
             glGetActiveUniformsi(program, index, GL_UNIFORM_MATRIX_STRIDE) else 0
-          uniform.updateLayout(offset, arrayStride, matrixStride)
+          val rowMajor = if (uniform.isMatrix)
+            glGetActiveUniformsi(program, index, GL_UNIFORM_IS_ROW_MAJOR) != 0 else false
+          uniform.updateLayout(offset, arrayStride, matrixStride, rowMajor)
         }
 
         if (loc >= 0)

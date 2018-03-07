@@ -19,4 +19,15 @@ class GraphicsDeviceGl {
   /** Get the driver of the GL implementation */
   def driver: String = glGetString(GL_RENDERER)
 
+
+  /**
+    * The OpenGL implementation doesn't handle `layout(row_major)` qualifiers
+    * correctly. Happens on some AMD drivers, see issue #1.
+    */
+  def doesNotSupportRowMajor: Boolean = {
+    val amdRegex = """[^a-z](amd|ati)[^a-z]""".r
+    val concatented = s" $version $vendor $driver ".toLowerCase
+    amdRegex.findFirstIn(concatented).isDefined
+  }
+
 }

@@ -97,5 +97,7 @@ object OptsGl {
   var useTexStorage: Boolean = true
   /** Use the `std140` layout for UBOs without querying the layout */
   var useUboStd140 = false
+  /** Use row major matrices instead of GL default column major */
+  var useRowMajorMatrix = true
 }
 

@@ -28,7 +28,7 @@ import scala.io.StdIn
 
 object TestScene extends App {
 
-  println("Version 1.3")
+  println("Version 1.5")
 
   core.StackAllocator.createCurrentThread(16 * 1024 * 1024)
 
@@ -38,7 +38,7 @@ object TestScene extends App {
   val audioOutput = new audio.output.MultiAudioOutput(
     Seq(
       alOutput,
-      fileOutput,
+      // fileOutput,
     )
   )
 
@@ -74,6 +74,10 @@ object TestScene extends App {
     OptsGl.useTexStorage = false
     OptsGl.useUniformBlocks = false
     OptsGl.useVaoCache = false
+  }
+
+  if (arg.flag("row-major")) {
+    OptsGl.useRowMajorMatrix = true
   }
 
   if (arg.flag("debug")) {
@@ -116,7 +120,7 @@ object TestScene extends App {
   val mixer = new Mixer()
 
   mixer.add(musicInstance)
-  mixer.add(soundInstance)
+  // mixer.add(soundInstance)
 
   soundInstance.volume = 0.0
   soundInstance.copyParameters()
@@ -227,6 +231,10 @@ object TestScene extends App {
   println(s"Vendor: ${device.vendor}")
   println(s"Driver: ${device.driver}")
 
+  if (device.doesNotSupportRowMajor) {
+    OptsGl.useRowMajorMatrix = false
+  }
+
   val renderer = Renderer.initialize()
 
   val shader = Shader.load("test/test_mesh", NoPermutations, ModelTextures, ModelUniform)
@@ -333,8 +341,15 @@ object TestScene extends App {
     draws += TextDraw("Hello world!", 0, "Hello world!".length, Vector2(100.0, 90.0), 82.0, bg, 2.0, 0)
     draws += TextDraw("manually wrapped...", 0, "manually wrapped...".length, Vector2(100.0, 142.0), 22.0, fg, 0.0, 1)
 
-    val text = f"Volume: ${soundInstance.volume*100.0}%.0f%%"
-    draws += TextDraw(text, 0, text.length, Vector2(100.0, 400.0), 30.0, Color.rgb(0xFFFFFF), 0.0, 0)
+    {
+      val text = f"Volume: ${soundInstance.volume*100.0}%.0f%%"
+      draws += TextDraw(text, 0, text.length, Vector2(100.0, 400.0), 30.0, Color.rgb(0xFFFFFF), 0.0, 0)
+    }
+
+    {
+      val text = s"Row major: ${OptsGl.useRowMajorMatrix}"
+      draws += TextDraw(text, 0, text.length, Vector2(100.0, 440.0), 30.0, Color.rgb(0xFFFFFF), 0.0, 0)
+    }
 
     font.render(draws)
 

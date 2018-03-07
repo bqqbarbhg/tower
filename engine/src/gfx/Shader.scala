@@ -111,12 +111,23 @@ object Shader {
       if (render.opengl.OptsGl.useUniformBlocks) {
         if (OptsGl.useUboStd140)
           builder ++= "#define UboBegin(p_name) layout(std140, row_major) uniform p_name {\n"
-        else
-          builder ++= "#define UboBegin(p_name) layout(shared, row_major) uniform p_name {\n"
+        else {
+          if (OptsGl.useRowMajorMatrix) {
+            builder ++= "#define UboBegin(p_name) layout(shared, row_major) uniform p_name {\n"
+          } else {
+            builder ++= "#define UboBegin(p_name) layout(shared) uniform p_name {\n"
+          }
+        }
         builder ++= "#define Ubo\n"
-        builder ++= "#define UboMat layout(row_major)\n"
+        if (!OptsGl.useUboStd140 && OptsGl.useRowMajorMatrix) {
+          builder ++= "#define UboMat layout(row_major)\n"
+        } else {
+          builder ++= "#define UboMat\n"
+        }
         builder ++= "#define UboEnd() };\n"
-        builder ++= "layout(row_major) uniform;\n"
+        if (!OptsGl.useUboStd140 && OptsGl.useRowMajorMatrix) {
+          builder ++= "layout(row_major) uniform;\n"
+        }
       } else {
         builder ++= "#define UboBegin(p_name)\n"
         builder ++= "#define Ubo uniform\n"

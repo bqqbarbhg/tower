@@ -19,6 +19,7 @@ object UniformBlock {
 
     protected var arrayStrideInBytes = elementSizeInBytes
     protected var matrixStrideInBytes = 16
+    protected var matrixRowMajor = true
 
     /** Is the uniform some kind of a matrix */
     def isMatrix: Boolean
@@ -30,11 +31,13 @@ object UniformBlock {
       * @param offset Offset from the beginning of the block in bytes
       * @param arrayStride Distance between elements in an array in bytes
       * @param matrixStride Distance between rows/columns of a matrix in bytes
+      * @param rowMajor Is the matrix row-major or column-major
       */
-    def updateLayout(offset: Int, arrayStride: Int, matrixStride: Int): Unit = {
+    def updateLayout(offset: Int, arrayStride: Int, matrixStride: Int, rowMajor: Boolean): Unit = {
       offsetInBytes = offset
       arrayStrideInBytes = arrayStride
       matrixStrideInBytes = matrixStride
+      matrixRowMajor = rowMajor
     }
 
     def elementSizeInBytes: Int
@@ -71,25 +74,47 @@ object UniformBlock {
     def set(buffer: ByteBuffer, index: Int, value: Matrix4): Unit = {
       val base = offsetInBytes + index * arrayStrideInBytes
       var b = base
-      buffer.putFloat(b + 0*4, value.m11.toFloat)
-      buffer.putFloat(b + 1*4, value.m12.toFloat)
-      buffer.putFloat(b + 2*4, value.m13.toFloat)
-      buffer.putFloat(b + 3*4, value.m14.toFloat)
-      b += matrixStrideInBytes
-      buffer.putFloat(b + 0*4, value.m21.toFloat)
-      buffer.putFloat(b + 1*4, value.m22.toFloat)
-      buffer.putFloat(b + 2*4, value.m23.toFloat)
-      buffer.putFloat(b + 3*4, value.m24.toFloat)
-      b += matrixStrideInBytes
-      buffer.putFloat(b + 0*4, value.m31.toFloat)
-      buffer.putFloat(b + 1*4, value.m32.toFloat)
-      buffer.putFloat(b + 2*4, value.m33.toFloat)
-      buffer.putFloat(b + 3*4, value.m34.toFloat)
-      b += matrixStrideInBytes
-      buffer.putFloat(b + 0*4, value.m41.toFloat)
-      buffer.putFloat(b + 1*4, value.m42.toFloat)
-      buffer.putFloat(b + 2*4, value.m43.toFloat)
-      buffer.putFloat(b + 3*4, value.m44.toFloat)
+      if (matrixRowMajor) {
+        buffer.putFloat(b + 0*4, value.m11.toFloat)
+        buffer.putFloat(b + 1*4, value.m12.toFloat)
+        buffer.putFloat(b + 2*4, value.m13.toFloat)
+        buffer.putFloat(b + 3*4, value.m14.toFloat)
+        b += matrixStrideInBytes
+        buffer.putFloat(b + 0*4, value.m21.toFloat)
+        buffer.putFloat(b + 1*4, value.m22.toFloat)
+        buffer.putFloat(b + 2*4, value.m23.toFloat)
+        buffer.putFloat(b + 3*4, value.m24.toFloat)
+        b += matrixStrideInBytes
+        buffer.putFloat(b + 0*4, value.m31.toFloat)
+        buffer.putFloat(b + 1*4, value.m32.toFloat)
+        buffer.putFloat(b + 2*4, value.m33.toFloat)
+        buffer.putFloat(b + 3*4, value.m34.toFloat)
+        b += matrixStrideInBytes
+        buffer.putFloat(b + 0*4, value.m41.toFloat)
+        buffer.putFloat(b + 1*4, value.m42.toFloat)
+        buffer.putFloat(b + 2*4, value.m43.toFloat)
+        buffer.putFloat(b + 3*4, value.m44.toFloat)
+      } else {
+        buffer.putFloat(b + 0*4, value.m11.toFloat)
+        buffer.putFloat(b + 1*4, value.m21.toFloat)
+        buffer.putFloat(b + 2*4, value.m31.toFloat)
+        buffer.putFloat(b + 3*4, value.m41.toFloat)
+        b += matrixStrideInBytes
+        buffer.putFloat(b + 0*4, value.m12.toFloat)
+        buffer.putFloat(b + 1*4, value.m22.toFloat)
+        buffer.putFloat(b + 2*4, value.m32.toFloat)
+        buffer.putFloat(b + 3*4, value.m42.toFloat)
+        b += matrixStrideInBytes
+        buffer.putFloat(b + 0*4, value.m13.toFloat)
+        buffer.putFloat(b + 1*4, value.m23.toFloat)
+        buffer.putFloat(b + 2*4, value.m33.toFloat)
+        buffer.putFloat(b + 3*4, value.m43.toFloat)
+        b += matrixStrideInBytes
+        buffer.putFloat(b + 0*4, value.m14.toFloat)
+        buffer.putFloat(b + 1*4, value.m24.toFloat)
+        buffer.putFloat(b + 2*4, value.m34.toFloat)
+        buffer.putFloat(b + 3*4, value.m44.toFloat)
+      }
     }
   }
 
@@ -101,20 +126,38 @@ object UniformBlock {
     def set(buffer: ByteBuffer, index: Int, value: Matrix43): Unit = {
       val base = offsetInBytes + index * arrayStrideInBytes
       var b = base
-      buffer.putFloat(b + 0*4, value.m11.toFloat)
-      buffer.putFloat(b + 1*4, value.m12.toFloat)
-      buffer.putFloat(b + 2*4, value.m13.toFloat)
-      buffer.putFloat(b + 3*4, value.m14.toFloat)
-      b += matrixStrideInBytes
-      buffer.putFloat(b + 0*4, value.m21.toFloat)
-      buffer.putFloat(b + 1*4, value.m22.toFloat)
-      buffer.putFloat(b + 2*4, value.m23.toFloat)
-      buffer.putFloat(b + 3*4, value.m24.toFloat)
-      b += matrixStrideInBytes
-      buffer.putFloat(b + 0*4, value.m31.toFloat)
-      buffer.putFloat(b + 1*4, value.m32.toFloat)
-      buffer.putFloat(b + 2*4, value.m33.toFloat)
-      buffer.putFloat(b + 3*4, value.m34.toFloat)
+      if (matrixRowMajor) {
+        buffer.putFloat(b + 0*4, value.m11.toFloat)
+        buffer.putFloat(b + 1*4, value.m12.toFloat)
+        buffer.putFloat(b + 2*4, value.m13.toFloat)
+        buffer.putFloat(b + 3*4, value.m14.toFloat)
+        b += matrixStrideInBytes
+        buffer.putFloat(b + 0*4, value.m21.toFloat)
+        buffer.putFloat(b + 1*4, value.m22.toFloat)
+        buffer.putFloat(b + 2*4, value.m23.toFloat)
+        buffer.putFloat(b + 3*4, value.m24.toFloat)
+        b += matrixStrideInBytes
+        buffer.putFloat(b + 0*4, value.m31.toFloat)
+        buffer.putFloat(b + 1*4, value.m32.toFloat)
+        buffer.putFloat(b + 2*4, value.m33.toFloat)
+        buffer.putFloat(b + 3*4, value.m34.toFloat)
+      } else {
+        buffer.putFloat(b + 0*4, value.m11.toFloat)
+        buffer.putFloat(b + 1*4, value.m21.toFloat)
+        buffer.putFloat(b + 2*4, value.m31.toFloat)
+        b += matrixStrideInBytes
+        buffer.putFloat(b + 0*4, value.m12.toFloat)
+        buffer.putFloat(b + 1*4, value.m22.toFloat)
+        buffer.putFloat(b + 2*4, value.m32.toFloat)
+        b += matrixStrideInBytes
+        buffer.putFloat(b + 0*4, value.m13.toFloat)
+        buffer.putFloat(b + 1*4, value.m23.toFloat)
+        buffer.putFloat(b + 2*4, value.m33.toFloat)
+        b += matrixStrideInBytes
+        buffer.putFloat(b + 0*4, value.m14.toFloat)
+        buffer.putFloat(b + 1*4, value.m24.toFloat)
+        buffer.putFloat(b + 2*4, value.m34.toFloat)
+      }
     }
   }
 
