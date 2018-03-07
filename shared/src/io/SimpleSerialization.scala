@@ -43,7 +43,16 @@ object SimpleSerialization {
     /** Returns all the key/value pairs in order */
     def pairs: Vector[(String, SValue)] = order.map(key => (key, data(key)))
 
-    /** Returns a property with the name `key` */
+    /** Returns a version of the map with `key` set to `value` */
+    def updated(key: String, value: SValue): SMap = {
+      if (order.contains(key)) {
+        SMap(data.updated(key, value), order)
+      } else {
+        SMap(data.updated(key, value), order :+ key)
+      }
+    }
+
+    /** Returns a property with the name key` */
     def apply(key: String): SValue = data.getOrElse(key, SNotDefined)
 
     /** Returns a nested property with dot seprated keys */
