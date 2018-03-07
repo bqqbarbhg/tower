@@ -174,8 +174,8 @@ class Runner(val opts: RunOptions) {
 
     // Load configurations
     {
-      val tomlFiles = sourceFiles.filter(_.getName().endsWith(".toml"))
-      println(s"Parsing config .toml files... ${tomlFiles.length} found")
+      val tomlFiles = sourceFiles.filter(_.getName().endsWith(".ac.toml"))
+      println(s"Parsing config .ac.toml files... ${tomlFiles.length} found")
       for (tomlFile <- tomlFiles) {
         if (opts.debug) println(s"> ${assetRelative(tomlFile)}")
         try {
@@ -192,7 +192,7 @@ class Runner(val opts: RunOptions) {
 
     // Resolve assets
     {
-      val assetFiles = sourceFiles.filterNot(_.getName().endsWith(".toml"))
+      val assetFiles = sourceFiles.filterNot(_.getName().endsWith(".ac.toml"))
       println(s"Resolving assets... ${assetFiles.length} found")
       for (assetFile <- assetFiles) {
         val configs = getConfigs(assetFile)
@@ -451,6 +451,27 @@ class Runner(val opts: RunOptions) {
         ShaderFile.save(writer, filename, shader)
 
         shader.unload()
+      }
+    }
+
+    // Process locales
+    {
+      val dirtyLocales = dirtyAssets.filter(_.fileType == ImportFileLocale)
+      println(s"Processing locales... ${dirtyLocales.size} found")
+
+      for (asset <- dirtyLocales) {
+        val relPath = assetRelative(asset.file)
+        val resources = asset.importAsset()
+        assert(resources.size == 1)
+        val locale = resources.head.asInstanceOf[Locale]
+
+        val flatLocale = FlattenLocale.flattenLocale(locale)
+
+        val filename = Paths.get(opts.dataRoot, s"$relPath.s2lc").toFile
+        LocaleFile.save(writer, filename, flatLocale)
+
+        flatLocale.unload()
+        locale.unload()
       }
     }
 

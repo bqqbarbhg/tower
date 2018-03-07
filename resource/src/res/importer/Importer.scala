@@ -12,6 +12,7 @@ object Importer {
       case "assimp" => Some(AssimpImporter)
       case "wav" => Some(WavImporter)
       case "glsl" => Some(GlslImporter)
+      case "locale" => Some(LocaleImporter)
       case _ => None
     }
   }
