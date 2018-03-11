@@ -10,6 +10,7 @@ import ui.Sprite.SpriteMap
 import Atlas.SpriteBounds
 import render.VertexSpec._
 import SpriteBatch._
+import asset.ShaderAsset
 import gfx.Shader.Permutations
 
 object SpriteBatch {
@@ -17,23 +18,22 @@ object SpriteBatch {
   val BatchMaxSprites = 1024
   val FrameMaxSprites = 64*1024
 
-  object SpriteTextures extends SamplerBlock {
-    val TexArray = sampler2DArray("TexArray", Sampler.ClampBilinear)
-    val FinalTex = sampler2D("FinalTex", Sampler.ClampBilinear)
-  }
+  object SpriteShader extends ShaderAsset("shader/sprite") {
 
-  object SpriteVertexUniform extends UniformBlock("SpriteVertexUniform") {
-    val TexCoordScale = vec4("TexCoordScale")
-    val PosScale = vec4("PosScale")
-  }
+    override object Textures extends SamplerBlock {
+      val TexArray = sampler2DArray("TexArray", Sampler.ClampBilinear)
+      val FinalTex = sampler2D("FinalTex", Sampler.ClampBilinear)
+    }
 
-  object SpritePermutations extends Permutations {
-    val UseArray = both("UseArray", 0 to 1)
-  }
+    override object Permutations extends Shader.Permutations {
+      val UseArray = both("UseArray", 0 to 1)
+    }
 
-  lazy val spriteShader = {
-    import Shader._
-    Shader.load("shader/sprite", SpritePermutations, SpriteTextures, SpriteVertexUniform)
+    uniform(VertexUniform)
+    object VertexUniform extends UniformBlock("SpriteVertexUniform") {
+      val TexCoordScale = vec4("TexCoordScale")
+      val PosScale = vec4("PosScale")
+    }
   }
 
   // @Todo: Merge with fontIndexBuffer somehow
@@ -146,10 +146,12 @@ class SpriteBatch {
     val renderer = Renderer.get
 
     if (useArray)
-      renderer.setTexture(SpriteTextures.TexArray, currentAtlas.textureArray.get.texture)
-    renderer.setTexture(SpriteTextures.FinalTex, currentAtlas.lastTexture.get.texture)
+      renderer.setTexture(SpriteShader.Textures.TexArray, currentAtlas.textureArray.get.texture)
+    renderer.setTexture(SpriteShader.Textures.FinalTex, currentAtlas.lastTexture.get.texture)
 
-    renderer.pushUniform(SpriteVertexUniform, b => {
+    renderer.pushUniform(SpriteShader.VertexUniform, b => {
+      import SpriteShader.VertexUniform._
+
       val target = renderer.currentRenderTarget
       val targetW = target.width.toFloat
       val targetH = target.height.toFloat
@@ -161,12 +163,13 @@ class SpriteBatch {
       val screenX = 2.0f / targetW
       val screenY = -2.0f / targetH
 
-      SpriteVertexUniform.TexCoordScale.set(b, texScaleX, texScaleY, texScaleZ, texScaleW)
-      SpriteVertexUniform.PosScale.set(b, screenX, screenY, 0.0f, 0.0f)
+      TexCoordScale.set(b, texScaleX, texScaleY, texScaleZ, texScaleW)
+      PosScale.set(b, screenX, screenY, 0.0f, 0.0f)
     })
 
-    spriteShader.use(p => {
-      p(SpritePermutations.UseArray) = useArray
+    val shader = SpriteShader.get
+    shader.use(p => {
+      p(SpriteShader.Permutations.UseArray) = useArray
     })
 
     renderer.drawElements(numSpritesInBatch * 6, spriteIndexBuffer, vertexBuffer, baseVertex = vertexOffset)

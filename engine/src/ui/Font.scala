@@ -3,6 +3,7 @@ package ui
 import java.nio.{ByteBuffer, ByteOrder}
 
 import Font._
+import asset.ShaderAsset
 import gfx._
 import core._
 import org.lwjgl.system.MemoryUtil
@@ -102,23 +103,24 @@ object Font {
   /** Number of batches that can be drawn with one draw-call */
   val MaxBatchCount: Int = 32
 
-  object FontVertexUniform extends UniformBlock("FontVertexUniform") {
-    val TexCoordScale = vec4("TexCoordScale")
-    val PosScale = vec4("PosScale")
-  }
 
-  object FontPixelUniform extends UniformBlock("FontPixelUniform") {
-    val Color = vec4("Color", MaxBatchCount)
-    val SdfRamp = vec4("SdfRamp", MaxBatchCount)
-  }
+  object FontShader extends ShaderAsset("shader/font") {
 
-  object FontTextures extends SamplerBlock {
-    val Texture = sampler2D("Texture", Sampler.ClampBilinearNoMip)
-  }
+    override object Textures extends SamplerBlock {
+      val Texture = sampler2D("Texture", Sampler.ClampBilinearNoMip)
+    }
 
-  lazy val fontShader = {
-    import Shader._
-    Shader.load("shader/font", NoPermutations, FontTextures, FontVertexUniform, FontPixelUniform)
+    uniform(VertexUniform)
+    object VertexUniform extends UniformBlock("FontVertexUniform") {
+      val TexCoordScale = vec4("TexCoordScale")
+      val PosScale = vec4("PosScale")
+    }
+
+    uniform(PixelUniform)
+    object PixelUniform extends UniformBlock("FontPixelUniform") {
+      val Color = vec4("Color", MaxBatchCount)
+      val SdfRamp = vec4("SdfRamp", MaxBatchCount)
+    }
   }
 
   def load(name: String): Option[Font] = withStack {
@@ -357,7 +359,8 @@ class Font {
 
   /** Write pixel uniform data for a batch */
   private def setupPixelUniform(b: ByteBuffer, batch: Int, draw: TextDraw, variant: Variant): Unit = {
-    FontPixelUniform.Color.setSrgb(b, batch, draw.color)
+    import FontShader.PixelUniform._
+    Color.setSrgb(b, batch, draw.color)
 
     if (variant.useSdf) {
       val scale = draw.height / variant.height
@@ -367,9 +370,9 @@ class Font {
       val width = math.min(edge, step * 0.75)
       val sdfA = edge - width
       val sdfB = edge + width
-      FontPixelUniform.SdfRamp.set(b, batch, sdfA.toFloat, sdfB.toFloat, -123.0f, -123.0f)
+      SdfRamp.set(b, batch, sdfA.toFloat, sdfB.toFloat, -123.0f, -123.0f)
     } else {
-      FontPixelUniform.SdfRamp.set(b, batch, -1.0f, -1.0f, -123.0f, -123.0f)
+      SdfRamp.set(b, batch, -1.0f, -1.0f, -123.0f, -123.0f)
     }
   }
 
@@ -383,10 +386,12 @@ class Font {
     var drawnQuads = 0
 
     // Set the font texture
-    renderer.setTexture(FontTextures.Texture, texture.texture)
+    renderer.setTexture(FontShader.Textures.Texture, texture.texture)
 
     // Setup the vertex uniform
-    renderer.pushUniform(FontVertexUniform, b => {
+    renderer.pushUniform(FontShader.VertexUniform, b => {
+      import FontShader.VertexUniform._
+
       val target = renderer.currentRenderTarget
       val targetW = target.width.toFloat
       val targetH = target.height.toFloat
@@ -398,12 +403,12 @@ class Font {
       val screenX = 2.0f / targetW
       val screenY = -2.0f / targetH
 
-      FontVertexUniform.TexCoordScale.set(b, texScaleX, texScaleY, texCoordRatioX, texCoordRatioY)
-      FontVertexUniform.PosScale.set(b, screenX, screenY, 0.0f, 0.0f)
+      TexCoordScale.set(b, texScaleX, texScaleY, texCoordRatioX, texCoordRatioY)
+      PosScale.set(b, screenX, screenY, 0.0f, 0.0f)
     })
 
     // Resolve variants, count max vertices, setup uniforms
-    renderer.pushUniform(FontPixelUniform, b => {
+    renderer.pushUniform(FontShader.PixelUniform, b => {
       var prevBatch = -1
       for (i <- offset until offset + count) {
         val draw = draws(i)
@@ -436,7 +441,8 @@ class Font {
     Font.fontVertexOffset += drawnQuads * 4
 
     // Do the actual draw
-    fontShader.use()
+    val shader = FontShader.get
+    shader.use()
     renderer.drawElements(drawnQuads * 6, fontIndexBuffer, fontVertexBuffer, baseVertex = vertexOffset)
   }
 
