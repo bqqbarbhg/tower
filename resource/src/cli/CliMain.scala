@@ -1,9 +1,7 @@
 package cli
 
-import java.nio.file.Paths
 
 import core.StackAllocator
-import io.SimpleSerialization.{SMap, SString}
 import res.runner.{RunOptions, Runner}
 
 /**
@@ -11,28 +9,8 @@ import res.runner.{RunOptions, Runner}
   */
 object CliMain extends App {
 
-  val opts = new RunOptions()
   val arg = util.ArgumentParser.parse(args)
-
-  /** Add the path of the config file to the value of `key` */
-  private def resolveConfigPath(root: SMap, file: String, key: String): SMap = {
-    root(key) match {
-      case SString(str) =>
-        val parent = Paths.get(file).toAbsolutePath.getParent
-        val path = parent.resolve(str)
-        root.updated(key, SString(path.normalize.toString))
-      case _ => root
-    }
-  }
-
-  // Read config from command line argument
-  for (configFile <- arg.positional) {
-    var config = io.Toml.parseFile(configFile)
-    config = resolveConfigPath(config, configFile, "assetRoot")
-    config = resolveConfigPath(config, configFile, "dataRoot")
-    config = resolveConfigPath(config, configFile, "tempRoot")
-    config.write(opts)
-  }
+  val opts = RunOptions.createFromFiles(arg.positional)
 
   // Command line options for changing the settings. Overrides file config.
   if (arg.flag("fast")) opts.skipOnTimestamp = true

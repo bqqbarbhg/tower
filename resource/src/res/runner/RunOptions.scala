@@ -1,5 +1,37 @@
 package res.runner
 
+import io.SimpleSerialization.{SMap, SString}
+import java.nio.file.Paths
+
+object RunOptions {
+
+  /** Add the path of the config file to the value of `key` */
+  private def resolveConfigPath(root: SMap, file: String, key: String): SMap = {
+    root(key) match {
+      case SString(str) =>
+        val parent = Paths.get(file).toAbsolutePath.getParent
+        val path = parent.resolve(str)
+        root.updated(key, SString(path.normalize.toString))
+      case _ => root
+    }
+  }
+
+  /** Create `RunOptions` from a series of files */
+  def createFromFiles(files: Iterable[String]): RunOptions = {
+    val opts = new RunOptions()
+
+    for (configFile <- files) {
+      var config = io.Toml.parseFile(configFile)
+      config = resolveConfigPath(config, configFile, "assetRoot")
+      config = resolveConfigPath(config, configFile, "dataRoot")
+      config = resolveConfigPath(config, configFile, "tempRoot")
+      config.write(opts)
+    }
+
+    opts
+  }
+}
+
 class RunOptions extends io.SimpleSerializable {
 
   /** Number of threads to process with, 0 for automatic */
