@@ -18,7 +18,7 @@ abstract class LoadableAsset {
   AssetLoader.add(this)
 
   private var state = StateUnloaded
-  private var dependencies: Seq[LoadableAsset] = Vector[LoadableAsset]()
+  private var dependencies: Array[LoadableAsset] = Array[LoadableAsset]()
   private var refcountState = 0
 
   protected def preloadAsset(): Iterable[LoadableAsset] = None
@@ -40,7 +40,7 @@ abstract class LoadableAsset {
     */
   final def preload(): Unit = {
     if (state == StateUnloaded) {
-      dependencies = preloadAsset().toVector
+      dependencies = preloadAsset().toArray
       state = StatePreloaded
     }
   }
@@ -79,7 +79,7 @@ abstract class LoadableAsset {
     }
     if (state == StatePreloaded) {
       state = StateUnloaded
-      dependencies = Vector[LoadableAsset]()
+      dependencies = Array[LoadableAsset]()
     }
   }
 

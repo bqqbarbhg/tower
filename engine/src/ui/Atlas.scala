@@ -146,6 +146,8 @@ class Atlas {
   }
 
   def unload(): Unit = {
+    lastTexture.foreach(_.unload())
+    textureArray.foreach(_.unload())
     MemoryUtil.memFree(data)
   }
 

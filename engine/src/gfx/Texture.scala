@@ -142,4 +142,8 @@ class Texture {
 
     buffer.verifyMagic("E.tx")
   }
+
+  def unload(): Unit = {
+    texture.free()
+  }
 }

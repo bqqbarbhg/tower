@@ -2,8 +2,10 @@ package game
 
 import asset._
 import core._
+import input._
 import render._
 import io.content._
+import io.Toml
 import main.EngineStartup
 import platform.AppWindow
 import res.runner.{RunOptions, Runner}
@@ -32,6 +34,13 @@ object TestEngine extends App {
   processResources()
 
   object SimpleShader extends ShaderAsset("test/test_simple") {
+
+    override object Textures extends SamplerBlock {
+      import Sampler._
+
+      val AlbedoTex = sampler2D("AlbedoTex", RepeatTrilinear)
+      val NormalTex = sampler2D("NormalTex", RepeatTrilinear)
+    }
 
     uniform(VertexGlobal)
     object VertexGlobal extends UniformBlock("GlobalUniform") {
@@ -73,6 +82,21 @@ object TestEngine extends App {
   var prevWidth = -1
   var prevHeight = -1
 
+  object DebugInput extends InputSet("Debug") {
+    val Reload = button("Reload")
+  }
+
+  val keyboard = AppWindow.keyboard
+
+  val debugMapping = Toml.parse(
+    """
+      |[Keyboard.Debug]
+      |Reload = "R"
+    """.stripMargin)
+
+  val mapping = new InputMapping(Array(keyboard))
+  mapping.init(debugMapping)
+
   val startTime = AppWindow.currentTime
   while (AppWindow.running) {
     frameCount += 1
@@ -111,16 +135,19 @@ object TestEngine extends App {
     })
 
     val model = sausageman.get
-    for {
-      mesh <- model.meshes
-      part <- mesh.parts
-    } {
-      part.draw()
+    for (mesh <- model.meshes) {
+
+      renderer.setTexture(SimpleShader.Textures.AlbedoTex, mesh.material.albedoTex.texture)
+      renderer.setTexture(SimpleShader.Textures.NormalTex, mesh.material.normalTex.texture)
+
+      for (part <- mesh.parts) {
+        part.draw()
+      }
     }
 
     AppWindow.swapBuffers()
 
-    if (frameCount % 120 == 0) {
+    if (mapping.justPressed(DebugInput.Reload)) {
       processResources()
       AssetLoader.reloadEverything()
     }

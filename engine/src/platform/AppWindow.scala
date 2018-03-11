@@ -1,5 +1,6 @@
 package platform
 
+import input.device.Keyboard
 import org.lwjgl.glfw.GLFW._
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11._
@@ -30,6 +31,8 @@ object AppWindow {
     }
   }
 
+  val keyboard = new Keyboard()
+
   /** Create the application window */
   def initialize(width: Int, height: Int, title: String, debug: Boolean): Unit = {
     assert(window == NULL)
@@ -48,6 +51,8 @@ object AppWindow {
     glfwMakeContextCurrent(window)
     GL.createCapabilities()
     glfwSwapInterval(1)
+
+    glfwSetKeyCallback(window, keyboard.keyCallback)
 
     if (debug && GL.getCapabilities.GL_KHR_debug) {
       OptsGl.useDebug = true
@@ -68,6 +73,7 @@ object AppWindow {
   /** Update input etc */
   def pollEvents(): Unit = {
     glfwPollEvents()
+    keyboard.update()
   }
 
   /** Present the rendered frame */
