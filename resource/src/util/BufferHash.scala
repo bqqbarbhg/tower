@@ -29,6 +29,7 @@ object BufferHash {
     val array = new Array[Byte](ChunkSize)
     val buffer = alloca(ChunkSize)
 
+    val stack = MemoryStack.stackPush()
     val state = XXH64State.callocStack()
     XXH64_reset(state, 1)
 
@@ -45,7 +46,9 @@ object BufferHash {
       num = stream.read(array)
     }
 
-    XXH64_digest(state)
+    val hash = XXH64_digest(state)
+    stack.pop()
+    hash
   }
 
   def hashFile(file: File): Long = {
