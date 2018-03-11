@@ -123,7 +123,7 @@ object Font {
     }
   }
 
-  def load(name: String): Option[Font] = withStack {
+  def load(name: Identifier): Option[Font] = withStack {
     Package.get.get(name).map(file => {
       val font = new Font()
 
@@ -591,6 +591,10 @@ class Font {
   }
 
   def unload(): Unit = {
+    if (texture != null) {
+      texture.unload()
+      texture = null
+    }
     if (data != null) {
       MemoryUtil.memFree(data)
       data = null

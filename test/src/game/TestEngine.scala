@@ -11,6 +11,9 @@ import io.Toml
 import main.EngineStartup
 import platform.AppWindow
 import res.runner.{RunOptions, Runner}
+import ui.Font.TextDraw
+
+import collection.mutable.ArrayBuffer
 
 object TestEngine extends App {
 
@@ -76,6 +79,7 @@ object TestEngine extends App {
   Package.set(pack)
 
   val sausagemanAsset = ModelAsset("test/sausageman/sausagemanWithTex.fbx.s2md")
+  val fontAsset = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
 
   val opts = new EngineStartup.Options()
   opts.debug = true
@@ -183,6 +187,22 @@ object TestEngine extends App {
         part.draw()
       }
     }
+
+    renderer.setDepthMode(false, false)
+    renderer.setBlend(true)
+
+    val fg = Color.rgb(0xffffff)
+    val bg = Color.rgb(0x000000)
+
+    val draws = ArrayBuffer[TextDraw]()
+    draws += TextDraw("This is a long body text that", 0, "This is a long body text that".length, Vector2(100.0, 114.0), 22.0, fg, 0.0, 1)
+    draws += TextDraw("Hello world!", 0, "Hello world!".length, Vector2(100.0, 90.0), 82.0, fg, 0.0, 1)
+    draws += TextDraw("spans many lines but is currently", 0, "spans many lines but is currently".length, Vector2(100.0, 128.0), 22.0, fg, 0.0, 1)
+    draws += TextDraw("Hello world!", 0, "Hello world!".length, Vector2(100.0, 90.0), 82.0, bg, 2.0, 0)
+    draws += TextDraw("manually wrapped...", 0, "manually wrapped...".length, Vector2(100.0, 142.0), 22.0, fg, 0.0, 1)
+
+    val font = fontAsset.get
+    font.render(draws)
 
     AppWindow.swapBuffers()
 

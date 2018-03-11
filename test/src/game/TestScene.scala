@@ -295,7 +295,7 @@ object TestScene extends App {
 
   val sb = new SpriteBatch()
 
-  val font = Font.load("font/open-sans/OpenSans-Regular.ttf.s2ft").get
+  val font = Font.load(Identifier("font/open-sans/OpenSans-Regular.ttf.s2ft")).get
 
   var prevNs = java.lang.System.nanoTime()
   var sampledTimesMs = Array.fill(60/**100*/)(0.0)

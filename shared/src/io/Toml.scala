@@ -227,7 +227,7 @@ object Toml {
   def parseFile(filename: String): SMap = {
     val source = scala.io.Source.fromFile(filename)
     val str = source.mkString
-    source.close
+    source.close()
     parse(str, filename)
   }
 
