@@ -180,7 +180,7 @@ object Animation {
 
   def load(name: Identifier): Option[Animation] = {
     Package.get.get(name).map(file => {
-      val animation = new Animation()
+      val animation = new Animation(name)
 
       val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
       val stream = file.read()
@@ -195,7 +195,7 @@ object Animation {
   }
 }
 
-class Animation {
+class Animation(val name: Identifier) {
 
   // All keyframe time/value data is stored in this buffer!
   var duration: Double = 0.0
@@ -204,6 +204,9 @@ class Animation {
 
   /** Create a new state object compatible with this animation */
   def createState(): OpaqueState = Array.fill(timelines.length * Timeline.StateSize)(0)
+
+  /** Is the animation loaded */
+  def loaded: Boolean = data != null
 
   /**
     * Load the animation from a .s2an -file.
@@ -245,6 +248,11 @@ class Animation {
     for (timeline <- timelines) {
       timeline.animationDataLoaded()
     }
+  }
+
+  def unload(): Unit = {
+    data = null
+    timelines = null
   }
 }
 

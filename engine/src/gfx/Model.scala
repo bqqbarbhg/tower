@@ -27,6 +27,8 @@ object Model {
 
 class Model {
 
+  private var isLoaded = false
+
   // Nodes
   var transformToParent: Array[AffineTransform] = Array[AffineTransform]()
   var transformToRoot: Array[Matrix43] = Array[Matrix43]()
@@ -54,6 +56,8 @@ class Model {
 
   // Misc
   private val animationMappingCache = new java.util.IdentityHashMap[Animation, Array[Int]]
+
+  def loaded: Boolean = isLoaded
 
   def load(buffer: ByteBuffer): Unit = {
 
@@ -120,6 +124,13 @@ class Model {
       val parent = this.parentIndex(i)
       this.transformToRoot(i) = Matrix43.affine(this.transformToParent(i)) * this.transformToRoot(parent)
     }
+
+    isLoaded = true
+  }
+
+  /** Mark the model as unloaded */
+  def unload(): Unit = {
+    isLoaded = false
   }
 
   /** Load the content required by this Model */
@@ -142,6 +153,18 @@ class Model {
       else
         material.normalTex = Material.missingNormal
     }
+  }
+
+  /**
+    * Find an animation by name. Returns `null` on failure (for performance reasons).
+    */
+  def findAnimationByName(name: Identifier): Animation = {
+    var index = 0
+    while (index < numAnims) {
+      if (name.index == animName(index)) return anims(index)
+      index += 1
+    }
+    null
   }
 
   /**

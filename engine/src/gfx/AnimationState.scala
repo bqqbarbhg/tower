@@ -16,12 +16,34 @@ class AnimationState(val model: Model, val animation: Animation) {
   /** Current blend factor [0.0, 1.0] */
   var alpha: Double = 1.0
 
+  /** Is the content required by the animation state loaded */
+  def loaded: Boolean = model.loaded && animation.loaded
+
+  /**
+    * Advance the animation by some timestep, but loop when the animation reaches the end.
+    */
+  def advanceLoop(dt: Double): Unit = {
+    time += dt
+    time %= animation.duration
+  }
+
+  /**
+    * Advance the animation by some timestep, but clamp to the end.
+    */
+  def advanceClamp(dt: Double): Unit = {
+    time += dt
+    time = math.min(time, animation.duration)
+  }
+
   /**
     * Apply the animation at the current time.
     */
   def apply(state: ModelState): Unit = {
     // Don't apply hidden animations
     if (alpha <= 0.0) return
+
+    // Don't apply stale animations
+    if (!loaded) return
 
     var ix = 0
     val numTimelines = animation.timelines.length
