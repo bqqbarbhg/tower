@@ -44,7 +44,7 @@ object AppWindow {
     if (debug)
       glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE)
 
-    window = glfwCreateWindow(1280, 720, "Hello World!", NULL, NULL)
+    window = glfwCreateWindow(width, height, title, NULL, NULL)
     glfwMakeContextCurrent(window)
     GL.createCapabilities()
     glfwSwapInterval(1)

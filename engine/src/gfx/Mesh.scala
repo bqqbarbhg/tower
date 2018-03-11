@@ -61,5 +61,11 @@ class Mesh {
 
     buffer.verifyMagic("E.ms")
   }
+
+  def unload(): Unit = {
+    for (part <- parts) {
+      part.unload()
+    }
+  }
 }
 

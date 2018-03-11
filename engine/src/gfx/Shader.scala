@@ -216,4 +216,11 @@ class Shader(val permutations: Permutations, val programs: Map[Seq[Int], ShaderP
     * without permutations */
   def use(): Unit = use(p => ())
 
+  /** Free the resources used by the shader */
+  def unload(): Unit = {
+    for ((perm, program) <- programs) {
+      program.unload()
+    }
+  }
+
 }

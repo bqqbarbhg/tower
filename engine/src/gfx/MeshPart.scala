@@ -103,4 +103,8 @@ class MeshPart {
     Renderer.get.drawElements(numIndices, indexBuffer, vertexBuffer)
   }
 
+  def unload(): Unit = {
+    vertexBuffer.free()
+    indexBuffer.free()
+  }
 }

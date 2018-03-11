@@ -20,5 +20,6 @@
       </library>
     </orderEntry>
     <orderEntry type="module" module-name="engine" />
+    <orderEntry type="module" module-name="resource" />
   </component>
 </module>
