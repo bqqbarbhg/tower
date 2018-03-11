@@ -4,6 +4,7 @@ import core.Identifier
 
 import scala.collection.mutable.ArrayBuffer
 import Sprite._
+import asset.AtlasAsset
 
 object Sprite {
 
@@ -28,12 +29,13 @@ object Sprite {
     private var atlasIndexPairs = Array[Long /* = AtlasIndexPair */]()
     private var numSprites = 0
 
-    var atlases = new ArrayBuffer[Atlas]()
+    var atlasAssets = new ArrayBuffer[AtlasAsset]()
 
     /** Clear the map of all sprites */
     def clear(): Unit = {
       identifiers = Array[Int]()
       atlasIndexPairs = Array[Long]()
+      atlasAssets.clear()
       numSprites = 0
     }
 

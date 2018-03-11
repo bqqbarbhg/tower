@@ -81,7 +81,7 @@ class SpriteBatch {
     if (currentAtlasIndex != pair.atlas || numSpritesInBatch == BatchMaxSprites) {
       flush()
       currentAtlasIndex = pair.atlas
-      currentAtlas = SpriteMap.atlases(currentAtlasIndex)
+      currentAtlas = SpriteMap.atlasAssets(currentAtlasIndex).get
       gpuBuffer = vertexBuffer.beginMap(vertexOffset, BatchMaxSprites * 4)
     }
 

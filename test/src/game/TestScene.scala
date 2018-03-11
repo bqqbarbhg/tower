@@ -7,6 +7,7 @@ import java.nio.{ByteBuffer, ByteOrder}
 import javax.management.openmbean.CompositeData
 import javax.management.{Notification, NotificationEmitter, NotificationListener}
 
+import asset.AssetLoader
 import audio._
 import audio.effect.Limiter
 import com.sun.management.GarbageCollectionNotificationInfo
@@ -284,14 +285,9 @@ object TestScene extends App {
 
   val anim = model.anims.head
 
-  val atlases = Package.get.list("atlas").filter(_.name.endsWith(".s2at"))
-  for (atlas <- atlases) {
-    println(s"Loading atlas: ${atlas.name}")
-    Atlas.load(Identifier(atlas.name))
-  }
+  AssetLoader.preloadAtlases()
 
   val sprite = Sprite.SpriteMap.get(Identifier("sprites/a.png"))
-  Sprite.SpriteMap.atlases(sprite.atlas).loadTextures()
 
   val sb = new SpriteBatch()
 

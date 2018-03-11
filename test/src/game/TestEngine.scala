@@ -93,8 +93,6 @@ object TestEngine extends App {
   val bundle = new AssetBundle(SimpleShader, sausagemanAsset, uiAtlas)
   bundle.acquire()
 
-  bundle.load()
-
   val sausageman = new Sausageman(sausagemanAsset)
   val sb = new SpriteBatch()
 

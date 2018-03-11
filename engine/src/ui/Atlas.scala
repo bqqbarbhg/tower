@@ -27,9 +27,9 @@ object Atlas {
     val Page = byte
   }
 
-  def load(name: Identifier): Option[Atlas] = {
+  def load(name: Identifier, atlasIndex: Int): Option[Atlas] = {
     io.content.Package.get.get(name).map(file => {
-      val atlas = new Atlas()
+      val atlas = new Atlas(atlasIndex)
 
       val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
       val stream = file.read()
@@ -45,7 +45,7 @@ object Atlas {
 
 }
 
-class Atlas {
+class Atlas(val atlasIndex: Int) {
   var data: ByteBuffer = null
 
   var textureArray: Option[Texture] = None
@@ -77,13 +77,10 @@ class Atlas {
     data = MemoryUtil.memAlloc(dataSize)
     this.spriteBase = spriteBase
 
-    val D = data
-
     spriteNames = new Array[Int](numSprites)
     pageNames = new Array[Int](numPages)
 
-    val atlasIndex = Sprite.SpriteMap.atlases.length
-    Sprite.SpriteMap.atlases += this
+    val D = data
 
     for (i <- 0 until numSprites) {
       val A = spriteBase + SpriteBounds.size * i

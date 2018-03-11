@@ -2,6 +2,7 @@ package asset
 
 import ui._
 import core._
+import ui.Sprite.SpriteMap
 
 object AtlasAsset {
   def apply(name: String): AtlasAsset = apply(Identifier(name))
@@ -19,7 +20,8 @@ class AtlasAsset(val name: Identifier) extends LoadableAsset {
 
   override def preloadAsset(): Iterable[LoadableAsset] = {
     // @Todo: What to do about failed loads?
-    atlasImpl = Atlas.load(name).get
+    atlasImpl = Atlas.load(name, SpriteMap.atlasAssets.length).get
+    SpriteMap.atlasAssets += this
     None
   }
 
