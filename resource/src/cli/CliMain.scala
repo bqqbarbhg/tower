@@ -1,6 +1,5 @@
 package cli
 
-
 import core.StackAllocator
 import res.runner.{RunOptions, Runner}
 
