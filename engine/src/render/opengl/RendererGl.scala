@@ -73,6 +73,11 @@ class RendererGl {
     java.util.Arrays.fill(activeUniforms.asInstanceOf[Array[AnyRef]], null)
   }
 
+  def setInvalidShader(): Unit = {
+    activeShader = null
+    activeShaderEnabled = false
+  }
+
   def setShader(shader: ShaderProgramGl): Unit = {
     activeShader = shader
     activeShaderEnabled = false
@@ -214,14 +219,16 @@ class RendererGl {
   }
 
   def drawElements(num: Int, ib: IndexBufferGl, vb0: VertexBufferGl, vb1: VertexBufferGl = null, baseVertex: Int = 0): Unit = {
-    applyState()
-    vaoCache.bindVertexBuffers(activeShader, vb0, vb1, ib)
-    if (baseVertex != 0) {
-      glDrawElementsBaseVertex(GL_TRIANGLES, num, GL_UNSIGNED_SHORT, 0, baseVertex)
-    } else {
-      glDrawElements(GL_TRIANGLES, num, GL_UNSIGNED_SHORT, 0)
+    if (activeShader != null) {
+      applyState()
+      vaoCache.bindVertexBuffers(activeShader, vb0, vb1, ib)
+      if (baseVertex != 0) {
+        glDrawElementsBaseVertex(GL_TRIANGLES, num, GL_UNSIGNED_SHORT, 0, baseVertex)
+      } else {
+        glDrawElements(GL_TRIANGLES, num, GL_UNSIGNED_SHORT, 0)
+      }
+      glBindVertexArray(0)
     }
-    glBindVertexArray(0)
   }
 
   def unload(): Unit = {

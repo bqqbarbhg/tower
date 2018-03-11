@@ -171,7 +171,8 @@ object Shader {
     def makePerms(index: Int, values: Vector[Int]): Unit = {
       if (index == perms.length) {
         val perm = values.toArray.toSeq
-        permMap(perm) = compilePermutation(values)
+        val program = compilePermutation(values)
+        permMap(perm) = program
       } else {
         for (value <- perms(index).values) {
           makePerms(index + 1, values :+ value)
@@ -179,10 +180,19 @@ object Shader {
       }
     }
 
-    makePerms(0, Vector[Int]())
+    try {
+      makePerms(0, Vector[Int]())
+      new Shader(permutations, permMap.toMap)
+    } catch {
+      case e: ShaderCompileError =>
+        for ((_, program) <- permMap) {
+          program.unload()
+        }
+        println(e.getMessage)
+        new Shader(permutations, Map[Seq[Int], ShaderProgram]())
+    }
 
 
-    new Shader(permutations, permMap.toMap)
   }
 }
 
@@ -206,6 +216,11 @@ class Shader(val permutations: Permutations, val programs: Map[Seq[Int], ShaderP
     * @param setPerms Callback for setting the permutations.
     */
   def use(setPerms: PermutationSetter => Unit): Unit = {
+    if (programs.isEmpty) {
+      Renderer.get.setInvalidShader()
+      return
+    }
+
     val values = Array.fill(permutations.permutations.length)(PermNotSetMagic)
     setPerms(new PermutationSetter(values))
     val program = programs.getOrElse(values.toSeq, throwPermutationError(values))

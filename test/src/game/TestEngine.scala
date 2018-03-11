@@ -112,7 +112,7 @@ object TestEngine extends App {
 
   def renderAudio(buffer: Array[Float], numFrames: Int): Unit = {
     TestEngine.synchronized {
-      limiter.advance(buffer, 0, numFrames, SampleRate)
+      // limiter.advance(buffer, 0, numFrames, SampleRate)
     }
   }
 

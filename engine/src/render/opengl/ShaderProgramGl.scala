@@ -7,10 +7,11 @@ import org.lwjgl.opengl.GL11._
 import org.lwjgl.opengl.GL20._
 import org.lwjgl.opengl.GL30._
 import org.lwjgl.opengl.GL31._
-
 import render._
 import ShaderProgramGl._
 import core._
+
+import scala.collection.mutable.ArrayBuffer
 
 object ShaderProgramGl {
 
@@ -29,6 +30,21 @@ object ShaderProgramGl {
 
   def compile(vert: String, frag: String, samplers: SamplerBlock, uniforms: UniformBlock*): ShaderProgramGl = {
 
+    var vs = 0
+    var fs = 0
+    var program = 0
+
+    def panicCleanup(): Unit = {
+      if (program != 0) {
+        glDetachShader(program, vs)
+        glDetachShader(program, fs)
+        glDeleteProgram(program)
+      }
+
+      if (vs != 0) glDeleteShader(vs)
+      if (fs != 0) glDeleteShader(fs)
+    }
+
     // -- Compile the shader
     def createShader(src: String, shaderType: Int): Int = {
 
@@ -42,19 +58,21 @@ object ShaderProgramGl {
                      else if (shaderType == GL_FRAGMENT_SHADER) "Fragment shader"
                      else "Shader"
 
+        panicCleanup()
         throw new ShaderCompileError(s"$shType error: $msg")
       }
       shader
     }
 
-    val vs = createShader(vert, GL_VERTEX_SHADER)
-    val fs = createShader(frag, GL_FRAGMENT_SHADER)
-    val program = glCreateProgram()
+    vs = createShader(vert, GL_VERTEX_SHADER)
+    fs = createShader(frag, GL_FRAGMENT_SHADER)
+    program = glCreateProgram()
     glAttachShader(program, vs)
     glAttachShader(program, fs)
     glLinkProgram(program)
     if (glGetProgrami(program, GL_LINK_STATUS) != GL_TRUE) {
       val msg = glGetProgramInfoLog(program)
+      panicCleanup()
       throw new ShaderCompileError(msg)
     }
 
