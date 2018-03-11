@@ -30,6 +30,13 @@ object Sprite {
 
     var atlases = new ArrayBuffer[Atlas]()
 
+    /** Clear the map of all sprites */
+    def clear(): Unit = {
+      identifiers = Array[Int]()
+      atlasIndexPairs = Array[Long]()
+      numSprites = 0
+    }
+
     /** Return the initial position where to start scanning */
     def hash(identifier: Identifier): Int = {
       // Leave some gaps to make the scan distances more even?

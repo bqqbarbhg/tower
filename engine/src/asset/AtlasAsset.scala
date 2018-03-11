@@ -1,0 +1,37 @@
+package asset
+
+import ui._
+import core._
+
+object AtlasAsset {
+  def apply(name: String): AtlasAsset = apply(Identifier(name))
+  def apply(name: Identifier): AtlasAsset = AssetLoader.getOrAdd(name, new AtlasAsset(name))
+}
+
+class AtlasAsset(val name: Identifier) extends LoadableAsset {
+
+  private var atlasImpl: Atlas = null
+
+  def get: Atlas = {
+    load()
+    atlasImpl
+  }
+
+  override def preloadAsset(): Iterable[LoadableAsset] = {
+    // @Todo: What to do about failed loads?
+    atlasImpl = Atlas.load(name).get
+    None
+  }
+
+  override def loadAsset(): Unit = {
+    atlasImpl.loadTextures()
+  }
+
+  override def unloadAsset(): Unit = {
+    atlasImpl.unload()
+    atlasImpl = null
+  }
+
+}
+
+

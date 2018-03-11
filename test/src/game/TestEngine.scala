@@ -12,6 +12,7 @@ import main.EngineStartup
 import platform.AppWindow
 import res.runner.{RunOptions, Runner}
 import ui.Font.TextDraw
+import ui.SpriteBatch
 
 import collection.mutable.ArrayBuffer
 
@@ -78,20 +79,24 @@ object TestEngine extends App {
 
   Package.set(pack)
 
+  AssetLoader.preloadAtlases()
+
   val sausagemanAsset = ModelAsset("test/sausageman/sausagemanWithTex.fbx.s2md")
   val fontAsset = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
+  val uiAtlas = AtlasAsset("atlas/foo.s2at")
 
   val opts = new EngineStartup.Options()
   opts.debug = true
   opts.windowName = "Engine test"
   EngineStartup.start(opts)
 
-  val bundle = new AssetBundle(SimpleShader, sausagemanAsset)
+  val bundle = new AssetBundle(SimpleShader, sausagemanAsset, uiAtlas)
   bundle.acquire()
 
   bundle.load()
 
   val sausageman = new Sausageman(sausagemanAsset)
+  val sb = new SpriteBatch()
 
   var frameCount = 0
 
@@ -203,6 +208,19 @@ object TestEngine extends App {
 
     val font = fontAsset.get
     font.render(draws)
+
+    val names = ('a' to 'z').map(_.toString)
+    for ((sprite, i) <- names.zipWithIndex) {
+      val x = i % 6
+      val y = i / 6
+      val offset = Vector2(x, y) * 50.0
+      val color = Color.rgb(0xffffff)
+      val alpha = math.sin(time * 5.0 + i * 7.0) * 0.25 + 0.75
+      val col = color.copy(a = alpha)
+      sb.draw(Identifier(s"sprites/$sprite.png"), Vector2(800.0, 100.0) + offset, Vector2(50.0, 50.0), col)
+    }
+
+    sb.flush()
 
     AppWindow.swapBuffers()
 
