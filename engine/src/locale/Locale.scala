@@ -17,7 +17,7 @@ object Locale {
 
   def load(info: LocaleInfo): Unit = load(info.file)
   def load(filename: Identifier): Unit = {
-    instance = new Locale()
+    instance = new Locale(filename)
     val file = Package.get.get(filename).get
     val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
     val stream = file.read()
@@ -30,7 +30,7 @@ object Locale {
 
 }
 
-class Locale {
+class Locale(val filename: Identifier) {
 
   private var simple = Array[String]()
 

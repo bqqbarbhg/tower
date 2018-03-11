@@ -7,6 +7,7 @@ import collection.mutable.ArrayBuffer
 import scala.collection.mutable
 import scala.reflect.ClassTag
 import io.content.Package
+import locale.Locale
 
 object AssetLoader {
   private val assets = new mutable.HashSet[LoadableAsset]()
@@ -56,6 +57,11 @@ object AssetLoader {
     // Restore assets to their original state
     for (asset <- preloaded) asset.preload()
     for (asset <- loaded) asset.load()
+
+    // Reload locales
+    if (Locale.instance != null) {
+      Locale.load(Locale.instance.filename)
+    }
   }
 
 }

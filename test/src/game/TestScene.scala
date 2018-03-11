@@ -57,7 +57,6 @@ object TestScene extends App {
   Package.set(pack)
 
   val LC = TestLocale
-
   LocaleInfo.load()
 
   for (locale <- LocaleInfo.locales) {

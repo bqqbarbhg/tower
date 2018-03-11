@@ -10,6 +10,7 @@ import input._
 import render._
 import io.content._
 import io.Toml
+import locale._
 import main.EngineStartup
 import platform.AppWindow
 import res.runner.{RunOptions, Runner}
@@ -121,6 +122,14 @@ object TestEngine extends App {
   musicInstance.copyParameters()
   mixer.add(musicInstance)
 
+  val LC = TestLocale
+  LocaleInfo.load()
+
+  {
+    val code = Identifier("fi")
+    Locale.load(LocaleInfo.locales.find(_.code == code).getOrElse(LocaleInfo.locales.head))
+  }
+
   val sausageman = new Sausageman(sausagemanAsset)
   val sb = new SpriteBatch()
 
@@ -230,6 +239,11 @@ object TestEngine extends App {
     draws += TextDraw("spans many lines but is currently", 0, "spans many lines but is currently".length, Vector2(100.0, 128.0), 22.0, fg, 0.0, 1)
     draws += TextDraw("Hello world!", 0, "Hello world!".length, Vector2(100.0, 90.0), 82.0, bg, 2.0, 0)
     draws += TextDraw("manually wrapped...", 0, "manually wrapped...".length, Vector2(100.0, 142.0), 22.0, fg, 0.0, 1)
+
+    {
+      val text = LC.Test.welcome(name = "Player")
+      draws += TextDraw(text, 0, text.length, Vector2(100.0, 480.0), 30.0, Color.rgb(0xFFFFFF), 0.0, 0)
+    }
 
     val font = fontAsset.get
     font.render(draws)
