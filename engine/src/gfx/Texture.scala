@@ -22,6 +22,8 @@ object Texture {
       stream.close()
       MemoryUtil.memFree(buffer)
 
+      texture.texture.setLabel(name.toString)
+
       texture
     })
   }
@@ -93,6 +95,9 @@ object Texture {
       MemoryUtil.memFree(buffer)
     }
 
+    for (first <- names.headOption)
+      texture.texture.setLabel(first.toString)
+
     Some(texture)
   }
 
@@ -103,6 +108,7 @@ object Texture {
     texture.format = "RGBA"
     texture.numLevels = 1
     texture.texture = TextureHandle.createStatic(width, height, "RGBA", Array(content))
+    texture.texture.setLabel("CreatedRgba")
     texture
   }
 }

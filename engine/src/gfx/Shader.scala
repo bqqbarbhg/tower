@@ -155,8 +155,15 @@ object Shader {
     def compilePermutation(values: Seq[Int]): ShaderProgram = {
       val vertGen = generateShaderPermutationSource(vertSrc, MaskVert, values)
       val fragGen = generateShaderPermutationSource(fragSrc, MaskFrag, values)
+      val program = ShaderProgram.compile(vertGen, fragGen, samplers, uniforms : _*)
 
-      ShaderProgram.compile(vertGen, fragGen, samplers, uniforms : _*)
+      val permutationDebug = (for ((value, perm) <- (values zip perms)) yield {
+        s"${perm.name}:$value"
+      }).mkString(" ")
+
+      program.setLabel(s"$name ($permutationDebug)")
+
+      program
     }
 
     // Recursively generate all the permutations for the shader

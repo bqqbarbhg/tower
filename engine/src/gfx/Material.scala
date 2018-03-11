@@ -10,7 +10,9 @@ object Material {
     data.put(0xFF.toByte)
     data.put(0xFF.toByte)
     data.finish()
-    Texture.createRgba(1, 1, data)
+    val tex = Texture.createRgba(1, 1, data)
+    tex.texture.setLabel("MissingAlbedo")
+    tex
   }
 
   lazy val missingNormal: Texture = withStack {
@@ -20,7 +22,9 @@ object Material {
     data.put(0x00.toByte)
     data.put(0x00.toByte)
     data.finish()
-    Texture.createRgba(1, 1, data)
+    val tex = Texture.createRgba(1, 1, data)
+    tex.texture.setLabel("MissingNormal")
+    tex
   }
 }
 

@@ -67,5 +67,31 @@ class RenderTargetGl(val width: Int, val height: Int, val colorFormat: Array[Str
     if (fbo != 0) glDeleteFramebuffers(fbo)
   }
 
+  def setLabel(label: String): Unit = {
+    if (OptsGl.useDebug) {
+      DebugGl.setLabel(DebugGl.FRAMEBUFFER, fbo, label)
+
+      for ((handle, index) <- colorHandles.zipWithIndex) {
+        val texLabel = s"$label: color $index"
+        DebugGl.setLabel(DebugGl.TEXTURE, handle, texLabel)
+      }
+
+      for (handle <- depthTexture) {
+        val texLabel = s"$label: depth"
+        DebugGl.setLabel(DebugGl.TEXTURE, handle, texLabel)
+      }
+
+      for (handle <- depthRenderbuffer) {
+        val texLabel = s"$label: depth (non-readable)"
+        DebugGl.setLabel(DebugGl.RENDERBUFFER, handle, texLabel)
+      }
+    }
+  }
+
+  def withLabel(label: String): RenderTargetGl = {
+    setLabel(label)
+    this
+  }
+
 }
 

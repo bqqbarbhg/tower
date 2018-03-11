@@ -22,6 +22,18 @@ object Mesh {
       stream.close()
       MemoryUtil.memFree(buffer)
 
+      if (mesh.parts.length > 1) {
+        for ((part, index) <- mesh.parts.zipWithIndex) {
+          part.vertexBuffer.setLabel(s"$name VB (part $index)")
+          part.indexBuffer.setLabel(s"$name IB (part $index)")
+        }
+      } else {
+        for (part <- mesh.parts) {
+          part.vertexBuffer.setLabel(s"$name VB")
+          part.indexBuffer.setLabel(s"$name IB")
+        }
+      }
+
       mesh
     })
   }

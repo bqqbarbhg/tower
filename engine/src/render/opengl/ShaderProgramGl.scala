@@ -180,4 +180,12 @@ class ShaderProgramGl(val serial: Int,
     -1
   }
 
+  def unload(): Unit = {
+    glDeleteProgram(program)
+  }
+
+  def setLabel(label: String): Unit = {
+    DebugGl.setLabel(DebugGl.PROGRAM, program, label)
+  }
+
 }

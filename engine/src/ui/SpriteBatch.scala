@@ -50,7 +50,7 @@ object SpriteBatch {
     }
     data.position(0)
     data
-  })
+  }).withLabel("Sprite IB")
 
   val SpriteSpec = VertexSpec(Vector(
     Attrib(2, DataFmt.F32, Identifier("Position")),
@@ -67,7 +67,7 @@ class SpriteBatch {
   private var currentAtlas: Atlas = null
   private var currentAtlasIndex = -1
 
-  private var vertexBuffer = VertexBuffer.createDynamic(SpriteSpec, FrameMaxSprites * 4)
+  private var vertexBuffer = VertexBuffer.createDynamic(SpriteSpec, FrameMaxSprites * 4).withLabel("SpriteBatch VB")
   private var vertexOffset = 0
 
   private var localBuffer = MemoryUtil.memAlloc(SpriteSpec.sizeInBytes * 4)

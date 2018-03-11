@@ -33,6 +33,7 @@ class UniformAllocator(val bufferSize: Int) {
   {
     buffer = glGenBuffers()
     glBindBuffer(GL_UNIFORM_BUFFER, buffer)
+    DebugGl.setLabel(DebugGl.BUFFER, buffer, "UniformAllocator Buffer")
 
     if (mapMode.persistent) {
       if (GL.getCapabilities.GL_ARB_buffer_storage) {

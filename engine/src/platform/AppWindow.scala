@@ -4,15 +4,16 @@ import org.lwjgl.glfw.GLFW._
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11._
 import org.lwjgl.system.MemoryUtil.NULL
-import org.lwjgl.opengl.ARBDebugOutput._
-import org.lwjgl.opengl.GLDebugMessageARBCallbackI
+import org.lwjgl.opengl.KHRDebug._
+import org.lwjgl.opengl.GLDebugMessageCallbackI
 import org.lwjgl.system.MemoryUtil
+import render.opengl.OptsGl
 
 object AppWindow {
 
   private var window: Long = NULL
 
-  object DebugListener extends GLDebugMessageARBCallbackI {
+  object DebugListener extends GLDebugMessageCallbackI {
     override def invoke(source: Int, msgType: Int, id: Int, severity: Int,
                         length: Int, messagePointer: Long, userParam: Long): Unit = {
 
@@ -21,9 +22,9 @@ object AppWindow {
       msgBuf.get(bytes)
       val message = new String(bytes, "UTF-8")
 
-      if (msgType == GL_DEBUG_TYPE_ERROR_ARB) {
+      if (msgType == GL_DEBUG_TYPE_ERROR) {
         throw new RuntimeException(s"OpenGL error: $message")
-      } else if (msgType != GL_DEBUG_TYPE_OTHER_ARB) {
+      } else if (msgType != GL_DEBUG_TYPE_OTHER) {
         println(s"GL: $message")
       }
     }
@@ -49,8 +50,9 @@ object AppWindow {
     glfwSwapInterval(1)
 
     if (debug && GL.getCapabilities.GL_KHR_debug) {
-      glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB)
-      glDebugMessageCallbackARB(DebugListener, 0)
+      OptsGl.useDebug = true
+      glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS)
+      glDebugMessageCallback(DebugListener, 0)
     }
   }
 

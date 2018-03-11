@@ -29,4 +29,10 @@ class IndexBufferGl {
   def free(): Unit = {
     glDeleteBuffers(buffer)
   }
+
+  def setLabel(label: String): Unit = DebugGl.setLabel(DebugGl.BUFFER, buffer, label)
+  def withLabel(label: String): IndexBufferGl = {
+    setLabel(label)
+    this
+  }
 }

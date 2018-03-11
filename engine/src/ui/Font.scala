@@ -94,9 +94,9 @@ object Font {
     }
     data.position(0)
     data
-  })
+  }).withLabel("Font IB")
 
-  lazy val fontVertexBuffer = VertexBuffer.createDynamic(FontVertexSpec, 4 * MaxQuadsPerFrame)
+  lazy val fontVertexBuffer = VertexBuffer.createDynamic(FontVertexSpec, 4 * MaxQuadsPerFrame).withLabel("Font VB")
   var fontVertexOffset = 0
 
   /** Number of batches that can be drawn with one draw-call */

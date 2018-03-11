@@ -87,6 +87,8 @@ class SamplerCache {
       val aniso = clamp(sampler.maxAnisotropy.toFloat, 1.0f, MaxAnisotropy)
       glSamplerParameterf(s, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso)
     }
+
+    DebugGl.setLabel(DebugGl.SAMPLER, s, sampler.debugName)
   }
 
   /** Needs to be called every frame */
@@ -144,7 +146,6 @@ class SamplerCache {
     lruHead = null
     lruTail = null
   }
-
 }
 
 

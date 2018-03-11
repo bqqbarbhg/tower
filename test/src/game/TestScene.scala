@@ -310,6 +310,7 @@ object TestScene extends App {
   var prevHeight = -1
 
   val shadowTarget = RenderTarget.create(1024, 1024, None, Some(TexFormat.D24S8), true)
+    .withLabel("Shadow Target")
 
   val startTime = AppWindow.currentTime
   var time = 0.0

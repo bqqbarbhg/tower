@@ -124,4 +124,5 @@ class TextureHandleGl(val width: Int, val height: Int, val numMips: Int, val for
     glBindTexture(bind, 0)
   }
 
+  def setLabel(label: String): Unit = DebugGl.setLabel(DebugGl.TEXTURE, texture, label)
 }

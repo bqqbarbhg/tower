@@ -210,5 +210,11 @@ class VertexBufferGl(val spec: VertexSpec, val numVertices: Int, val dynamic: Bo
 
     glDeleteBuffers(buffer)
   }
+
+  def setLabel(label: String): Unit = DebugGl.setLabel(DebugGl.BUFFER, buffer, label)
+  def withLabel(label: String): VertexBufferGl = {
+    setLabel(label)
+    this
+  }
 }
 

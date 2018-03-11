@@ -140,5 +140,7 @@ object OptsGl {
   var useUboStd140 = false
   /** Use row major matrices instead of GL default column major */
   var useRowMajorMatrix = true
+  /** Use OpenGL debugging features (KHR_debug available and requested) */
+  var useDebug = false
 }
 
