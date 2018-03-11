@@ -33,5 +33,10 @@ trait SampleSource {
     */
   def open(): SampleCursor
 
+  /**
+    * Release the sound data.
+    */
+  def unload(): Unit
+
 }
 

@@ -161,7 +161,6 @@ object TestScene extends App {
 
   musicInstance.copyParameters()
 
-  val limiter = new Limiter(mixer)
 
   val CreateWidth = 1280
   val CreateHeight = 720
@@ -170,6 +169,7 @@ object TestScene extends App {
   AppWindow.initialize(CreateWidth, CreateHeight, "Test window", debug)
 
   @volatile var closeAudio: Boolean = false
+  val limiter = new Limiter(mixer)
 
   def renderAudio(buffer: Array[Float], numFrames: Int): Unit = {
     TestScene.synchronized {

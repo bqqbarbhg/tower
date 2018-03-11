@@ -64,4 +64,6 @@ class PcmSource(val data: Array[Short], val channels: Int) extends SampleSource 
       new PcmCursorAny(this, channels)
     }
   }
+
+  override def unload(): Unit = { }
 }

@@ -1,8 +1,10 @@
 package game
 
 import asset._
+import audio.effect.Limiter
+import audio.{Mixer, SoundInstance}
 import core._
-import game.test.Sausageman
+import game.test.{Sausageman, TestAudioEngine}
 import gfx.{ModelState, Shader}
 import input._
 import render._
@@ -84,6 +86,7 @@ object TestEngine extends App {
   val sausagemanAsset = ModelAsset("test/sausageman/sausagemanWithTex.fbx.s2md")
   val fontAsset = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
   val uiAtlas = AtlasAsset("atlas/foo.s2at")
+  val music = SoundAsset("test/music_test.ogg.s2au")
 
   val opts = new EngineStartup.Options()
   opts.debug = true
@@ -92,6 +95,31 @@ object TestEngine extends App {
 
   val bundle = new AssetBundle(SimpleShader, sausagemanAsset, uiAtlas)
   bundle.acquire()
+
+  val SampleRate = 44100
+  val alOutput = new audio.output.OpenAlOutput(SampleRate, true)
+  val fileOutput = new audio.output.FileAudioOutput("audiodump.bin")
+  val audioOutput = new audio.output.MultiAudioOutput(
+    Seq(
+      alOutput,
+      // fileOutput,
+    )
+  )
+
+  val mixer = new Mixer()
+  val limiter = new Limiter(mixer)
+
+  def renderAudio(buffer: Array[Float], numFrames: Int): Unit = {
+    TestEngine.synchronized {
+      limiter.advance(buffer, 0, numFrames, SampleRate)
+    }
+  }
+
+  val audioEngine = new TestAudioEngine(audioOutput, renderAudio)
+
+  val musicInstance = new SoundInstance(music.get)
+  musicInstance.copyParameters()
+  mixer.add(musicInstance)
 
   val sausageman = new Sausageman(sausagemanAsset)
   val sb = new SpriteBatch()
@@ -122,7 +150,6 @@ object TestEngine extends App {
     frameCount += 1
     AppWindow.pollEvents()
     val time = AppWindow.currentTime - startTime
-
 
     val viewWidth = AppWindow.width
     val viewHeight = AppWindow.height
@@ -223,11 +250,15 @@ object TestEngine extends App {
     AppWindow.swapBuffers()
 
     if (mapping.justPressed(DebugInput.Reload)) {
-      processResources()
-      AssetLoader.reloadEverything()
+      TestEngine.synchronized {
+        processResources()
+        AssetLoader.reloadEverything()
+      }
     }
   }
 
   AppWindow.unload()
 
+  audioEngine.closeAudio = true
+  audioEngine.audioThread.join()
 }

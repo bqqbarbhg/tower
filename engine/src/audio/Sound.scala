@@ -11,7 +11,7 @@ import io.content.Package
 object Sound {
   def load(name: Identifier): Option[Sound] = {
     Package.get.get(name).map(file => {
-      val sound = new Sound()
+      val sound = new Sound(name)
 
       val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
       val stream = file.read()
@@ -26,12 +26,14 @@ object Sound {
   }
 }
 
-class Sound {
+class Sound(val filename: Identifier) {
   var format: String = ""
   var numChannels: Int = 0
   var sampleRate: Int = 0
   var lengthInFrames: Int = 0
   var sampleSource: SampleSource = null
+
+  var loaded: Boolean = false
 
   def load(buffer: ByteBuffer): Unit = {
 
@@ -53,7 +55,7 @@ class Sound {
 
     this.sampleSource = format match {
       case "OGGV" =>
-        val data = ByteBuffer.allocateDirect(dataSize)
+        val data = MemoryUtil.memAlloc(dataSize)
         data.order(ByteOrder.LITTLE_ENDIAN)
         data.put(src)
         data.position(0)
@@ -66,5 +68,12 @@ class Sound {
     }
 
     buffer.verifyMagic("E.au")
+
+    loaded = true
+  }
+
+  def unload(): Unit = {
+    sampleSource.unload()
+    loaded = false
   }
 }

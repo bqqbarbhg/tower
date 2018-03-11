@@ -1,8 +1,9 @@
 package audio
 
+import asset.SoundAsset
 import core._
 
-class SoundInstance(val sound: Sound) extends Input {
+class SoundInstance(var sound: Sound) extends Input {
 
   var pitch: Double = 1.0
   var volume: Double = 1.0
@@ -45,7 +46,14 @@ class SoundInstance(val sound: Sound) extends Input {
     *  at the end of the sound, but in looping case it can be the end of loop. */
   private var onePastLastFrameToRead = sound.lengthInFrames
 
-  private val cursor = sound.sampleSource.open()
+  private var cursor = sound.sampleSource.open()
+
+  private def reload(): Unit = {
+    cursor.close()
+    sound = SoundAsset(sound.filename).get
+    cursor = sound.sampleSource.open()
+    invalidateBuffer()
+  }
 
   private def followTarget(sampleRate: Int): Unit = {
     val factor = 60.0 / sampleRate.toDouble
@@ -69,6 +77,7 @@ class SoundInstance(val sound: Sound) extends Input {
   private def invalidateBuffer(): Unit = {
     bufferFirstFrame = 0
     bufferLastFrame = 0
+    bufferNumFrames = 0
   }
 
   private def fillBuffer(): Unit = {
@@ -155,6 +164,8 @@ class SoundInstance(val sound: Sound) extends Input {
   }
 
   override def advance(dstData: Array[Float], offsetInFrames: Int, numFrames: Int, sampleRate: Int): Unit = {
+    if (!sound.loaded) reload()
+
     val timeAdvance = sound.sampleRate.toDouble / sampleRate.toDouble
 
     var dstIndex = offsetInFrames

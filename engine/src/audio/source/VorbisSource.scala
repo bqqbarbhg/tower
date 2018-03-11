@@ -91,4 +91,8 @@ class VorbisCursor(source: VorbisSource) extends SampleCursor {
 
 class VorbisSource(val data: ByteBuffer) extends SampleSource {
   override def open(): SampleCursor = new VorbisCursor(this)
+
+  override def unload(): Unit = {
+    MemoryUtil.memFree(data)
+  }
 }
