@@ -173,8 +173,9 @@ object TestEngine extends App {
 
     sausageman.update(0.016)
 
-    if (viewWidth != prevWidth || viewHeight != prevHeight)
+    if (viewWidth != prevWidth || viewHeight != prevHeight) {
       renderer.resizeBackbuffer(viewWidth, viewHeight)
+    }
 
     renderer.advanceFrame()
 

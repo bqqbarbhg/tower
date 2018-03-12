@@ -74,7 +74,7 @@ class RendererGl {
 
   /** Resizes and initializes the backbuffer */
   def resizeBackbuffer(width: Int, height: Int): Unit = {
-    RenderTargetGl.Backbuffer = new RenderTargetGl(width, height, Array[String](), None, false)
+    RenderTargetGl.Backbuffer = new RenderTargetGl(width, height, Array[String](), None, false, 1)
   }
 
   /** Needs to be called every frame */
@@ -249,6 +249,21 @@ class RendererGl {
     } else {
       glDisable(GL_CULL_FACE)
     }
+  }
+
+  def blitRenderTargetColor(dst: RenderTargetGl, src: RenderTargetGl): Unit = {
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, src.fbo)
+
+    if (dst.fbo == 0) {
+      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
+      glDrawBuffer(GL_BACK)
+    } else {
+      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst.fbo)
+    }
+
+    val x1 = src.width
+    val y1 = src.height
+    glBlitFramebuffer(0, 0, x1, y1, 0, 0, x1, y1, GL_COLOR_BUFFER_BIT, GL_NEAREST)
   }
 
   def clear(color: Option[Color], depth: Option[Double]): Unit = {

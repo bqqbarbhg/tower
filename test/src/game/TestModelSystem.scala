@@ -112,6 +112,8 @@ object TestModelSystem extends App {
     override val Textures = ModelTextures
   }
 
+  var renderTarget: RenderTarget = null
+
   val startTime = AppWindow.currentTime
   while (AppWindow.running) {
     val renderer = Renderer.get
@@ -124,15 +126,21 @@ object TestModelSystem extends App {
 
     val viewWidth = AppWindow.width
     val viewHeight = AppWindow.height
-    if (viewWidth != prevWidth || viewHeight != prevHeight)
+
+    if (viewWidth != prevWidth || viewHeight != prevHeight) {
       renderer.resizeBackbuffer(viewWidth, viewHeight)
+
+      if (renderTarget != null) renderTarget.unload()
+      renderTarget = RenderTarget.create(viewWidth, viewHeight, Some("RGBA"), Some("D24S"), false, 8)
+      renderTarget.setLabel("Multisample target")
+    }
 
     val viewProjection = (
       Matrix4.perspective(viewWidth.toDouble / viewHeight.toDouble, math.Pi / 3.0, 0.01, 1000.0)
         * Matrix43.look(Vector3(0.0, 12.0, -14.0) * 4.0, Vector3(0.0, -1.0, 1.0)))
 
     renderer.advanceFrame()
-    renderer.setRenderTarget(RenderTarget.Backbuffer)
+    renderer.setRenderTarget(renderTarget)
     renderer.setDepthMode(true, true)
     renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
 
@@ -171,6 +179,8 @@ object TestModelSystem extends App {
       AssetLoader.reloadEverything()
       ModelSystem.assetsLoaded()
     }
+
+    renderer.blitRenderTargetColor(RenderTarget.Backbuffer, renderTarget)
 
     AppWindow.swapBuffers()
   }
