@@ -17,7 +17,7 @@ object Texture {
 
 }
 
-class Texture(val width: Int, val height: Int, val format: String) extends Resource {
+class Texture(val width: Int, val height: Int, val format: String, val readAsLinear: Option[Boolean] = None) extends Resource {
 
   /** Data of the mip-map levels, allocated using `MemoryUtil` */
   var levelData: Array[ByteBuffer] = Array[ByteBuffer]()

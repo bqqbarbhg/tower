@@ -1,9 +1,9 @@
 package render.opengl
 
 import org.lwjgl.opengl.GL11._
+import org.lwjgl.opengl.GL21._
 import org.lwjgl.opengl.GL30._
 import org.lwjgl.opengl.GL32._
-
 import RenderTargetGl._
 
 object RenderTargetGl {
@@ -38,10 +38,12 @@ class RenderTargetGl(val width: Int, val height: Int, val colorFormat: Array[Str
     if (numSamples > 1) {
       format match {
         case "RGBA" => glTexImage2DMultisample(binding, clampedSamples, GL_RGBA8, width, height, true)
+        case "SRGB" => glTexImage2DMultisample(binding, clampedSamples, GL_SRGB8, width, height, true)
       }
     } else {
       format match {
         case "RGBA" => glTexImage2D(binding, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0)
+        case "SRGB" => glTexImage2D(binding, 0, GL_SRGB, width, height, 0, GL_SRGB, GL_UNSIGNED_BYTE, 0)
       }
 
       glTexParameteri(binding, GL_TEXTURE_MIN_FILTER, GL_LINEAR)

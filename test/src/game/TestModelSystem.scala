@@ -66,14 +66,12 @@ object TestModelSystem extends App {
     if (x != 0 || y != 0) {
       val entity = new Entity()
       val model = ModelSystem.addModel(entity, asset)
-      model.transform = Matrix43.scale(0.01)
       entity.position = Vector3(x * 8.0, 0.0, y * 8.0)
     }
   }
 
   val entity = new Entity()
   val model = ModelSystem.addModel(entity, asset)
-  model.transform = Matrix43.scale(0.01)
   entity.position = Vector3(0.0, 0.0, 0.0)
 
   object DebugInput extends InputSet("Debug") {
@@ -131,7 +129,7 @@ object TestModelSystem extends App {
       renderer.resizeBackbuffer(viewWidth, viewHeight)
 
       if (renderTarget != null) renderTarget.unload()
-      renderTarget = RenderTarget.create(viewWidth, viewHeight, Some("RGBA"), Some("D24S"), false, 8)
+      renderTarget = RenderTarget.create(viewWidth, viewHeight, Some("SRGB"), Some("D24S"), false, 8)
       renderTarget.setLabel("Multisample target")
     }
 
@@ -142,6 +140,7 @@ object TestModelSystem extends App {
     renderer.advanceFrame()
     renderer.setRenderTarget(renderTarget)
     renderer.setDepthMode(true, true)
+    renderer.setWriteSrgb(true)
     renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
 
     ModelSystem.updateMatrices()

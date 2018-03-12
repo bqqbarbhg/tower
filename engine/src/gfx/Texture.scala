@@ -50,13 +50,16 @@ object Texture {
       val height = buffer.getInt()
       val numLevels = buffer.getInt()
       val format = buffer.getMagic()
+      val flags = buffer.getInt()
+
+      val readAsLinear = (flags & 0x01) != 0
 
       val levels = Seq.fill(numLevels) {
         val size = buffer.getInt()
         buffer.getBuffer(size)
       }
 
-      texture.texture = TextureHandle.createArray(width, height, format, files.length, numLevels)
+      texture.texture = TextureHandle.createArray(width, height, format, files.length, numLevels, readAsLinear)
       texture.texture.setLayerData(0, width, height, format, levels)
       texture.width = width
       texture.height = height
@@ -82,6 +85,7 @@ object Texture {
       val height = buffer.getInt()
       val numLevels = buffer.getInt()
       val format = buffer.getMagic()
+      val flags = buffer.getInt()
 
       val levels = Seq.fill(numLevels) {
         val size = buffer.getInt()
@@ -101,13 +105,13 @@ object Texture {
     Some(texture)
   }
 
-  def createRgba(width: Int, height: Int, content: ByteBuffer): Texture = {
+  def createRgba(width: Int, height: Int, content: ByteBuffer, srgbToLinear: Boolean): Texture = {
     val texture = new Texture()
     texture.width = width
     texture.height = height
     texture.format = "RGBA"
     texture.numLevels = 1
-    texture.texture = TextureHandle.createStatic(width, height, "RGBA", Array(content))
+    texture.texture = TextureHandle.createStatic(width, height, "RGBA", Array(content), srgbToLinear)
     texture.texture.setLabel("CreatedRgba")
     texture
   }
@@ -120,6 +124,7 @@ class Texture {
   var numLevels: Int = 0
   var format: String = ""
   var texture: TextureHandle = null
+  var flags: Int = 0
 
   def load(buffer: ByteBuffer): Unit = {
     // @Deserialize(s2tx)
@@ -132,13 +137,16 @@ class Texture {
     height = buffer.getInt()
     numLevels = buffer.getInt()
     format = buffer.getMagic()
+    flags = buffer.getInt()
+
+    val readAsLinear = (flags & 0x01) != 0
 
     val levels = Seq.fill(numLevels) {
       val size = buffer.getInt()
       buffer.getBuffer(size)
     }
 
-    texture = TextureHandle.createStatic(width, height, format, levels)
+    texture = TextureHandle.createStatic(width, height, format, levels, readAsLinear)
 
     buffer.verifyMagic("E.tx")
   }

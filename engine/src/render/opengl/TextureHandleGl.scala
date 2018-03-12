@@ -6,9 +6,11 @@ import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11._
 import org.lwjgl.opengl.GL12._
 import org.lwjgl.opengl.GL13._
+import org.lwjgl.opengl.GL21._
 import org.lwjgl.opengl.GL30._
 import org.lwjgl.opengl.GL42._
 import org.lwjgl.opengl.EXTTextureCompressionS3TC._
+import org.lwjgl.opengl.EXTTextureSRGB._
 
 object TextureHandleGl {
 
@@ -19,22 +21,41 @@ object TextureHandleGl {
     * @param height Height in pixels
     * @param format Opaque internal format
     * @param levels Mipmap level data in decreasing size
+    * @param srgbToLinear If enabled, the texture fetches will interpret the data as sRGB _and_ convert it
     */
-  def createStatic(width: Int, height: Int, format: String, levels: Seq[ByteBuffer]): TextureHandleGl = {
-    val tex = new TextureHandleGl(width, height, levels.length, format, GL_TEXTURE_2D)
+  def createStatic(width: Int, height: Int, format: String, levels: Seq[ByteBuffer], srgbToLinear: Boolean): TextureHandleGl = {
+    val useSrgb = if (srgbToLinear) {
+      format match {
+        case "RGBA" => true
+        case "DXT1" => GL.getCapabilities.GL_EXT_texture_sRGB
+        case "DXT5" => GL.getCapabilities.GL_EXT_texture_sRGB
+        case _ => false
+      }
+    } else false
+
+    val tex = new TextureHandleGl(width, height, levels.length, format, GL_TEXTURE_2D, useSrgb)
     glBindTexture(GL_TEXTURE_2D, tex.texture)
 
     var w = width
     var h = height
     for ((data, level) <- levels.zipWithIndex) {
-      format match {
-        case "RGBA" => glTexImage2D(GL_TEXTURE_2D, level, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data)
-        case "RGSN" => glTexImage2D(GL_TEXTURE_2D, level, GL_RG, w, h, 0, GL_RG, GL_UNSIGNED_BYTE, data)
-        case "DXT1" => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, w, h, 0, data)
-        case "DXT5" => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, w, h, 0, data)
-        case "BC4." => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RED_RGTC1, w, h, 0, data)
-        case "BC5." => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RG_RGTC2, w, h, 0, data)
+      if (useSrgb) {
+        format match {
+          case "RGBA" => glTexImage2D(GL_TEXTURE_2D, level, GL_SRGB8_ALPHA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data)
+          case "DXT1" => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_SRGB_S3TC_DXT1_EXT, w, h, 0, data)
+          case "DXT5" => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT, w, h, 0, data)
+        }
+      } else {
+        format match {
+          case "RGBA" => glTexImage2D(GL_TEXTURE_2D, level, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data)
+          case "RGSN" => glTexImage2D(GL_TEXTURE_2D, level, GL_RG, w, h, 0, GL_RG, GL_UNSIGNED_BYTE, data)
+          case "DXT1" => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, w, h, 0, data)
+          case "DXT5" => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, w, h, 0, data)
+          case "BC4." => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RED_RGTC1, w, h, 0, data)
+          case "BC5." => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RG_RGTC2, w, h, 0, data)
+        }
       }
+
       w = math.max(w / 2, 1)
       h = math.max(h / 2, 1)
     }
@@ -55,9 +76,14 @@ object TextureHandleGl {
     * @param format Opaque internal format
     * @param numLayers Number of indices in the array
     * @param numMips Number of mipmap levels per texture in the array
+    * @param srgbToLinear If enabled, the texture fetches will interpret the data as sRGB _and_ convert it
     */
-  def createArray(width: Int, height: Int, format: String, numLayers: Int, numMips: Int): TextureHandleGl = {
-    val tex = new TextureHandleGl(width, height, numMips, format, GL_TEXTURE_2D_ARRAY)
+  def createArray(width: Int, height: Int, format: String, numLayers: Int, numMips: Int, srgbToLinear: Boolean): TextureHandleGl = {
+
+    // @Todo: Implement sRGB array textures
+    assert(srgbToLinear == false, "Linear sRGB not implemented yet!")
+
+    val tex = new TextureHandleGl(width, height, numMips, format, GL_TEXTURE_2D_ARRAY, false)
     glBindTexture(GL_TEXTURE_2D_ARRAY, tex.texture)
 
     if (OptsGl.useTexStorage && GL.getCapabilities.GL_ARB_texture_storage) {
@@ -93,7 +119,7 @@ object TextureHandleGl {
 
 }
 
-class TextureHandleGl(val width: Int, val height: Int, val numMips: Int, val format: String, val bind: Int) {
+class TextureHandleGl(val width: Int, val height: Int, val numMips: Int, val format: String, val bind: Int, val hasSrgbToLinaerConversion: Boolean) {
   val texture = glGenTextures()
 
   /** Upload data for one of the layers an array texture */

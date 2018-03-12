@@ -141,10 +141,14 @@ object Config {
       /** Should the texture have mipmaps generated */
       var hasMipmaps: Boolean = true
 
+      /** Should the texture data be converted from sRGB to linar in shaders */
+      var readAsLinear: Boolean = false
+
       override def visit(v: SimpleVisitor): Unit = {
         semantic = v.field("semantic", semantic)
         compressed = v.field("compressed", compressed)
         hasMipmaps = v.field("hasMipmaps", hasMipmaps)
+        readAsLinear = v.field("readAsLinear", readAsLinear)
       }
     }
 

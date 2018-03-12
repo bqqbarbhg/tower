@@ -5,12 +5,12 @@ import core._
 object Material {
   lazy val missingAlbedo: Texture = withStack {
     val data = alloca(4)
-    data.put(0xFF.toByte)
-    data.put(0xFF.toByte)
-    data.put(0xFF.toByte)
-    data.put(0xFF.toByte)
+    data.put(0x80.toByte)
+    data.put(0x80.toByte)
+    data.put(0x80.toByte)
+    data.put(0x80.toByte)
     data.finish()
-    val tex = Texture.createRgba(1, 1, data)
+    val tex = Texture.createRgba(1, 1, data, true)
     tex.texture.setLabel("MissingAlbedo")
     tex
   }
@@ -22,7 +22,7 @@ object Material {
     data.put(0x00.toByte)
     data.put(0x00.toByte)
     data.finish()
-    val tex = Texture.createRgba(1, 1, data)
+    val tex = Texture.createRgba(1, 1, data, false)
     tex.texture.setLabel("MissingNormal")
     tex
   }

@@ -88,7 +88,9 @@ object CreateTexture {
         throw new RuntimeException(s"Unknown texture semantic: $other")
     }
 
-    val texture = new Texture(image.width, image.height, levelTextures.head.format)
+    val readAsLinear = image.srgb && config.readAsLinear
+
+    val texture = new Texture(image.width, image.height, levelTextures.head.format, Some(readAsLinear))
     texture.levelData = new Array[ByteBuffer](levels.length)
     for ((levelTex, index) <- levelTextures.zipWithIndex) {
       assert(levelTex.format == texture.format)

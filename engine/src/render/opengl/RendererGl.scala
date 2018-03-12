@@ -55,6 +55,7 @@ class RendererGl {
   var frameIndex = 0
 
   var virtualUbosToFreeThisFrame = ArrayBuffer[ByteBuffer]()
+  private var writeSrgb: Boolean = false
 
   private var activeTarget: RenderTargetGl = null
 
@@ -232,6 +233,12 @@ class RendererGl {
     else      glDisable(GL_DEPTH_TEST)
   }
 
+  def setWriteSrgb(enabled: Boolean): Unit = {
+    writeSrgb = enabled
+    if (enabled) glEnable (GL_FRAMEBUFFER_SRGB)
+    else         glDisable(GL_FRAMEBUFFER_SRGB)
+  }
+
   def setBlend(enable: Boolean): Unit = {
     if (enable) {
       glEnable(GL_BLEND)
@@ -270,11 +277,19 @@ class RendererGl {
     var flags = 0x0
     for (c <- color) {
       flags |= GL_COLOR_BUFFER_BIT
-      val r = Color.linearToSrgb(c.r).toFloat
-      val g = Color.linearToSrgb(c.g).toFloat
-      val b = Color.linearToSrgb(c.b).toFloat
-      val a = c.a.toFloat
-      glClearColor(r, g, b, a)
+      if (writeSrgb) {
+        val r = c.r.toFloat
+        val g = c.g.toFloat
+        val b = c.b.toFloat
+        val a = c.a.toFloat
+        glClearColor(r, g, b, a)
+      } else {
+        val r = Color.linearToSrgb(c.r).toFloat
+        val g = Color.linearToSrgb(c.g).toFloat
+        val b = Color.linearToSrgb(c.b).toFloat
+        val a = c.a.toFloat
+        glClearColor(r, g, b, a)
+      }
     }
     for (d <- depth) {
       flags |= GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT
