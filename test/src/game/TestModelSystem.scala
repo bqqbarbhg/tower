@@ -10,6 +10,7 @@ import input.{InputMapping, InputSet}
 import io.Toml
 import io.content._
 import _root_.main.EngineStartup
+import game.TestModelSystem.TestModelShader.PixelUniform
 import platform.AppWindow
 import res.runner.{RunOptions, Runner}
 
@@ -103,6 +104,11 @@ object TestModelSystem extends App {
     uniform(ModelSystem.InstancedUniform)
     uniform(GlobalUniform)
 
+    uniform(PixelUniform)
+    object PixelUniform extends UniformBlock("PixelUniform") {
+      val UvBounds = vec4("UvBounds")
+    }
+
     override val Textures = ModelTextures
   }
 
@@ -139,6 +145,8 @@ object TestModelSystem extends App {
       GlobalUniform.ViewProjection.set(u, viewProjection)
     })
 
+    renderer.setCull(true)
+
     val shader = TestModelShader.get
     shader.use()
 
@@ -146,6 +154,10 @@ object TestModelSystem extends App {
       val mesh = draw.mesh
       val part = mesh.parts.head
       assert(draw.mesh.parts.length == 1)
+
+      renderer.pushUniform(PixelUniform, u => {
+        PixelUniform.UvBounds.set(u, part.uvOffsetX, part.uvOffsetY, part.uvScaleX, part.uvScaleY)
+      })
 
       renderer.setTexture(ModelTextures.Diffuse, mesh.material.albedoTex.texture)
       renderer.bindUniform(ModelSystem.InstancedUniform, draw.ubo)

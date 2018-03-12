@@ -241,6 +241,16 @@ class RendererGl {
     }
   }
 
+  def setCull(enable: Boolean): Unit = {
+    if (enable) {
+      glEnable(GL_CULL_FACE)
+      glFrontFace(GL_CW)
+      glCullFace(GL_BACK)
+    } else {
+      glDisable(GL_CULL_FACE)
+    }
+  }
+
   def clear(color: Option[Color], depth: Option[Double]): Unit = {
     var flags = 0x0
     for (c <- color) {

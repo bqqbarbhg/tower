@@ -41,6 +41,11 @@ class MeshPart {
 
   var vertexSpec: VertexSpec = null
 
+  var uvOffsetX: Float = 0.0f
+  var uvOffsetY: Float = 0.0f
+  var uvScaleX: Float = 0.0f
+  var uvScaleY: Float = 0.0f
+
   def load(buffer: ByteBuffer): Unit = {
     // @Deserialize(s2mp)
 
@@ -56,6 +61,14 @@ class MeshPart {
     indexDataSize = buffer.getInt()
 
     val numAttribs = buffer.getInt()
+
+    val uvMin = buffer.getVector2()
+    val uvMax = buffer.getVector2()
+
+    uvOffsetX = uvMin.x.toFloat
+    uvOffsetY = (1.0 - uvMin.y).toFloat
+    uvScaleX = (uvMax.x - uvMin.x).toFloat
+    uvScaleY = -(uvMax.y - uvMin.y).toFloat
 
     boneName = new Array[Int](numBones)
     boneMeshToBone = new Array[Matrix43](numBones)

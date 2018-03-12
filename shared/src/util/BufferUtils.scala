@@ -169,6 +169,19 @@ object BufferUtils {
       Vector3(x, y, z)
     }
 
+    /** Writes a Vector2 with full precision */
+    def putVector2(v: Vector2): Unit = {
+      buffer.putDouble(v.x)
+      buffer.putDouble(v.y)
+    }
+
+    /** Reads a Vector2 with full precision */
+    def getVector2(): Vector2 = {
+      val x = buffer.getDouble()
+      val y = buffer.getDouble()
+      Vector2(x, y)
+    }
+
     /** Writes a Quaternion with full precision */
     def putQuaternion(q: Quaternion): Unit = {
       buffer.putDouble(q.x)
