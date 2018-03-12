@@ -50,6 +50,18 @@ object Matrix43 {
     m
   }
 
+  /** Rotation around the Z axis (angle is in radians) */
+  def rotateZ(angle: Double): Matrix43 = {
+    val m = Matrix43.unsafeIdentity
+    val c = math.cos(angle)
+    val s = math.sin(angle)
+    m.m11 = c
+    m.m12 = s
+    m.m21 = -s
+    m.m22 = c
+    m
+  }
+
   /** Uniform scale */
   def scale(amount: Double): Matrix43 = {
     val m = new Matrix43.Unsafe()
