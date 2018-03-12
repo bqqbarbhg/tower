@@ -184,6 +184,16 @@ object Config {
       }
     }
 
+    class Model extends SimpleSerializable {
+
+      /** Global scaling to apply to the model's root transform */
+      var scale: Double = 1.0
+
+      override def visit(v: SimpleVisitor): Unit = {
+        scale = v.field("scale", scale)
+      }
+    }
+
     class Sound extends SimpleSerializable {
       /** The sound is downsampled if it's sample rate is greater than this */
       var maxSampleRate: Int = 44100
@@ -293,6 +303,7 @@ object Config {
     var atlas = new Res.Atlas()
     var animation = new Res.Animation()
     var mesh = new Res.Mesh()
+    var model = new Res.Model()
     var sound = new Res.Sound()
     var font = new Res.Font()
 
@@ -303,6 +314,7 @@ object Config {
       atlas = v.field("atlas", atlas)
       animation = v.field("animation", animation)
       mesh = v.field("mesh", mesh)
+      model = v.field("model", model)
       sound = v.field("sound", sound)
       font = v.field("font", font)
     }

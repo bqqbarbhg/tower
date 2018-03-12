@@ -45,6 +45,8 @@ object ImportFileModel extends ImportFileType {
 
   def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
     dst.animation = src.animation
+    dst.mesh = src.mesh
+    dst.model = src.model
   }
 }
 

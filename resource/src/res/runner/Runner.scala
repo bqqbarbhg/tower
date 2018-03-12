@@ -431,6 +431,8 @@ class Runner(val opts: RunOptions) {
         }).toMap
 
         for (model <- models) {
+          ScaleModel.scaleModel(model, asset.config.res.model)
+
           val flatModel = FlattenModel.flattenModel(model, meshMap = meshMapping, animMap = animMapping)
 
           val filename = Paths.get(opts.dataRoot, s"$relPath.s2md").toFile
