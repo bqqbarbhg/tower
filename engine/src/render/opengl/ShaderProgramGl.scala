@@ -145,15 +145,16 @@ object ShaderProgramGl {
 
     // -- List active attributes
     val numAttribs = glGetProgrami(program, GL_ACTIVE_ATTRIBUTES)
-    val attribMapping = (0 until numAttribs).map(index => {
+    val attribMapping = (0 until numAttribs).flatMap(index => {
       val psize = stack.ints(0)
       val ptype = stack.ints(0)
       val name = glGetActiveAttrib(program, index, psize, ptype)
       val loc = glGetAttribLocation(program, name)
       name match {
         case AttribRegex(nameStr) =>
-          AttribBind(Identifier(nameStr).index, loc)
-        case _ => throw new ShaderCompileError(s"Attribute name '$name' doesn't match any semantic")
+          Some(AttribBind(Identifier(nameStr).index, loc))
+        case "gl_InstanceID" => None
+        case _ => throw new ShaderCompileError(s"Attribute name '$name' could not be bound!")
       }
     }).toArray
 

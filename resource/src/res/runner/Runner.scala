@@ -382,6 +382,7 @@ class Runner(val opts: RunOptions) {
 
     // Process models
     {
+      val textureAssets = allAssets.filter(_.config.res.image.ttype == "texture").map(_.file.getCanonicalFile.getAbsolutePath).toSet
       val dirtyModels = dirtyAssets.filter(_.fileType == ImportFileModel)
       println(s"Processing models... ${dirtyModels.size} found")
       for (asset <- dirtyModels) {
@@ -392,7 +393,12 @@ class Runner(val opts: RunOptions) {
         val models = resources.collect({ case a: Model => a }).toSeq
 
         val parent = asset.file.getParentFile
-        val siblingFiles = parent.listFiles.filterNot(_.isDirectory).map(_.getName).toSeq
+        val siblingFiles = parent.listFiles.filterNot(_.isDirectory).toSeq
+
+        val siblingTextures = siblingFiles.filter(file => {
+          val absolute = file.getCanonicalFile.getAbsolutePath
+          textureAssets.contains(absolute)
+        }).map(_.getName())
 
         def resolveTextureFile(name: String): String = {
           val file = Paths.get(parent.getCanonicalFile.getAbsolutePath, name).toFile
@@ -402,7 +408,7 @@ class Runner(val opts: RunOptions) {
         }
 
         for (mesh <- meshes) {
-          mesh.material = ResolveMaterial.resolveMaterialFromTexture(mesh.textureName, siblingFiles, resolveTextureFile)
+          mesh.material = ResolveMaterial.resolveMaterialFromTexture(mesh.textureName, siblingTextures, resolveTextureFile)
         }
 
         val meshMapping = (for (mesh <- meshes) yield {

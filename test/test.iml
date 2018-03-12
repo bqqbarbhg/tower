@@ -21,5 +21,6 @@
     </orderEntry>
     <orderEntry type="module" module-name="engine" />
     <orderEntry type="module" module-name="resource" />
+    <orderEntry type="module" module-name="game" />
   </component>
 </module>

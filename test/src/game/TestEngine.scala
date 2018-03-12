@@ -144,7 +144,6 @@ object TestEngine extends App {
   }
 
   val keyboard = AppWindow.keyboard
-
   val debugMapping = Toml.parse(
     """
       |[Keyboard.Debug]

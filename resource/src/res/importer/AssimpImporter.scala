@@ -181,7 +181,7 @@ object AssimpImporter extends Importer {
 
       for (i <- 0 until aNode.mNumMeshes) {
         val meshIndex = aNode.mMeshes.get(i)
-        node.meshes += ModelMesh(meshes(i).name)
+        node.meshes += ModelMesh(meshes(meshIndex).name)
       }
 
       node.children = aChildren.map(convertNode).to[ArrayBuffer]

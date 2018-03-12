@@ -34,13 +34,13 @@ class ModelAsset(val name: Identifier) extends LoadableAsset {
     })
     assert(materialIds.length == modelImpl.numMaterials * TexturesPerMaterial)
     materialTextures = materialIds.map(id => {
-      if (id == Identifier.Empty) return null
-      TextureAsset(id)
+      if (id == Identifier.Empty) null
+      else TextureAsset(id)
     })
 
     animations = modelImpl.animResource.map(m => new AnimationAsset(new Identifier(m))).toArray
 
-    meshes ++ materialTextures ++ animations
+    meshes ++ materialTextures.filter(_ != null) ++ animations
   }
 
   override def loadAsset(): Unit = {

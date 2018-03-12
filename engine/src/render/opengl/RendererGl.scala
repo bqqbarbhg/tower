@@ -1,4 +1,5 @@
 package render.opengl
+
 import java.nio.ByteBuffer
 
 import org.lwjgl.opengl.GL11._
@@ -10,9 +11,12 @@ import org.lwjgl.opengl.GL30._
 import org.lwjgl.opengl.GL31._
 import org.lwjgl.opengl.GL32._
 import org.lwjgl.opengl.GL33._
-import core._
 import org.lwjgl.system.MemoryUtil
+import scala.collection.mutable.ArrayBuffer
+
+import core._
 import render._
+import RendererGl._
 
 object RendererGl {
   private var instance: RendererGl = null
@@ -28,9 +32,15 @@ object RendererGl {
     instance
   }
 
+  /**
+    * A re-usable reference to an uniform block.
+    * Note that it may have a limited lifetime depending on how it was obtained!
+    */
+  type UniformRef = AnyRef
 }
 
 class RendererGl {
+
 
   val vaoCache = new VaoCache()
   val samplerCache = new SamplerCache()
@@ -41,6 +51,10 @@ class RendererGl {
   var activeUniforms: Array[UniformBlockRefGl] = Array[UniformBlockRefGl]()
   var activeUniformValues: Array[ByteBuffer] = Array[ByteBuffer]()
   var activeTextures: Array[Int] = Array[Int]()
+
+  var frameIndex = 0
+
+  var virtualUbosToFreeThisFrame = ArrayBuffer[ByteBuffer]()
 
   private var activeTarget: RenderTargetGl = null
 
@@ -71,6 +85,10 @@ class RendererGl {
       uniformAllocator.advanceFrame()
 
     java.util.Arrays.fill(activeUniforms.asInstanceOf[Array[AnyRef]], null)
+
+    for (ubo <- virtualUbosToFreeThisFrame)
+      MemoryUtil.memFree(ubo)
+    virtualUbosToFreeThisFrame.clear()
   }
 
   def setInvalidShader(): Unit = {
@@ -90,35 +108,59 @@ class RendererGl {
     * @param writeData Callback that should write the data to its argument
     */
   def pushUniform(uniform: UniformBlock, writeData: ByteBuffer => Unit): Unit = {
+    val ref = pushUniformRef(uniform, writeData)
+    bindUniform(uniform, ref)
+  }
+
+  /**
+    * Push uniform data for future use. Retruns a reference that can be used with
+    * `bindUniform()`
+    *
+    * WARNING: The pushed uniform reference is valid for only one frame!
+    *
+    * @param uniform Type of uniform block to set
+    * @param writeData Callback that should write the data to its argument
+    * @return A reference to the pushed uniform block. NOTE: Valid for only this frame!
+    */
+  def pushUniformRef(uniform: UniformBlock, writeData: ByteBuffer => Unit): UniformRef = {
+    if (OptsGl.useUniformBlocks) {
+      // Uniform block implementation: Write to GPU memory
+      uniformAllocator.push(uniform.sizeInBytes, writeData)
+    } else {
+      // Old-school uniform implemntation, write virtual block to CPU memory
+      // and upload the uniforms later.
+      val buf = MemoryUtil.memAlloc(uniform.sizeInBytes)
+      virtualUbosToFreeThisFrame += buf
+      writeData(buf.sliceEx)
+      buf
+    }
+  }
+
+  /**
+    * Bind a previously written uniform block.
+    *
+    * @param uniform Type of uniform block to set
+    * @param ref Reference to the uniform block to set
+    */
+  def bindUniform(uniform: UniformBlock, ref: UniformRef): Unit = {
     if (OptsGl.useUniformBlocks) {
 
-      // Uniform block implementation: Write to GPU memory
       if (activeUniforms.length <= uniform.serial) {
         val old = activeUniforms
         activeUniforms = new Array[UniformBlockRefGl](UniformBlock.maxSerial)
         java.lang.System.arraycopy(old, 0, activeUniforms, 0, old.length)
       }
 
-      val ref = uniformAllocator.push(uniform.sizeInBytes, writeData)
-      activeUniforms(uniform.serial) = ref
-
+      activeUniforms(uniform.serial) = ref.asInstanceOf[UniformBlockRefGl]
     } else {
 
-      // Old-school uniform implemntation, write virtual block to CPU memory
-      // and upload the uniforms later.
       if (activeUniformValues.length <= uniform.serial) {
         val old = activeUniformValues
         activeUniformValues = new Array[ByteBuffer](UniformBlock.maxSerial)
         java.lang.System.arraycopy(old, 0, activeUniformValues, 0, old.length)
       }
 
-      var buf = activeUniformValues(uniform.serial)
-      if (buf == null) {
-        buf = MemoryUtil.memAlloc(uniform.sizeInBytes)
-        activeUniformValues(uniform.serial) = buf
-      }
-
-      writeData(buf.sliceEx)
+      activeUniformValues(uniform.serial) = ref.asInstanceOf[ByteBuffer]
     }
   }
 
@@ -226,6 +268,19 @@ class RendererGl {
         glDrawElementsBaseVertex(GL_TRIANGLES, num, GL_UNSIGNED_SHORT, 0, baseVertex)
       } else {
         glDrawElements(GL_TRIANGLES, num, GL_UNSIGNED_SHORT, 0)
+      }
+      glBindVertexArray(0)
+    }
+  }
+
+  def drawElementsInstanced(numInstances: Int, num: Int, ib: IndexBufferGl, vb0: VertexBufferGl, vb1: VertexBufferGl = null, baseVertex: Int = 0): Unit = {
+    if (activeShader != null) {
+      applyState()
+      vaoCache.bindVertexBuffers(activeShader, vb0, vb1, ib)
+      if (baseVertex != 0) {
+        glDrawElementsInstancedBaseVertex(GL_TRIANGLES, num, GL_UNSIGNED_SHORT, 0, numInstances, baseVertex)
+      } else {
+        glDrawElementsInstanced(GL_TRIANGLES, num, GL_UNSIGNED_SHORT, 0, numInstances)
       }
       glBindVertexArray(0)
     }
