@@ -23,6 +23,14 @@ class ModelAsset(val name: Identifier) extends LoadableAsset {
     modelImpl
   }
 
+  /**
+    * Returns a model instance with potentially only metadata loaded.
+    */
+  def getShallowUnsafe: Model = {
+    preload()
+    modelImpl
+  }
+
   override def preloadAsset(): Iterable[LoadableAsset] = {
     // @Todo: What to do about failed loads?
     modelImpl = Model.load(name).get

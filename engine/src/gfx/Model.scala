@@ -34,7 +34,9 @@ class Model {
   var transformToRoot: Array[Matrix43] = Array[Matrix43]()
   var parentIndex: Array[Int] = Array[Int]()
   var nodeName: Array[IdentifierIx] = Array[IdentifierIx]()
+  var nodeFlags: Array[Int] = Array[Int]()
   var numNodes: Int = 0
+  var numNonAuxilaryNodes: Int = 0
 
   // Meshes
   var meshParentNode: Array[Int] = Array[Int]()
@@ -73,15 +75,18 @@ class Model {
     this.numMeshes = buffer.getInt()
     this.numAnims = buffer.getInt()
     this.numMaterials = buffer.getInt()
+    this.numNonAuxilaryNodes = buffer.getInt()
 
     // Nodes
     this.transformToParent = new Array[AffineTransform](this.numNodes)
     this.transformToRoot = new Array[Matrix43](this.numNodes)
     this.parentIndex = new Array[Int](this.numNodes)
     this.nodeName = new Array[IdentifierIx](this.numNodes)
+    this.nodeFlags = new Array[Int](this.numNodes)
     for (i <- 0 until this.numNodes) {
       this.nodeName(i) = buffer.getIdentifier().index
       this.parentIndex(i) = buffer.getInt()
+      this.nodeFlags(i) = buffer.getInt()
       this.transformToParent(i) = buffer.getAffine()
     }
 
@@ -122,7 +127,7 @@ class Model {
     this.transformToRoot(0) = Matrix43.affine(this.transformToParent(0))
     for (i <- 1 until this.numNodes) {
       val parent = this.parentIndex(i)
-      this.transformToRoot(i) = Matrix43.affine(this.transformToParent(i)) * this.transformToRoot(parent)
+      this.transformToRoot(i) = this.transformToRoot(parent) * Matrix43.affine(this.transformToParent(i))
     }
 
     isLoaded = true
@@ -177,6 +182,13 @@ class Model {
       index += 1
     }
     -1
+  }
+
+  /**
+    * Find the immediate children of a node.
+    */
+  def getChildNodes(nodeIndex: Int): Seq[Int] = {
+    (nodeIndex + 1 until numNodes).filter(ix => parentIndex(ix) == nodeIndex)
   }
 
   /**

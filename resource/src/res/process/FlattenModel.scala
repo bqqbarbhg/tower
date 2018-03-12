@@ -12,14 +12,27 @@ import scala.collection.mutable
   */
 object FlattenModel {
 
-  def flattenModel(model: Model, meshMap: Map[String, (String, Material)], animMap: Map[String, String]): FlatModel = {
+  def flattenModel(model: Model, meshMap: Map[String, (String, Material)], animMap: Map[String, String], config: Config.Res.Model): FlatModel = {
     val flat = new FlatModel()
 
     val materialMap = mutable.HashMap[Material, Int]()
 
+    def findNodeConfigs(name: String): Seq[Config.Res.Model.Node] = config.nodes.filter(cfg => {
+      cfg.nameRegex match {
+        case Some(regex) => regex.findFirstIn(name).isDefined
+        case None => true
+      }
+    })
+
+    def isAuxilary(node: ModelNode): Boolean = {
+      val configs = findNodeConfigs(node.name)
+      configs.exists(_.auxilary)
+    }
+
     def visitNode(node: ModelNode, parentIndex: Int): Unit = {
       val nodeIndex = flat.nodes.length
-      val flatNode = new FlatNode(parentIndex, node)
+      val auxilary = isAuxilary(node)
+      val flatNode = new FlatNode(parentIndex, node, auxilary)
 
       flat.nodes += flatNode
 
@@ -34,7 +47,9 @@ object FlattenModel {
         flat.meshes += flatMesh
       }
 
-      for (child <- node.children)
+      val sortedChildren = node.children.sortBy(isAuxilary)
+
+      for (child <- sortedChildren)
         visitNode(child, nodeIndex)
     }
 

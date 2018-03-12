@@ -326,6 +326,15 @@ class RendererGl {
     }
   }
 
+  def drawLines(num: Int, vb0: VertexBufferGl, vb1: VertexBufferGl = null, baseVerterx: Int = 0): Unit = {
+    if (activeShader != null) {
+      applyState()
+      vaoCache.bindVertexBuffers(activeShader, vb0, vb1, null)
+      glDrawArrays(GL_LINES, baseVerterx, num)
+      glBindVertexArray(0)
+    }
+  }
+
   def unload(): Unit = {
     uniformAllocator.unload()
     samplerCache.unload()

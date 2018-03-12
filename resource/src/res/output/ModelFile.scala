@@ -16,6 +16,9 @@ object ModelFile {
 
     val buffer = MemoryUtil.memAlloc(64 * 1024 * 1024)
 
+    var numNonAuxilary = model.nodes.indexWhere(_.auxilary)
+    if (numNonAuxilary < 0) numNonAuxilary = model.nodes.length
+
     val Version = 1
     buffer.putMagic("s2md")
     buffer.putVersion(Version)
@@ -24,10 +27,15 @@ object ModelFile {
     buffer.putInt(model.meshes.length)
     buffer.putInt(model.animations.length)
     buffer.putInt(model.materials.length)
+    buffer.putInt(numNonAuxilary)
 
     for (node <- model.nodes) {
       buffer.putIdentifier(node.node.name)
       buffer.putInt(node.parent)
+
+      var flags = 0x00
+      if (node.auxilary) flags |= 0x01
+      buffer.putInt(flags)
 
       val affine = node.node.transform.toAffine
       buffer.putAffine(affine)

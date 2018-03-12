@@ -188,13 +188,46 @@ object Config {
       }
     }
 
+    object Model {
+
+      class Node extends SimpleSerializable {
+
+        /** Filter for node name */
+        var name: String = ""
+
+        /** Disables automatic world transform calculation */
+        var auxilary: Boolean = false
+
+        private var cachedNameRegexSrc = ""
+        private var cachedNameRegex: Option[Regex] = None
+        def nameRegex: Option[Regex] = {
+          if (cachedNameRegexSrc != name) {
+            cachedNameRegexSrc = name
+            cachedNameRegex = Some(Filter.globToRegex(name))
+          }
+          cachedNameRegex
+        }
+
+        override def visit(v: SimpleVisitor): Unit = {
+          name = v.field("name", name)
+          auxilary = v.field("auxilary", auxilary)
+        }
+      }
+
+    }
+
+
     class Model extends SimpleSerializable {
 
       /** Global scaling to apply to the model's root transform */
       var scale: Double = 1.0
 
+      /** Node-specific configuration */
+      var nodes: ArrayBuffer[Model.Node] = new ArrayBuffer[Model.Node]()
+
       override def visit(v: SimpleVisitor): Unit = {
         scale = v.field("scale", scale)
+        nodes = v.field("nodes", nodes, new Model.Node())
       }
     }
 

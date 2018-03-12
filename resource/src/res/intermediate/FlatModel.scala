@@ -9,7 +9,7 @@ import res.intermediate.Model._
 import res.intermediate.FlatModel._
 
 object FlatModel {
-  case class FlatNode(parent: Int, node: ModelNode)
+  case class FlatNode(parent: Int, node: ModelNode, auxilary: Boolean)
   case class FlatMesh(parent: Int, mesh: ModelMesh, resource: String, materialIndex: Int)
   case class FlatAnimation(name: String, resource: String)
 }

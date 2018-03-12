@@ -13,7 +13,7 @@ class ModelState(val model: Model) {
     * Transform for each of the nodes in the model.
     * Will be reset after a call to updateMatrices()
     */
-  var nodeTransform = model.transformToParent.clone()
+  var nodeTransform = model.transformToParent.take(model.numNonAuxilaryNodes)
 
   /**
     * Spares local transformation matrices for nodes. Will be applied before
@@ -22,11 +22,11 @@ class ModelState(val model: Model) {
     * Optimization: Uses `null` for identity transforms.
     * Optimization: Reset to `null` after call to `updateMatrices()`
     */
-  var nodeLocalMatrix = Array.fill[Matrix43](model.numNodes)(null)
+  var nodeLocalMatrix = Array.fill[Matrix43](model.numNonAuxilaryNodes)(null)
 
   /** Unsafe world transform matrices for the nodes, instance contents change on
     * call to `updateMatrices()` */
-  val nodeWorldTransform = Array.fill(model.numNodes)(Matrix43.unsafeIdentity)
+  val nodeWorldTransform = Array.fill(model.numNonAuxilaryNodes)(Matrix43.unsafeIdentity)
 
   private var tmpMatrix = new Matrix43.Unsafe()
 
