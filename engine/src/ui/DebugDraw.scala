@@ -21,7 +21,7 @@ object DebugDraw {
     Attrib(4, DataFmt.UN8, Identifier("Color")),
   ))
 
-  val MaxLinesPerFrame = 1024
+  val MaxLinesPerFrame = 1024*8
   lazy val vertexBuffer = VertexBuffer.createDynamic(LineSpec, MaxLinesPerFrame * 4).withLabel("DebugDraw.vertexBuffer")
 
   var bufferOffset = 0
@@ -69,7 +69,6 @@ object DebugDraw {
 
       numVerts
     })
-
 
     val renderer = Renderer.get
 

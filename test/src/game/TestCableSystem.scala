@@ -13,6 +13,7 @@ import _root_.main.EngineStartup
 import platform.AppWindow
 import res.runner.{RunOptions, Runner}
 import ui.DebugDraw
+import CableRenderSystem.CableNode
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -64,8 +65,6 @@ object TestCableSystem extends App {
   val entity = new Entity()
   val model = ModelSystem.addModel(entity, asset)
   entity.position = Vector3(0.0, 0.0, 0.0)
-
-  case class CableNode(position: Vector3, direction: Vector3)
 
   def getCablePaths(asset: ModelAsset): Array[Array[CableNode]] = {
     val model = asset.getShallowUnsafe
@@ -143,6 +142,8 @@ object TestCableSystem extends App {
     val Right = button("Right")
   }
 
+  val fontAsset = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
+
   val keyboard = AppWindow.keyboard
   val debugMapping = Toml.parse(
     """
@@ -179,6 +180,8 @@ object TestCableSystem extends App {
 
   var renderTarget: RenderTarget = null
   var angle = 0.0
+
+  var toggle = false
 
   val startTime = AppWindow.currentTime
   var prevTime = startTime
@@ -245,7 +248,7 @@ object TestCableSystem extends App {
       renderer.drawElementsInstanced(draw.num, numElems, part.indexBuffer, part.vertexBuffer)
     }
 
-    if (mapping.justPressed(DebugInput.Reload)) {
+    if (mapping.justPressed(DebugInput.Reload) && false) {
       processResources()
       AssetLoader.reloadEverything()
       ModelSystem.assetsLoaded()
@@ -260,24 +263,32 @@ object TestCableSystem extends App {
 
     val cables = getCablePaths(asset)
 
-    if (true) {
-      for {
-        cable <- cables
-        node <- cable
-      } {
-        val dir = node.position + node.direction * 0.25
-        DebugDraw.drawLine(node.position, dir, Color.rgb(0xFF0000), Color.rgb(0x00FF00))
-      }
-    }
+    if (mapping.justPressed(DebugInput.Reload))
+      toggle = !toggle
 
+    var totalPoints = 0
+    if (toggle) {
+    for (cable <- cables) {
+      val points = CableRenderSystem.createCablePoints(cable)
+      DebugDraw.drawConnectedLine(points, Color.rgb(0x000000))
+      if (false) {
+        for (point <- points) {
+          DebugDraw.drawLine(point - Vector3(0.1, 0.0, 0.0), point + Vector3(0.1, 0.0, 0.0), Color.rgb(0xFF0000))
+          DebugDraw.drawLine(point - Vector3(0.0, 0.1, 0.0), point + Vector3(0.0, 0.1, 0.0), Color.rgb(0xFF0000))
+          DebugDraw.drawLine(point - Vector3(0.0, 0.0, 0.1), point + Vector3(0.0, 0.0, 0.1), Color.rgb(0xFF0000))
+        }
+      }
+      totalPoints += points.length
+    }
+    } else {
     for (cable <- cables) {
       for (Array(prev, next) <- cable.sliding(2)) {
-        val Steps = 16
+        val Steps = 6
 
         val p0 = prev.position
-        val m0 = prev.direction
+        val m0 = prev.tangent
         val p1 = next.position
-        val m1 = next.direction
+        val m1 = next.tangent
 
         val verts = Vector.tabulate(Steps)(index => {
           val t = index.toDouble / (Steps - 1).toDouble
@@ -286,12 +297,73 @@ object TestCableSystem extends App {
         })
 
         DebugDraw.drawConnectedLine(verts)
+        totalPoints += verts.length
+
+        if (false) {
+        for (vert <- verts) {
+          val point = vert._1
+          DebugDraw.drawLine(point - Vector3(0.1, 0.0, 0.0), point + Vector3(0.1, 0.0, 0.0), Color.rgb(0xFF0000))
+          DebugDraw.drawLine(point - Vector3(0.0, 0.1, 0.0), point + Vector3(0.0, 0.1, 0.0), Color.rgb(0xFF0000))
+          DebugDraw.drawLine(point - Vector3(0.0, 0.0, 0.1), point + Vector3(0.0, 0.0, 0.1), Color.rgb(0xFF0000))
+        }
+        }
       }
     }
+    }
+
+    /*
+    for (cable <- cables) {
+      var prevUp = Vector3(0.0, 1.0, 0.0)
+      val positions = (for (Array(prev, next) <- cable.sliding(2)) yield {
+        val Steps = 32
+
+        val p0 = prev.position
+        val m0 = prev.direction
+        val p1 = next.position
+        val m1 = next.direction
+
+        Vector.tabulate(Steps)(index => {
+          val t = index.toDouble / (Steps - 1).toDouble
+          Hermite.interpolate(p0, m0, p1, m1, t)
+        })
+
+
+      }).flatten.toVector
+
+      var tt = time * 5.0
+      val offsetPositions = for (i <- positions.indices) yield {
+        val cur = positions(i)
+        val prev = positions.lift(i - 1).getOrElse(cur)
+        val next = positions.lift(i + 1).getOrElse(cur)
+
+        val normal = ((cur - prev) + (next - cur)) / 2.0
+        val tangent = normal cross prevUp
+        val up = (tangent cross normal).normalize
+        prevUp = up
+
+        tt += 1.0
+        cur + (up * math.sin(tt) + tangent.normalize * math.cos(tt)) * 0.05
+      }
+      DebugDraw.drawConnectedLine(offsetPositions, Color.rgb(0xFF0000))
+    }
+    */
 
     DebugDraw.render(viewProjection)
 
+    renderer.setBlend(true)
+    renderer.setDepthMode(false, false)
+
+    {
+      val draws = ArrayBuffer[ui.Font.TextDraw]()
+      val text = s"Points: $totalPoints"
+      draws += ui.Font.TextDraw(text, 0, text.length, Vector2(100.0, 114.0), 22.0, Color.rgb(0xFFFFFF), 0.0, 1)
+      fontAsset.get.render(draws)
+    }
+
     renderer.blitRenderTargetColor(RenderTarget.Backbuffer, renderTarget)
+
+    renderer.setRenderTarget(RenderTarget.Backbuffer)
+
 
     AppWindow.swapBuffers()
   }

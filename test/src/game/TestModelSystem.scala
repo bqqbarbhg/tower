@@ -136,7 +136,7 @@ object TestModelSystem extends App {
 
     radar.localTransform = Matrix43.rotateZ(time)
 
-    light.position = Vector3(math.cos(time), 0.0, math.sin(time)) * 30.0 + Vector3(0.0, 20.0, 0.0)
+    light.position = Vector3(math.cos(time), 0.0, math.sin(time)) * 30.0 + Vector3(0.0, 10.0, 0.0)
 
     val viewWidth = AppWindow.width
     val viewHeight = AppWindow.height
