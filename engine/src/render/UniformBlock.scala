@@ -17,7 +17,7 @@ object UniformBlock {
     */
   sealed abstract class Uniform(val name: String, var offsetInBytes: Int, val arraySize: Int) {
 
-    protected var arrayStrideInBytes = elementSizeInBytes
+    var arrayStrideInBytes = elementSizeInBytes
     protected var matrixStrideInBytes = 16
     protected var matrixRowMajor = true
 

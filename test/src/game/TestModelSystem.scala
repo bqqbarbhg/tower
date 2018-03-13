@@ -61,8 +61,7 @@ object TestModelSystem extends App {
   for {
     y <- -5 to 5
     x <- -5 to 5
-  }
-  {
+  } {
     if (x != 0 || y != 0) {
       val entity = new Entity()
       val model = ModelSystem.addModel(entity, asset)
@@ -98,9 +97,14 @@ object TestModelSystem extends App {
     val Diffuse = sampler2D("Diffuse", Sampler.RepeatAnisotropic)
   }
 
-  object TestModelShader extends ShaderAsset("test/instanced_mesh") {
+  object AmbientUniform extends UniformBlock("AmbientUniform") {
+    val Ambient = vec4("Ambient", 6)
+  }
+
+  object TestModelShader extends ShaderAsset("test/instanced_mesh_light") {
     uniform(ModelSystem.InstancedUniform)
     uniform(GlobalUniform)
+    uniform(AmbientUniform)
 
     uniform(PixelUniform)
     object PixelUniform extends UniformBlock("PixelUniform") {
@@ -111,6 +115,16 @@ object TestModelSystem extends App {
   }
 
   var renderTarget: RenderTarget = null
+
+  val probe = new gfx.AmbientCube()
+  if (true) {
+    probe.add(Vector3(1.0, 1.0, -1.0).normalize, Vector3(0.8, 0.5, 0.5))
+    probe.add(Vector3(-1.0, 1.0, -1.0).normalize, Vector3(0.0, 0.0, 0.3))
+  } else {
+    probe.add(Vector3(1.0, 1.0, 0.0).normalize, Vector3(1.0, 0.0, 0.0))
+    probe.add(Vector3(-1.0, -1.0, 0.0).normalize, Vector3(0.0, 1.0, 0.0))
+    probe.add(Vector3(0.0, 0.0, -1.0).normalize, Vector3(0.0, 0.0, 0.2))
+  }
 
   val startTime = AppWindow.currentTime
   while (AppWindow.running) {
@@ -150,6 +164,12 @@ object TestModelSystem extends App {
 
     renderer.pushUniform(GlobalUniform, u => {
       GlobalUniform.ViewProjection.set(u, viewProjection)
+    })
+
+    renderer.pushUniform(AmbientUniform, u => {
+      val offset = AmbientUniform.Ambient.offsetInBytes
+      val stride = AmbientUniform.Ambient.arrayStrideInBytes
+      probe.writeToUniform(u, offset, stride)
     })
 
     renderer.setCull(true)

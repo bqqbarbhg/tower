@@ -52,7 +52,7 @@ object TestCableSystem extends App {
   Package.set(pack)
 
   val opts = new EngineStartup.Options()
-  opts.debug = true
+  opts.debug = false
   opts.windowName = "Engine test"
   EngineStartup.start(opts)
 
