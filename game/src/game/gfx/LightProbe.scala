@@ -7,12 +7,19 @@ import core._
 trait LightProbe {
 
   /**
+    * Accumulate omnidirectional light.
+    *
+    * @param intensity Intensity of the light (RGB)
+    */
+  def addGlobal(intensity: Vector3): Unit
+
+  /**
     * Accumulate directed light to the probe.
     *
     * @param direction Normalized direction from the probe to the light
     * @param intensity Intensity of the light (RGB)
     */
-  def add(direction: Vector3, intensity: Vector3): Unit
+  def addDirectional(direction: Vector3, intensity: Vector3): Unit
 
   /**
     * Write the probe data to an uniform readable by a shader.
