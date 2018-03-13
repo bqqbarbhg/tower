@@ -44,6 +44,20 @@ object UniformBlock {
     def sizeInBytes: Int = math.max(arraySize, 1) * elementSizeInBytes
   }
 
+  class UIVec4(name: String, offset: Int, array: Int) extends Uniform(name, offset, array) {
+    override def isMatrix: Boolean = false
+    override def elementSizeInBytes: Int = 16
+
+    def set(buffer: ByteBuffer, x: Int, y: Int, z: Int, w: Int): Unit = set(buffer, 0, x, y, z, w)
+    def set(buffer: ByteBuffer, index: Int, x: Int, y: Int, z: Int, w: Int): Unit = {
+      val base = offsetInBytes + index * arrayStrideInBytes
+      buffer.putInt(base + 0*4, x)
+      buffer.putInt(base + 1*4, y)
+      buffer.putInt(base + 2*4, z)
+      buffer.putInt(base + 3*4, w)
+    }
+  }
+
   class UVec4(name: String, offset: Int, array: Int) extends Uniform(name, offset, array) {
     override def isMatrix: Boolean = false
     override def elementSizeInBytes: Int = 16
@@ -190,6 +204,8 @@ class UniformBlock(val name: String) {
     layoutPosition = size
   }
 
+  def ivec4(name: String): UIVec4 = push(new UIVec4(name, layoutPosition, 0))
+  def ivec4(name: String, arraySize: Int): UIVec4 = push(new UIVec4(name, layoutPosition, arraySize))
   def vec4(name: String): UVec4 = push(new UVec4(name, layoutPosition, 0))
   def vec4(name: String, arraySize: Int): UVec4 = push(new UVec4(name, layoutPosition, arraySize))
   def mat4(name: String): UMat4 = push(new UMat4(name, layoutPosition, 0))

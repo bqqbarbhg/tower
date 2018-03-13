@@ -58,6 +58,8 @@ object TestModelSystem extends App {
 
   val asset = ModelAsset("game/tower/tower_radar.fbx.s2md")
 
+  val probeOffset = Vector3(0.0, 2.0, 0.0)
+
   for {
     y <- -5 to 5
     x <- -5 to 5
@@ -66,12 +68,17 @@ object TestModelSystem extends App {
       val entity = new Entity()
       val model = ModelSystem.addModel(entity, asset)
       entity.position = Vector3(x * 8.0, 0.0, y * 8.0)
+
+      val probe = LightSystem.addStaticProbe(entity.position + probeOffset)
+      model.lightProbe = probe.probe
     }
   }
 
   val entity = new Entity()
   val model = ModelSystem.addModel(entity, asset)
   entity.position = Vector3(0.0, 0.0, 0.0)
+  val probe = LightSystem.addStaticProbe(entity.position + probeOffset)
+  model.lightProbe = probe.probe
 
   object DebugInput extends InputSet("Debug") {
     val Reload = button("Reload")
@@ -97,14 +104,10 @@ object TestModelSystem extends App {
     val Diffuse = sampler2D("Diffuse", Sampler.RepeatAnisotropic)
   }
 
-  object AmbientUniform extends UniformBlock("AmbientUniform") {
-    val Ambient = vec4("Ambient", 6)
-  }
-
   object TestModelShader extends ShaderAsset("test/instanced_mesh_light") {
     uniform(ModelSystem.InstancedUniform)
+    uniform(ModelSystem.LightProbeUniform)
     uniform(GlobalUniform)
-    uniform(AmbientUniform)
 
     uniform(PixelUniform)
     object PixelUniform extends UniformBlock("PixelUniform") {
@@ -114,17 +117,14 @@ object TestModelSystem extends App {
     override val Textures = ModelTextures
   }
 
-  var renderTarget: RenderTarget = null
+  TestModelShader.load()
 
-  val probe = new gfx.AmbientCube()
-  if (true) {
-    probe.add(Vector3(1.0, 1.0, -1.0).normalize, Vector3(0.8, 0.5, 0.5))
-    probe.add(Vector3(-1.0, 1.0, -1.0).normalize, Vector3(0.0, 0.0, 0.3))
-  } else {
-    probe.add(Vector3(1.0, 1.0, 0.0).normalize, Vector3(1.0, 0.0, 0.0))
-    probe.add(Vector3(-1.0, -1.0, 0.0).normalize, Vector3(0.0, 1.0, 0.0))
-    probe.add(Vector3(0.0, 0.0, -1.0).normalize, Vector3(0.0, 0.0, 0.2))
-  }
+  LightSystem.globalProbe.addDirectional(Vector3(1.0, 1.0, -1.0).normalize, Vector3(0.05, 0.05, 0.1))
+
+  LightSystem.addStaticLight(Vector3(0.0, 30.0, 0.0), Vector3(0.4, 0.4, 0.4), 100.0)
+  val light = LightSystem.addDynamicLight(Vector3.Zero, Vector3(0.8, 0.4, 0.4), 50.0)
+
+  var renderTarget: RenderTarget = null
 
   val startTime = AppWindow.currentTime
   while (AppWindow.running) {
@@ -135,6 +135,8 @@ object TestModelSystem extends App {
     val time = AppWindow.currentTime - startTime
 
     radar.localTransform = Matrix43.rotateZ(time)
+
+    light.position = Vector3(math.cos(time), 0.0, math.sin(time)) * 30.0 + Vector3(0.0, 20.0, 0.0)
 
     val viewWidth = AppWindow.width
     val viewHeight = AppWindow.height
@@ -157,6 +159,9 @@ object TestModelSystem extends App {
     renderer.setWriteSrgb(true)
     renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
 
+    LightSystem.addDynamicLightsToCells()
+    LightSystem.evaluateProbes()
+    LightSystem.finishFrame()
     ModelSystem.updateMatrices()
     ModelSystem.collectMeshInstances()
     ModelSystem.setupUniforms()
@@ -164,12 +169,6 @@ object TestModelSystem extends App {
 
     renderer.pushUniform(GlobalUniform, u => {
       GlobalUniform.ViewProjection.set(u, viewProjection)
-    })
-
-    renderer.pushUniform(AmbientUniform, u => {
-      val offset = AmbientUniform.Ambient.offsetInBytes
-      val stride = AmbientUniform.Ambient.arrayStrideInBytes
-      probe.writeToUniform(u, offset, stride)
     })
 
     renderer.setCull(true)
@@ -187,7 +186,9 @@ object TestModelSystem extends App {
       })
 
       renderer.setTexture(ModelTextures.Diffuse, mesh.material.albedoTex.texture)
-      renderer.bindUniform(ModelSystem.InstancedUniform, draw.ubo)
+
+      renderer.bindUniform(ModelSystem.InstancedUniform, draw.instanceUbo)
+      renderer.bindUniform(ModelSystem.LightProbeUniform, draw.lightProbeUbo)
 
       val numElems = part.numIndices
       renderer.drawElementsInstanced(draw.num, numElems, part.indexBuffer, part.vertexBuffer)

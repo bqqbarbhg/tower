@@ -44,7 +44,7 @@ class RendererGl {
 
   val vaoCache = new VaoCache()
   val samplerCache = new SamplerCache()
-  val uniformAllocator = if (OptsGl.useUniformBlocks) new UniformAllocator(1024*1024) else null
+  val uniformAllocator = if (OptsGl.useUniformBlocks) new UniformAllocator(16*1024*1024) else null
 
   var activeShaderEnabled: Boolean = false
   var activeShader: ShaderProgramGl = null

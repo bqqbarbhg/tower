@@ -4,6 +4,7 @@ import core._
 import gfx._
 import render._
 import asset.ModelAsset
+import game.lighting.LightProbe
 import render.opengl.RendererGl.UniformRef
 
 import scala.collection.mutable
@@ -12,15 +13,22 @@ import scala.collection.mutable.ArrayBuffer
 object ModelSystem {
 
   val MaxInstancesPerDraw = 8
+  val MaxLightProbesPerBlock = 16
 
   object InstancedUniform extends UniformBlock("InstancedUniform") {
     val World = mat4x3("World", MaxInstancesPerDraw)
+    val LightInfo = ivec4("LightInfo", MaxInstancesPerDraw)
+  }
+
+  object LightProbeUniform extends UniformBlock("LightProbeUniform") {
+    val LightProbes = mat4x3("LightProbes", MaxLightProbesPerBlock * LightProbe.SizeInVec4)
   }
 
   // Note: Properties are `var` here in case of pooling!
 
   private class MeshInstance {
     var worldTransform: Matrix43 = Matrix43.Identity
+    var lightProbe: LightProbe = null
     var next: MeshInstance = null
   }
 
@@ -32,7 +40,10 @@ object ModelSystem {
     var num: Int = 0
 
     /** Reference to `InstancedUniform` */
-    var ubo: UniformRef = null
+    var instanceUbo: UniformRef = null
+
+    /** Reference to `LightProbeUniform` */
+    var lightProbeUbo: UniformRef = null
   }
 
   /**
@@ -47,6 +58,11 @@ object ModelSystem {
       * Transform relative to the parent.
       */
     var transform: Matrix43 = Matrix43.Identity
+
+    /**
+      * Light probe the model uses.
+      */
+    var lightProbe: LightProbe = null
 
     /**
       * Find a node matching a name in the model.
@@ -152,6 +168,7 @@ object ModelSystem {
         // @Todo: Pool MeshInstances?
         val instance = new MeshInstance()
         instance.worldTransform = state.nodeWorldTransform(nodeIx)
+        instance.lightProbe = modelRef.lightProbe
         instance.next = prev
 
         meshInstances(mesh) = instance
@@ -171,6 +188,13 @@ object ModelSystem {
     val instanceBuffer = new ArrayBuffer[MeshInstance]()
     instancedMeshDraws.clear()
 
+    val lightProbesToUpload = new ArrayBuffer[mutable.ArrayBuffer[LightProbe]]()
+    val lightProbeDrawCount = new ArrayBuffer[Int]()
+
+    var currentLightProbes = mutable.ArrayBuffer[LightProbe]()
+    var currentLightProbeMap = mutable.HashMap[LightProbe, Int]()
+    var currentNumDraws = 0
+
     for ((mesh, firstInstance) <- meshInstances) {
       var instance = firstInstance
 
@@ -183,23 +207,64 @@ object ModelSystem {
       while (base < instanceBuffer.length) {
         val toDraw = math.min(MaxInstancesPerDraw, instanceBuffer.length - base)
 
+        if (currentLightProbes.size + toDraw > MaxLightProbesPerBlock) {
+          lightProbesToUpload += currentLightProbes
+          lightProbeDrawCount += currentNumDraws
+
+          currentLightProbeMap.clear()
+          currentLightProbes = mutable.ArrayBuffer[LightProbe]()
+        }
+
         val draw = new InstancedMeshDraw()
         draw.mesh = mesh
         draw.num = toDraw
-        draw.ubo = renderer.pushUniformRef(InstancedUniform, b => {
+        draw.instanceUbo = renderer.pushUniformRef(InstancedUniform, b => {
           var ix = 0
           while (ix < toDraw) {
             val inst = instanceBuffer(base + ix)
+
+            val probeIndex = currentLightProbeMap.getOrElseUpdate(inst.lightProbe, {
+              currentLightProbes += inst.lightProbe
+              currentLightProbes.length - 1
+            })
+
+            val probeOffset = probeIndex * LightProbe.SizeInVec4
+
             InstancedUniform.World.set(b, ix, inst.worldTransform)
+            InstancedUniform.LightInfo.set(b, ix, probeOffset, 0, 0, 0)
             ix += 1
           }
         })
         instancedMeshDraws += draw
+        currentNumDraws += 1
 
         base += toDraw
       }
 
       instanceBuffer.clear()
+    }
+
+    lightProbesToUpload += currentLightProbes
+    lightProbeDrawCount += currentNumDraws
+
+    var drawIndex = 0
+    for ((probes, numDraws) <- (lightProbesToUpload zip lightProbeDrawCount)) {
+      val ubo = renderer.pushUniformRef(LightProbeUniform, u => {
+        var ix = 0
+        var base = LightProbeUniform.LightProbes.offsetInBytes
+        val stride = LightProbeUniform.LightProbes.arrayStrideInBytes
+        val baseStride = LightProbe.SizeInVec4 * stride
+        while (ix < probes.length) {
+          probes(ix).writeToUniform(u, base, stride)
+          ix += 1
+          base += baseStride
+        }
+      })
+
+      while (drawIndex < numDraws) {
+        instancedMeshDraws(drawIndex).lightProbeUbo = ubo
+        drawIndex += 1
+      }
     }
   }
 

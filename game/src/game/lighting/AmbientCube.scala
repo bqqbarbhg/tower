@@ -1,4 +1,4 @@
-package game.gfx
+package game.lighting
 import java.nio.ByteBuffer
 
 import core._
@@ -11,7 +11,27 @@ import core._
 class AmbientCube extends LightProbe {
   var coefficents = Array.fill(3 * 6)(0.0)
 
-  override def add(direction: Vector3, intensity: Vector3): Unit = {
+  override def clear(): Unit = {
+    java.util.Arrays.fill(coefficents, 0.0)
+  }
+
+  override def copyFrom(other: LightProbe): Unit = {
+    val cube = other.asInstanceOf[AmbientCube]
+    java.lang.System.arraycopy(cube.coefficents, 0, coefficents, 0, coefficents.length)
+  }
+
+  override def addGlobal(intensity: Vector3): Unit = {
+    var side = 0
+    while (side < 6) {
+      val base = side * 3
+      coefficents(base + 0) += intensity.x
+      coefficents(base + 1) += intensity.y
+      coefficents(base + 2) += intensity.z
+      side += 1
+    }
+  }
+
+  override def addDirectional(direction: Vector3, intensity: Vector3): Unit = {
     val fx = direction.x * direction.x
     val fy = direction.y * direction.y
     val fz = direction.z * direction.z
@@ -51,7 +71,7 @@ class AmbientCube extends LightProbe {
     var side = 0
     while (side < 6) {
       val src = side * 3
-      val dst = side * stride
+      val dst = offset + side * stride
       b.putFloat(dst + 0, coefficents(src + 0).toFloat)
       b.putFloat(dst + 4, coefficents(src + 1).toFloat)
       b.putFloat(dst + 8, coefficents(src + 2).toFloat)

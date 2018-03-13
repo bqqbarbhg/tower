@@ -1,7 +1,7 @@
 package game.system
 
 import core._
-import game.gfx.LightProbe
+import game.lighting.LightProbe
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -9,7 +9,7 @@ import scala.collection.mutable.ArrayBuffer
 object LightSystem {
 
   class ProbeRef {
-    var probe: LightProbe = null
+    var probe: LightProbe = LightProbe.make()
 
     def delete(): Unit = {
     }
@@ -49,7 +49,7 @@ object LightSystem {
     val map = new mutable.HashMap[CellPos, Cell]()
 
     def getCellPos(position: Vector3): CellPos = {
-      val rounded = position / cellSize
+      val rounded = position /@ cellSize
       val x = math.floor(rounded.x).toInt
       val y = math.floor(rounded.x).toInt
       val z = math.floor(rounded.x).toInt
@@ -57,28 +57,31 @@ object LightSystem {
     }
 
     def getLights(position: Vector3): Iterable[InternalLightRef] = {
-      map.get(getCellPos(position)).toIterable.flatten
+      map.get(getCellPos(position)).toIterable.flatMap(_.lights)
     }
   }
 
-  val smallGrid = new Grid(Vector3(10.0, 20.0, 10.0))
-  val bigGrid = new Grid(Vector3(40.0, 60.0, 40.0))
+  val globalProbe = LightProbe.make()
 
-  def findBestGrid(radius: Double): Grid = {
+  private val smallGrid = new Grid(Vector3(20.0, 40.0, 20.0))
+  private val bigGrid = new Grid(Vector3(80.0, 400.0, 80.0))
+
+  private def findBestGrid(radius: Double): Grid = {
     if (radius <= 40.0)
       smallGrid
     else
       bigGrid
   }
 
-  val probes = new ArrayBuffer[InternalProbeRef]()
-  val dynamicLights = new ArrayBuffer[InternalLightRef]()
-  val cellsWithDynamicLights = new ArrayBuffer[Cell]()
+  private val probes = new ArrayBuffer[InternalProbeRef]()
+  private val dynamicLights = new ArrayBuffer[InternalLightRef]()
+  private val cellsWithDynamicLights = new ArrayBuffer[Cell]()
 
   def addStaticProbe(position: Vector3): ProbeRef = {
     val probe = new InternalProbeRef()
     probe.position = position
     probes += probe
+    probe
   }
 
   def addDynamicProbe(position: Vector3): DynamicProbeRef = addDynamicProbe(null, position)
@@ -88,12 +91,13 @@ object LightSystem {
     probe.position = position
     probe.parent = parent
     probes += probe
+    probe
   }
 
   private def insertLight(pos: Vector3, light: InternalLightRef, static: Boolean): Unit = {
+    val radius = light.radius
     val grid = findBestGrid(radius)
 
-    val radius = light.radius
     val radius3 = Vector3(radius, radius, radius)
     val min = grid.getCellPos(pos - radius3)
     val max = grid.getCellPos(pos + radius3)
@@ -130,13 +134,15 @@ object LightSystem {
     addDynamicLight(null, position, intensity, radius)
 
   def addDynamicLight(parent: Entity, position: Vector3, intensity: Vector3, radius: Double): DynamicLightRef = {
-
     val light = new InternalLightRef()
     light.parent = parent
     light.position = position
     light.intensity = intensity
     light.radius = radius
 
+    dynamicLights += light
+
+    light
   }
 
   def addDynamicLightsToCells(): Unit = {
@@ -156,16 +162,20 @@ object LightSystem {
       val dir = (light.position - pos)
       val length = dir.length
 
-      var ratio = 1.0
-      if (length <= 1.0) {
-        ratio = math.max((length - 0.5) * 2.0, 0.0)
-        probe.addGlobal(light.intensity * (1.0 - ratio))
-      }
-      if (length >= 0.5) {
-        val falloffDist = (0.5 + length)
+      if (length < light.radius) {
+        val falloffDist = 1.0 - length / light.radius
         val falloff = falloffDist * falloffDist
-        val normal = dir / length
-        probe.addDirectional(normal, light.intensity * ratio / falloff)
+
+        var ratio = 1.0
+        if (length <= 1.0) {
+          ratio = math.max((length - 0.5) * 2.0, 0.0)
+          probe.addGlobal(light.intensity * (1.0 - ratio) * falloff)
+        }
+        if (length >= 0.5) {
+          val falloff = falloffDist * falloffDist
+          val normal = dir / length
+          probe.addDirectional(normal, light.intensity * ratio * falloff)
+        }
       }
 
     }
@@ -173,7 +183,7 @@ object LightSystem {
 
   def evaluateProbes(): Unit = {
     for (probeRef <- probes) {
-      probeRef.copyFrom(globalProbe)
+      probeRef.probe.copyFrom(globalProbe)
       addLightsToProbe(probeRef, smallGrid.getLights(probeRef.position))
       addLightsToProbe(probeRef, bigGrid.getLights(probeRef.position))
     }

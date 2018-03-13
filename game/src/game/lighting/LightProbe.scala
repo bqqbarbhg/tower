@@ -1,10 +1,29 @@
-package game.gfx
+package game.lighting
 
 import java.nio.ByteBuffer
 
 import core._
 
+object LightProbe {
+
+  def make(): LightProbe = new AmbientCube()
+  val SizeInVec4 = 6
+
+}
+
 trait LightProbe {
+
+  /**
+    * Clear the probe to the initial (completely dark) state
+    */
+  def clear(): Unit
+
+  /**
+    * Copy the state from another light probe.
+    *
+    * @param other Another light probe _of the same type_
+    */
+  def copyFrom(other: LightProbe): Unit
 
   /**
     * Accumulate omnidirectional light.

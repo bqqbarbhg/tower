@@ -239,7 +239,7 @@ object TestCableSystem extends App {
       })
 
       renderer.setTexture(ModelTextures.Diffuse, mesh.material.albedoTex.texture)
-      renderer.bindUniform(ModelSystem.InstancedUniform, draw.ubo)
+      renderer.bindUniform(ModelSystem.InstancedUniform, draw.instanceUbo)
 
       val numElems = part.numIndices
       renderer.drawElementsInstanced(draw.num, numElems, part.indexBuffer, part.vertexBuffer)
