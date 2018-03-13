@@ -9,6 +9,8 @@ object LightProbe {
   def make(): LightProbe = new AmbientCube()
   val SizeInVec4 = 6
 
+  lazy val Empty = LightProbe.make()
+
 }
 
 trait LightProbe {

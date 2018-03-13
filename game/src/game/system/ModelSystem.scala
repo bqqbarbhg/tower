@@ -62,7 +62,7 @@ object ModelSystem {
     /**
       * Light probe the model uses.
       */
-    var lightProbe: LightProbe = null
+    var lightProbe: LightProbe = LightProbe.Empty
 
     /**
       * Find a node matching a name in the model.

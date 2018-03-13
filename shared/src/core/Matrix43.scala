@@ -200,8 +200,8 @@ object Matrix43 {
     * target as in many APIs) */
   def look(eye: Vector3, dir: Vector3, up: Vector3 = Vector3(0.0, 1.0, 0.0)): Matrix43 = {
     val dir2 = dir.normalize
-    val right = (up cross dir2).normalize
-    val up2 = dir2 cross right
+    val right = (dir2 cross up).normalize
+    val up2 = right cross dir2
     inverseWorld(right, up2, dir2, eye)
   }
 }

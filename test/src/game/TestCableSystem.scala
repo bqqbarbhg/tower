@@ -252,10 +252,10 @@ object TestCableSystem extends App {
     }
 
     if (mapping.isDown(DebugInput.Left)) {
-      angle -= dt * 2.0
+      angle += dt * 2.0
     }
     if (mapping.isDown(DebugInput.Right)) {
-      angle += dt * 2.0
+      angle -= dt * 2.0
     }
 
     val cables = getCablePaths(asset)

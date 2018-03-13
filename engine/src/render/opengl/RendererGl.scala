@@ -251,7 +251,7 @@ class RendererGl {
   def setCull(enable: Boolean): Unit = {
     if (enable) {
       glEnable(GL_CULL_FACE)
-      glFrontFace(GL_CW)
+      glFrontFace(GL_CCW)
       glCullFace(GL_BACK)
     } else {
       glDisable(GL_CULL_FACE)
