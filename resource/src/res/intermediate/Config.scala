@@ -330,6 +330,16 @@ object Config {
       }
     }
 
+    class Shader extends SimpleSerializable {
+
+      /** Root directory in asset path where to search for shader imports */
+      var importPath: String = ""
+
+      override def visit(v: SimpleVisitor): Unit = {
+        importPath = v.field("importPath", importPath)
+      }
+    }
+
   }
 
   /** Resource type specific settings */
@@ -343,6 +353,7 @@ object Config {
     var model = new Res.Model()
     var sound = new Res.Sound()
     var font = new Res.Font()
+    var shader = new Res.Shader()
 
     override def visit(v: SimpleVisitor): Unit = {
       texture = v.field("texture", texture)
@@ -354,6 +365,7 @@ object Config {
       model = v.field("model", model)
       sound = v.field("sound", sound)
       font = v.field("font", font)
+      shader = v.field("shader", shader)
     }
   }
 

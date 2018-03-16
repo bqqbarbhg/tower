@@ -454,9 +454,10 @@ class Runner(val opts: RunOptions) {
         val resources = asset.importAsset()
         assert(resources.size == 1)
         val shader = resources.head.asInstanceOf[Shader]
+        val processed = PreprocessShader.preprocessShader(shader, asset.config.res.shader)
 
         val filename = Paths.get(opts.dataRoot, s"$relPath.s2sh").toFile
-        ShaderFile.save(writer, filename, shader)
+        ShaderFile.save(writer, filename, processed)
 
         shader.unload()
       }

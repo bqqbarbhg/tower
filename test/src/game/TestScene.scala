@@ -271,8 +271,12 @@ object TestScene extends App {
 
   val renderer = Renderer.initialize()
 
-  val shader = Shader.load("test/test_mesh", ModelPermutations, ModelTextures, GlobalUniform, ModelUniform, ModelUniformBones, PixelGlobalUniform)
-  val shadowShader = Shader.load("test/shadow_mesh", ModelPermutations, NoSamplers, GlobalUniform, ModelUniform, ModelUniformBones)
+  val vs = ShaderSource.load(Identifier("test/test_mesh.vs.glsl.s2sh")).get
+  val fs = ShaderSource.load(Identifier("test/test_mesh.fs.glsl.s2sh")).get
+  val svs = ShaderSource.load(Identifier("test/shadow_mesh.vs.glsl.s2sh")).get
+  val sfs = ShaderSource.load(Identifier("test/shadow_mesh.fs.glsl.s2sh")).get
+  val shader = Shader.load("test/test_mesh", vs, fs, ModelPermutations, ModelTextures, GlobalUniform, ModelUniform, ModelUniformBones, PixelGlobalUniform)
+  val shadowShader = Shader.load("test/shadow_mesh", svs, sfs, ModelPermutations, NoSamplers, GlobalUniform, ModelUniform, ModelUniformBones)
 
   val buffer = ByteBuffer.allocateDirect(16 * 1024 * 1024)
 

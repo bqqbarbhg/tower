@@ -75,10 +75,10 @@ object ImportFileFont extends ImportFileType {
 }
 
 object ImportFileShader extends ImportFileType {
-  def version = 2
+  def version = 6
 
   def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
-    // No options
+    dst.shader = src.shader
   }
 }
 

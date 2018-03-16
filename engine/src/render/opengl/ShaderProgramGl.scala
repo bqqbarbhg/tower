@@ -15,6 +15,8 @@ import scala.collection.mutable.ArrayBuffer
 
 object ShaderProgramGl {
 
+  case class SourceChunk(filename: Identifier, baseLine: Int, source: String)
+
   case class UniformBind(serial: Int, shaderIndex: Int)
   case class AttribBind(nameId: Int, shaderIndex: Int)
   case class SamplerBind(index: Int, shaderIndex: Int)
@@ -22,13 +24,16 @@ object ShaderProgramGl {
 
   val AttribRegex = """^a_([A-Za-z0-9]+)$""".r
 
+  val ErrorFileRegexA = """(\d+)\((\d+)\)""".r // file(line)
+  val ErrorFileRegexB = """(\d+):(\d+):(\d+)""".r // file:line:col
+
   object NullSamplers extends SamplerBlock
 
-  def compile(vert: String, frag: String, uniforms: UniformBlock*): ShaderProgramGl = {
+  def compile(vert: Seq[SourceChunk], frag: Seq[SourceChunk], uniforms: UniformBlock*): ShaderProgramGl = {
     compile(vert, frag, NullSamplers, uniforms : _*)
   }
 
-  def compile(vert: String, frag: String, samplers: SamplerBlock, uniforms: UniformBlock*): ShaderProgramGl = {
+  def compile(vert: Seq[SourceChunk], frag: Seq[SourceChunk], samplers: SamplerBlock, uniforms: UniformBlock*): ShaderProgramGl = {
 
     var vs = 0
     var fs = 0
@@ -46,17 +51,37 @@ object ShaderProgramGl {
     }
 
     // -- Compile the shader
-    def createShader(src: String, shaderType: Int): Int = {
+    def createShader(srcChunks: Seq[SourceChunk], shaderType: Int): Int = {
 
       val shader = glCreateShader(shaderType)
-      glShaderSource(shader, src)
+
+      val headSource = srcChunks.head.source
+      val tailSources = srcChunks.zipWithIndex.drop(1).map({ case (chunk, index) =>
+        s"#line ${chunk.baseLine} $index\n${chunk.source}"
+      })
+      val sources = headSource +: tailSources
+      glShaderSource(shader, sources : _*)
+
       glCompileShader(shader)
       if (glGetShaderi(shader, GL_COMPILE_STATUS) != GL_TRUE) {
-        val msg = glGetShaderInfoLog(shader)
+        var msg = glGetShaderInfoLog(shader)
 
         val shType = if      (shaderType == GL_VERTEX_SHADER)   "Vertex shader"
                      else if (shaderType == GL_FRAGMENT_SHADER) "Fragment shader"
                      else "Shader"
+
+        msg = ErrorFileRegexA.replaceAllIn(msg, m => {
+          val file = srcChunks.lift(m.group(1).toInt).map(_.filename.toString).getOrElse("<unknown>").stripSuffix(".s2sh")
+          val line = m.group(2)
+          s"$file:$line"
+        })
+
+          msg = ErrorFileRegexB.replaceAllIn(msg, m => {
+          val file = srcChunks.lift(m.group(1).toInt).map(_.filename.toString).getOrElse("<unknown>").stripSuffix(".s2sh")
+          val line = m.group(2)
+          val col = m.group(3)
+          s"$file:$line:$col"
+        })
 
         panicCleanup()
         throw new ShaderCompileError(s"$shType error: $msg")

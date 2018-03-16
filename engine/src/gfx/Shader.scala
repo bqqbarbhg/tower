@@ -9,11 +9,14 @@ import Shader._
 import io.content.Package
 import org.lwjgl.system.MemoryUtil
 import render.opengl.OptsGl
+import render.opengl.ShaderProgramGl.SourceChunk
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 object Shader {
+
+  val PreludeFilename = Identifier("<permutation-prelude>")
 
   val MaskVert = 0x01
   val MaskFrag = 0x02
@@ -62,46 +65,24 @@ object Shader {
 
   }
 
-  private def loadShaderSource(filename: String): String = withStack {
-    val file = Package.get.get(filename).getOrElse {
-      throw new RuntimeException(s"Shader not found: $filename")
-    }
-
-    val buffer = alloca(file.sizeInBytes.toInt)
-    val stream = file.read()
-    buffer.readFrom(stream)
-    stream.close()
-    buffer.finish()
-
-    // @Deserialize(s2sh)
-    val MaxVersion = 1
-    buffer.verifyMagic("s2sh")
-    val version = buffer.getVersion(MaxVersion)
-    val source = buffer.getString()
-    buffer.verifyMagic("E.sh")
-
-    source
-  }
-
   /**
     * Load a shader from the content data.
     *
-    * @param name Name of the shader to load
+    * @param name Name of the shader (for debugging)
+    * @param vertSrc Source of the vertex shader
+    * @param fragSrc Source of the fragment shader
     * @param permutations Permutations to generate for the shader
     * @param samplers Sampler block passed to the renderer
     * @param uniforms Uniform blocks passed to the renderer
     * @return The compiled shader object
     */
-  def load(name: String, permutations: Permutations, samplers: SamplerBlock, uniforms: UniformBlock*): Shader = {
+  def load(name: String, vertSrc: ShaderSource, fragSrc: ShaderSource, permutations: Permutations, samplers: SamplerBlock, uniforms: UniformBlock*): Shader = {
     val perms = permutations.permutations
 
     // TODO: Generate less shaders using separable shader objects
 
-    val vertSrc = loadShaderSource(name + ".vs.glsl.s2sh")
-    val fragSrc = loadShaderSource(name + ".fs.glsl.s2sh")
-
     /** Generate the source for a shader permutation */
-    def generateShaderPermutationSource(source: String, mask: Int, values: Seq[Int]): String = {
+    def generateShaderPermutationPrelude(mask: Int, values: Seq[Int]): SourceChunk = {
       val builder = new mutable.StringBuilder()
 
       // General shader header
@@ -142,20 +123,18 @@ object Shader {
         }
       }
 
-      // Reset the line for the actual source
-      builder ++= "#line 1\n"
-
-      // The actual source code
-      builder ++= source
-
-      builder.mkString
+      SourceChunk(PreludeFilename, 1, builder.mkString)
     }
 
     /** Compile a permutation shader program, which consists of vertex and fragment shaders */
     def compilePermutation(values: Seq[Int]): ShaderProgram = {
-      val vertGen = generateShaderPermutationSource(vertSrc, MaskVert, values)
-      val fragGen = generateShaderPermutationSource(fragSrc, MaskFrag, values)
-      val program = ShaderProgram.compile(vertGen, fragGen, samplers, uniforms : _*)
+      val vertGen = generateShaderPermutationPrelude(MaskVert, values)
+      val fragGen = generateShaderPermutationPrelude(MaskFrag, values)
+
+      val vertChunks = vertGen +: vertSrc.chunks
+      val fragChunks = fragGen +: fragSrc.chunks
+
+      val program = ShaderProgram.compile(vertChunks, fragChunks, samplers, uniforms : _*)
 
       val permutationDebug = (for ((value, perm) <- (values zip perms)) yield {
         s"${perm.name}:$value"

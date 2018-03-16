@@ -60,11 +60,14 @@ object TestCableSystem extends App {
   var prevWidth = -1
   var prevHeight = -1
 
-  val asset = ModelAsset("game/tower/tower_radar.fbx.s2md")
+  val asset = ModelAsset("game/tower/tower_turret.fbx.s2md")
 
   val entity = new Entity()
   val model = ModelSystem.addModel(entity, asset)
   entity.position = Vector3(0.0, 0.0, 0.0)
+
+  val head = model.findNode(Identifier("Head"))
+  val barrel = model.findNode(Identifier("Barrel"))
 
   def getCablePaths(asset: ModelAsset): Array[Array[CableNode]] = {
     val model = asset.getShallowUnsafe
@@ -156,8 +159,6 @@ object TestCableSystem extends App {
   val mapping = new InputMapping(Array(keyboard))
   mapping.init(debugMapping)
 
-  val radar = model.findNode(Identifier("Radar"))
-
   object GlobalUniform extends UniformBlock("GlobalUniform") {
     val ViewProjection = mat4("ViewProjection")
   }
@@ -181,7 +182,7 @@ object TestCableSystem extends App {
   var renderTarget: RenderTarget = null
   var angle = 0.0
 
-  var toggle = false
+  var toggle = true
 
   val startTime = AppWindow.currentTime
   var prevTime = startTime
@@ -193,8 +194,6 @@ object TestCableSystem extends App {
     val time = AppWindow.currentTime - startTime
     val dt = time - prevTime
     prevTime = time
-
-    radar.localTransform = Matrix43.rotateZ(time)
 
     val viewWidth = AppWindow.width
     val viewHeight = AppWindow.height
@@ -222,6 +221,9 @@ object TestCableSystem extends App {
     ModelSystem.collectMeshInstances()
     ModelSystem.setupUniforms()
     val draws = ModelSystem.getInstancedMesheDraws()
+
+    head.localTransform = Matrix43.rotateZ(math.sin(time * 0.6) * 0.5) * Matrix43.rotateX(math.sin(time * 0.5) * 0.2)
+    barrel.localTransform = Matrix43.rotateY(time * -15.0)
 
     renderer.pushUniform(GlobalUniform, u => {
       GlobalUniform.ViewProjection.set(u, viewProjection)
