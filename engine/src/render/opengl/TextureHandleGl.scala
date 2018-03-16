@@ -48,7 +48,7 @@ object TextureHandleGl {
       } else {
         format match {
           case "RGBA" => glTexImage2D(GL_TEXTURE_2D, level, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data)
-          case "RGSN" => glTexImage2D(GL_TEXTURE_2D, level, GL_RG, w, h, 0, GL_RG, GL_UNSIGNED_BYTE, data)
+          case "RG.." => glTexImage2D(GL_TEXTURE_2D, level, GL_RG, w, h, 0, GL_RG, GL_UNSIGNED_BYTE, data)
           case "DXT1" => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, w, h, 0, data)
           case "DXT5" => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, w, h, 0, data)
           case "BC4." => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RED_RGTC1, w, h, 0, data)
