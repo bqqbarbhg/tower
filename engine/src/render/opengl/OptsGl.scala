@@ -123,11 +123,11 @@ object MapMode {
 
 object OptsGl {
   /** How to map uniform block buffers */
-  var uniformMap: MapMode = MapMode.PersistentCopyCoherent
+  var uniformMap: MapMode = MapMode.PersistentCopy
   /** If `uniformMap` mode is not supported, fallback to this mode. */
   var uniformMapFallback: MapMode = MapMode.SubData
   /** How to map dynamic vertex buffers */
-  var vertexMap: MapMode = MapMode.PersistentCoherent
+  var vertexMap: MapMode = MapMode.Persistent
   /** If `vertexMap` mode is not supported, fallback to this mode. */
   var vertexMapFallback: MapMode = MapMode.Map
   /** Should the implementation use uniform blocks or direct uniforms */

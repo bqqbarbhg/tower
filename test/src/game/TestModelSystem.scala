@@ -145,7 +145,7 @@ object TestModelSystem extends App {
       renderer.resizeBackbuffer(viewWidth, viewHeight)
 
       if (renderTarget != null) renderTarget.unload()
-      renderTarget = RenderTarget.create(viewWidth, viewHeight, Some("SRGB"), Some("D24S"), false, 8)
+      renderTarget = RenderTarget.create(viewWidth, viewHeight, Some("SRGB"), Some("D24S"), false, 2)
       renderTarget.setLabel("Multisample target")
     }
 

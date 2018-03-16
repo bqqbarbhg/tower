@@ -14,6 +14,7 @@ import platform.AppWindow
 import res.runner.{RunOptions, Runner}
 import ui.DebugDraw
 import CableRenderSystem.CableNode
+import gfx.Shader
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -138,9 +139,21 @@ object TestCableSystem extends App {
     allNodes.result()
   }
 
+  /*
+  val albedo = TextureAsset("test/rustediron/rustediron2_basecolor.png.s2tx")
+  val normal = TextureAsset("test/rustediron/rustediron2_normal.png.s2tx")
+  val roughness = TextureAsset("test/rustediron/rustediron2_roughness.png.s2tx")
+  val metallic = TextureAsset("test/rustediron/rustediron2_metallic.png.s2tx")
+  */
+
+  val albedo = TextureAsset("test/spaced-tiles1-Unreal-Engine/spaced-tiles1-albedo.png.s2tx")
+  val normal = TextureAsset("test/spaced-tiles1-Unreal-Engine/spaced-tiles1-normal.png.s2tx")
+  val roughness = TextureAsset("game/tower/tower_turret_roughness.png.s2tx")
+  val metallic = TextureAsset("game/tower/tower_turret_metallic.png.s2tx")
 
   object DebugInput extends InputSet("Debug") {
     val Reload = button("Reload")
+    val Toggle = button("Toggle")
     val Left = button("Left")
     val Right = button("Right")
   }
@@ -152,6 +165,7 @@ object TestCableSystem extends App {
     """
       |[Keyboard.Debug]
       |Reload = "R"
+      |Toggle = "T"
       |Left = "A"
       |Right = "D"
     """.stripMargin)
@@ -161,13 +175,24 @@ object TestCableSystem extends App {
 
   object GlobalUniform extends UniformBlock("GlobalUniform") {
     val ViewProjection = mat4("ViewProjection")
+    val ViewPosition = vec4("ViewPosition")
   }
 
   object ModelTextures extends SamplerBlock {
-    val Diffuse = sampler2D("Diffuse", Sampler.RepeatAnisotropic)
+    val Albedo = sampler2D("Albedo", Sampler.RepeatAnisotropic)
+    val Normal = sampler2D("Normal", Sampler.RepeatAnisotropic)
+    val Roughness = sampler2D("Roughness", Sampler.RepeatAnisotropic)
+    val Metallic = sampler2D("Metallic", Sampler.RepeatAnisotropic)
   }
 
-  object TestModelShader extends ShaderAsset("test/instanced_mesh") {
+  object TestModelShader extends ShaderAsset("test/instanced_pbr") {
+
+    override object Permutations extends Shader.Permutations {
+      val BrdfFunc_D = frag("BrdfFunc_D", 1 to 2)
+      val BrdfFunc_V = frag("BrdfFunc_V", 1 to 5)
+      val BrdfFunc_F = frag("BrdfFunc_F", 1 to 2)
+    }
+
     uniform(ModelSystem.InstancedUniform)
     uniform(GlobalUniform)
 
@@ -207,9 +232,10 @@ object TestCableSystem extends App {
     }
 
 
+    val viewPos = Vector3(math.sin(angle) * 12.0, 10.0, math.cos(angle) * -12.0)
     val viewProjection = (
       Matrix4.perspective(viewWidth.toDouble / viewHeight.toDouble, math.Pi / 3.0, 0.01, 1000.0)
-        * Matrix43.look(Vector3(math.sin(angle) * 12.0, 10.0, math.cos(angle) * -12.0), Vector3(-math.sin(angle), -0.5, math.cos(angle))))
+        * Matrix43.look(viewPos, Vector3(-math.sin(angle), -0.5, math.cos(angle))))
 
     renderer.advanceFrame()
     renderer.setRenderTarget(renderTarget)
@@ -227,12 +253,23 @@ object TestCableSystem extends App {
 
     renderer.pushUniform(GlobalUniform, u => {
       GlobalUniform.ViewProjection.set(u, viewProjection)
+      GlobalUniform.ViewPosition.set(u, viewPos, 0.0f)
     })
 
     renderer.setCull(true)
 
     val shader = TestModelShader.get
-    shader.use()
+    shader.use(p => {
+      if (toggle) {
+        p(TestModelShader.Permutations.BrdfFunc_D) = 2
+        p(TestModelShader.Permutations.BrdfFunc_V) = 2
+        p(TestModelShader.Permutations.BrdfFunc_F) = 2
+      } else {
+        p(TestModelShader.Permutations.BrdfFunc_D) = 2
+        p(TestModelShader.Permutations.BrdfFunc_V) = 1
+        p(TestModelShader.Permutations.BrdfFunc_F) = 1
+      }
+    })
 
     for (draw <- draws) {
       val mesh = draw.mesh
@@ -243,14 +280,17 @@ object TestCableSystem extends App {
         TestModelShader.PixelUniform.UvBounds.set(u, part.uvOffsetX, part.uvOffsetY, part.uvScaleX, part.uvScaleY)
       })
 
-      renderer.setTexture(ModelTextures.Diffuse, mesh.material.albedoTex.texture)
+      renderer.setTexture(ModelTextures.Albedo, albedo.get.texture)
+      renderer.setTexture(ModelTextures.Normal, normal.get.texture)
+      renderer.setTexture(ModelTextures.Roughness, roughness.get.texture)
+      renderer.setTexture(ModelTextures.Metallic, metallic.get.texture)
       renderer.bindUniform(ModelSystem.InstancedUniform, draw.instanceUbo)
 
       val numElems = part.numIndices
       renderer.drawElementsInstanced(draw.num, numElems, part.indexBuffer, part.vertexBuffer)
     }
 
-    if (mapping.justPressed(DebugInput.Reload) && false) {
+    if (mapping.justPressed(DebugInput.Reload)) {
       processResources()
       AssetLoader.reloadEverything()
       ModelSystem.assetsLoaded()
@@ -265,7 +305,7 @@ object TestCableSystem extends App {
 
     val cables = getCablePaths(asset)
 
-    if (mapping.justPressed(DebugInput.Reload))
+    if (mapping.justPressed(DebugInput.Toggle))
       toggle = !toggle
 
     var totalPoints = 0
@@ -357,8 +397,17 @@ object TestCableSystem extends App {
 
     {
       val draws = ArrayBuffer[ui.Font.TextDraw]()
-      val text = s"Points: $totalPoints"
-      draws += ui.Font.TextDraw(text, 0, text.length, Vector2(100.0, 114.0), 22.0, Color.rgb(0xFFFFFF), 0.0, 1)
+
+      {
+        val text = s"Points: $totalPoints"
+        draws += ui.Font.TextDraw(text, 0, text.length, Vector2(100.0, 114.0), 22.0, Color.rgb(0xFFFFFF), 0.0, 1)
+      }
+
+      {
+        val text = s"Toggle: $toggle"
+        draws += ui.Font.TextDraw(text, 0, text.length, Vector2(100.0, 134.0), 22.0, Color.rgb(0xFFFFFF), 0.0, 1)
+      }
+
       fontAsset.get.render(draws)
     }
 
