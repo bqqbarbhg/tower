@@ -70,6 +70,17 @@ object TestCableSystem extends App {
   val head = model.findNode(Identifier("Head"))
   val barrel = model.findNode(Identifier("Barrel"))
 
+  model.lightProbe = LightSystem.addStaticProbe(Vector3(0.0, 0.5, 0.0)).probe
+  LightSystem.addStaticLight(Vector3(-40.0, 20.0, 20.0), Vector3(0.8, 0.8, 0.8) * 2.0, 100.0)
+  // LightSystem.addStaticLight(Vector3(-20.0, 20.0, -20.0), Vector3(0.5, 0.5, 0.8) * 0.6, 100.0)
+
+  LightSystem.globalProbe.addDirectional(Vector3(0.0, -1.0, 0.0), Vector3(0.2, 0.2, 0.1) * 0.5)
+  LightSystem.globalProbe.addDirectional(Vector3(0.0, +1.0, 0.0), Vector3(0.1, 0.2, 0.3))
+  LightSystem.globalProbe.addDirectional(Vector3(+1.0, 0.0, 0.0), Vector3(0.2, 0.2, 0.1) * 0.25)
+  LightSystem.globalProbe.addDirectional(Vector3(-1.0, 0.0, 0.0), Vector3(0.2, 0.2, 0.1) * 0.25)
+  LightSystem.globalProbe.addDirectional(Vector3(0.0, 0.0, +1.0), Vector3(0.2, 0.2, 0.1) * 0.25)
+  LightSystem.globalProbe.addDirectional(Vector3(0.0, 0.0, -1.0), Vector3(0.2, 0.2, 0.1) * 0.25)
+
   def getCablePaths(asset: ModelAsset): Array[Array[CableNode]] = {
     val model = asset.getShallowUnsafe
 
@@ -146,16 +157,19 @@ object TestCableSystem extends App {
   val metallic = TextureAsset("test/rustediron/rustediron2_metallic.png.s2tx")
   */
 
-  val albedo = TextureAsset("test/spaced-tiles1-Unreal-Engine/spaced-tiles1-albedo.png.s2tx")
-  val normal = TextureAsset("test/spaced-tiles1-Unreal-Engine/spaced-tiles1-normal.png.s2tx")
+  val albedo = TextureAsset("game/tower/tower_turret_albedo.png.s2tx")
+  val normal = TextureAsset("game/tower/tower_turret_normal.png.s2tx")
   val roughness = TextureAsset("game/tower/tower_turret_roughness.png.s2tx")
   val metallic = TextureAsset("game/tower/tower_turret_metallic.png.s2tx")
+  val ao = TextureAsset("game/tower/tower_turret_ao.png.s2tx")
 
   object DebugInput extends InputSet("Debug") {
     val Reload = button("Reload")
     val Toggle = button("Toggle")
     val Left = button("Left")
     val Right = button("Right")
+    val Up = button("Up")
+    val Down = button("Down")
   }
 
   val fontAsset = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
@@ -168,6 +182,8 @@ object TestCableSystem extends App {
       |Toggle = "T"
       |Left = "A"
       |Right = "D"
+      |Up = "W"
+      |Down = "S"
     """.stripMargin)
 
   val mapping = new InputMapping(Array(keyboard))
@@ -175,6 +191,7 @@ object TestCableSystem extends App {
 
   object GlobalUniform extends UniformBlock("GlobalUniform") {
     val ViewProjection = mat4("ViewProjection")
+    val ShadowViewProjection = mat4("ShadowViewProjection")
     val ViewPosition = vec4("ViewPosition")
   }
 
@@ -183,6 +200,8 @@ object TestCableSystem extends App {
     val Normal = sampler2D("Normal", Sampler.RepeatAnisotropic)
     val Roughness = sampler2D("Roughness", Sampler.RepeatAnisotropic)
     val Metallic = sampler2D("Metallic", Sampler.RepeatAnisotropic)
+    val AoTex = sampler2D("AoTex", Sampler.RepeatAnisotropic)
+    val ShadowMap = sampler2D("ShadowMap", Sampler.ClampNearestNoMip)
   }
 
   object TestModelShader extends ShaderAsset("test/instanced_pbr") {
@@ -194,6 +213,7 @@ object TestCableSystem extends App {
     }
 
     uniform(ModelSystem.InstancedUniform)
+    uniform(ModelSystem.LightProbeUniform)
     uniform(GlobalUniform)
 
     uniform(PixelUniform)
@@ -204,10 +224,26 @@ object TestCableSystem extends App {
     override val Textures = ModelTextures
   }
 
+  object TestShadowShader extends ShaderAsset("test/instanced_shadow") {
+    uniform(ModelSystem.InstancedUniform)
+
+    uniform(ShadowUniform)
+    object ShadowUniform extends UniformBlock("ShadowUniform") {
+      val ViewProjection = mat4("ViewProjection")
+    }
+  }
+
+  TestModelShader.load()
+  TestShadowShader.load()
+
+  val shadowTarget = RenderTarget.create(2048, 2048, None, Some(TexFormat.D24S8), true)
+    .withLabel("Shadow Target")
+
   var renderTarget: RenderTarget = null
   var angle = 0.0
 
   var toggle = true
+  var zoom = 0.5
 
   val startTime = AppWindow.currentTime
   var prevTime = startTime
@@ -231,28 +267,64 @@ object TestCableSystem extends App {
       renderTarget.setLabel("Multisample target")
     }
 
+    if (mapping.isDown(DebugInput.Down)) zoom += dt * 2.0
+    if (mapping.isDown(DebugInput.Up)) zoom -= dt * 2.0
+    zoom = clamp(zoom, 0.5, 1.5)
 
-    val viewPos = Vector3(math.sin(angle) * 12.0, 10.0, math.cos(angle) * -12.0)
+    val viewPos = Vector3(math.sin(angle) * 18.0, 30.0, math.cos(angle) * -18.0) * zoom
     val viewProjection = (
       Matrix4.perspective(viewWidth.toDouble / viewHeight.toDouble, math.Pi / 3.0, 0.01, 1000.0)
-        * Matrix43.look(viewPos, Vector3(-math.sin(angle), -0.5, math.cos(angle))))
+        * Matrix43.look(viewPos, Vector3(-math.sin(angle), -1.5, math.cos(angle))))
+
+    val shadowViewProjection = (
+      Matrix4.orthographic(80.0, 80.0, 0.1, 100.0)
+        * Matrix43.look(Vector3(0.25, 0.75, -0.25) * 40.0, -Vector3(0.25, 0.75, -0.25)))
+
+    head.localTransform = Matrix43.rotateZ(math.sin(time * 0.6) * 0.5) * Matrix43.rotateX(math.sin(time * 0.5) * 0.2)
+    barrel.localTransform = Matrix43.rotateY(time * -15.0)
+
+    LightSystem.addDynamicLightsToCells()
+    LightSystem.evaluateProbes()
+    LightSystem.finishFrame()
+
+    ModelSystem.updateMatrices()
+    ModelSystem.collectMeshInstances()
+    ModelSystem.setupUniforms()
+
+    val draws = ModelSystem.getInstancedMesheDraws()
 
     renderer.advanceFrame()
+
+    renderer.setRenderTarget(shadowTarget)
+    renderer.setDepthMode(true, true)
+    renderer.setWriteSrgb(false)
+    renderer.clear(None, Some(1.0))
+
+    renderer.pushUniform(TestShadowShader.ShadowUniform, u => {
+      TestShadowShader.ShadowUniform.ViewProjection.set(u, shadowViewProjection)
+    })
+
+    TestShadowShader.get.use()
+
+    for (draw <- draws) {
+      val mesh = draw.mesh
+      val part = mesh.parts.head
+      assert(draw.mesh.parts.length == 1)
+
+      renderer.bindUniform(ModelSystem.InstancedUniform, draw.instanceUbo)
+
+      val numElems = part.numIndices
+      renderer.drawElementsInstanced(draw.num, numElems, part.indexBuffer, part.vertexBuffer)
+    }
+
     renderer.setRenderTarget(renderTarget)
     renderer.setDepthMode(true, true)
     renderer.setWriteSrgb(true)
     renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
 
-    ModelSystem.updateMatrices()
-    ModelSystem.collectMeshInstances()
-    ModelSystem.setupUniforms()
-    val draws = ModelSystem.getInstancedMesheDraws()
-
-    head.localTransform = Matrix43.rotateZ(math.sin(time * 0.6) * 0.5) * Matrix43.rotateX(math.sin(time * 0.5) * 0.2)
-    barrel.localTransform = Matrix43.rotateY(time * -15.0)
-
     renderer.pushUniform(GlobalUniform, u => {
       GlobalUniform.ViewProjection.set(u, viewProjection)
+      GlobalUniform.ShadowViewProjection.set(u, shadowViewProjection)
       GlobalUniform.ViewPosition.set(u, viewPos, 0.0f)
     })
 
@@ -284,7 +356,11 @@ object TestCableSystem extends App {
       renderer.setTexture(ModelTextures.Normal, normal.get.texture)
       renderer.setTexture(ModelTextures.Roughness, roughness.get.texture)
       renderer.setTexture(ModelTextures.Metallic, metallic.get.texture)
+      renderer.setTexture(ModelTextures.AoTex, ao.get.texture)
+      renderer.setTextureTargetDepth(ModelTextures.ShadowMap, shadowTarget)
+
       renderer.bindUniform(ModelSystem.InstancedUniform, draw.instanceUbo)
+      renderer.bindUniform(ModelSystem.LightProbeUniform, draw.lightProbeUbo)
 
       val numElems = part.numIndices
       renderer.drawElementsInstanced(draw.num, numElems, part.indexBuffer, part.vertexBuffer)
