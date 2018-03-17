@@ -13,8 +13,12 @@ import _root_.main.EngineStartup
 import platform.AppWindow
 import res.runner.{RunOptions, Runner}
 import ui.DebugDraw
-import CableRenderSystem.CableNode
+import CableRenderSystem.{CableMesh, CableNode}
+import game.lighting.LightProbe
 import gfx.Shader
+import org.lwjgl.system.MemoryUtil
+import render.VertexSpec.Attrib
+import render.VertexSpec.DataFmt._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -71,15 +75,20 @@ object TestCableSystem extends App {
   val barrel = model.findNode(Identifier("Barrel"))
 
   model.lightProbe = LightSystem.addStaticProbe(Vector3(0.0, 0.5, 0.0)).probe
-  LightSystem.addStaticLight(Vector3(-40.0, 20.0, 20.0), Vector3(0.8, 0.8, 0.8) * 2.0, 100.0)
+  // LightSystem.addDynamicLight(Vector3(40.0, 20.0, 20.0), Vector3(1.0, 0.0, 0.0) * 4.0, 150.0)
+  // LightSystem.addStaticLight(Vector3(-80.0, 20.0, 20.0), Vector3(0.5, 0.5, 1.0) * 1.0, 200.0)
+  // LightSystem.addStaticLight(Vector3(100.0, 80.0, 20.0), Vector3(0.6, 0.5, 0.5) * 1.0, 100.0)
   // LightSystem.addStaticLight(Vector3(-20.0, 20.0, -20.0), Vector3(0.5, 0.5, 0.8) * 0.6, 100.0)
 
-  LightSystem.globalProbe.addDirectional(Vector3(0.0, -1.0, 0.0), Vector3(0.2, 0.2, 0.1) * 0.5)
-  LightSystem.globalProbe.addDirectional(Vector3(0.0, +1.0, 0.0), Vector3(0.1, 0.2, 0.3))
-  LightSystem.globalProbe.addDirectional(Vector3(+1.0, 0.0, 0.0), Vector3(0.2, 0.2, 0.1) * 0.25)
-  LightSystem.globalProbe.addDirectional(Vector3(-1.0, 0.0, 0.0), Vector3(0.2, 0.2, 0.1) * 0.25)
-  LightSystem.globalProbe.addDirectional(Vector3(0.0, 0.0, +1.0), Vector3(0.2, 0.2, 0.1) * 0.25)
-  LightSystem.globalProbe.addDirectional(Vector3(0.0, 0.0, -1.0), Vector3(0.2, 0.2, 0.1) * 0.25)
+
+  val groundColor = Color.rgb(0x8a857f)
+  val groundIntensity = Vector3(groundColor.r, groundColor.g, groundColor.b)
+  LightSystem.globalProbe.addDirectional(Vector3(0.0, +1.0, 0.0), Vector3(0.1, 0.2, 0.3) * 0.4)
+  LightSystem.globalProbe.addDirectional(Vector3(0.0, -1.0, 0.0), groundIntensity * 0.25 * 0.5)
+  LightSystem.globalProbe.addDirectional(Vector3(+1.0, 0.0, 0.0), groundIntensity * 0.125 * 0.5)
+  LightSystem.globalProbe.addDirectional(Vector3(-1.0, 0.0, 0.0), groundIntensity * 0.125 * 0.5)
+  LightSystem.globalProbe.addDirectional(Vector3(0.0, 0.0, +1.0), groundIntensity * 0.125 * 0.5)
+  LightSystem.globalProbe.addDirectional(Vector3(0.0, 0.0, -1.0), groundIntensity * 0.125 * 0.5)
 
   def getCablePaths(asset: ModelAsset): Array[Array[CableNode]] = {
     val model = asset.getShallowUnsafe
@@ -163,6 +172,12 @@ object TestCableSystem extends App {
   val metallic = TextureAsset("game/tower/tower_turret_metallic.png.s2tx")
   val ao = TextureAsset("game/tower/tower_turret_ao.png.s2tx")
 
+  val ground_albedo = TextureAsset("game/ground/sand_stone_albedo.png.s2tx")
+  val ground_normal = TextureAsset("game/ground/sand_stone_normal.png.s2tx")
+  val ground_roughness = TextureAsset("game/ground/sand_stone_roughness.png.s2tx")
+  val ground_metallic = TextureAsset("game/ground/sand_stone_metallic.png.s2tx")
+  val ground_ao = TextureAsset("game/ground/sand_stone_ao.png.s2tx")
+
   object DebugInput extends InputSet("Debug") {
     val Reload = button("Reload")
     val Toggle = button("Toggle")
@@ -224,6 +239,20 @@ object TestCableSystem extends App {
     override val Textures = ModelTextures
   }
 
+  object TestGroundShader extends ShaderAsset("test/ground_pbr") {
+
+    override object Permutations extends Shader.Permutations {
+      val BrdfFunc_D = frag("BrdfFunc_D", 1 to 2)
+      val BrdfFunc_V = frag("BrdfFunc_V", 1 to 5)
+      val BrdfFunc_F = frag("BrdfFunc_F", 1 to 2)
+    }
+
+    uniform(ModelSystem.LightProbeUniform)
+    uniform(GlobalUniform)
+
+    override val Textures = ModelTextures
+  }
+
   object TestShadowShader extends ShaderAsset("test/instanced_shadow") {
     uniform(ModelSystem.InstancedUniform)
 
@@ -232,6 +261,188 @@ object TestCableSystem extends App {
       val ViewProjection = mat4("ViewProjection")
     }
   }
+
+  object TestCableShader extends ShaderAsset("test/cable_test") {
+    uniform(GlobalUniform)
+
+    uniform(CableUniform)
+    object CableUniform extends UniformBlock("CableUniform") {
+      val Pulse = vec4("Pulse")
+    }
+
+    override object Textures extends SamplerBlock {
+      val ShadowMap = sampler2D("ShadowMap", Sampler.ClampNearestNoMip)
+    }
+  }
+
+  val GroundSpec = VertexSpec(Vector(
+    Attrib(3, F32, Identifier("Position")),
+    Attrib(3, F32, Identifier("Normal")),
+    Attrib(4, UI8, Identifier("ProbeIndex")),
+    Attrib(4, UN8, Identifier("ProbeWeight")),
+  ))
+
+  class GroundNode(val x: Double, val y: Double) {
+    val probe = LightSystem.addStaticProbe(Vector3(x, 0.0, y))
+  }
+
+  val groundMap = new mutable.HashMap[(Int, Int), GroundNode]()
+
+  def getGroundNode(x: Int, y: Int): GroundNode = {
+    groundMap.getOrElseUpdate((x, y), {
+      val xx = x.toDouble * 16.0
+      val yy = y.toDouble * 16.0
+      new GroundNode(xx, yy)
+    })
+  }
+
+  class GroundPatch {
+    var probes: Array[LightProbe] = null
+    var vertices: VertexBuffer = null
+  }
+
+  def createGroundPatch(startX: Int, startY: Int, res: Int, numX: Int, numY: Int): GroundPatch = {
+    val patch = new GroundPatch()
+    val vertsPerChunk = (res + 1) * (res + 1)
+    val vertsTotal = vertsPerChunk * numX * numY
+    val groundVertSize = GroundSpec.sizeInBytes * vertsTotal
+    val groundVerts = MemoryUtil.memAlloc(groundVertSize)
+
+
+    patch.probes = new Array[LightProbe]((numX + 1) * (numY + 1))
+
+    for {
+      chunkY <- 0 to numY
+      chunkX <- 0 to numX
+    } {
+      patch.probes(chunkY * (numX + 1) + chunkX) = getGroundNode(chunkX + startX, chunkY + startY).probe.probe
+    }
+
+    val invRes = 1.0 / res.toDouble
+
+    for {
+      chunkY <- 0 until numY
+      chunkX <- 0 until numX
+    } {
+      val baseVert = (chunkY * numX + chunkX) * vertsPerChunk
+
+      val x0 = getGroundNode(chunkX + startX, chunkY + startY).x
+      val x1 = getGroundNode(chunkX + startX + 1, chunkY + startY).x
+      val y0 = getGroundNode(chunkX + startX, chunkY + startY).y
+      val y1 = getGroundNode(chunkX + startX, chunkY + startY + 1).y
+
+      val probeA = ((chunkY + 0) * (numX + 1) + (chunkX + 0)) * LightProbe.SizeInVec4
+      val probeB = ((chunkY + 0) * (numX + 1) + (chunkX + 1)) * LightProbe.SizeInVec4
+      val probeC = ((chunkY + 1) * (numX + 1) + (chunkX + 0)) * LightProbe.SizeInVec4
+      val probeD = ((chunkY + 1) * (numX + 1) + (chunkX + 1)) * LightProbe.SizeInVec4
+
+      val probeI = probeA | probeB << 8 | probeC << 16 | probeD << 24
+
+      var vertY = 0
+      var dy = 0.0
+      while (vertY <= res) {
+        val b = groundVerts
+        b.position((baseVert + vertY * (res + 1)) * GroundSpec.sizeInBytes)
+
+        val yf = if (vertY == res)
+            y1.toFloat
+          else
+            (y0 * (1.0 - dy) + y1 * dy).toFloat
+
+        var vertX = 0
+        var dx = 0.0
+        while (vertX <= res) {
+
+          if (vertX == res)
+            b.putFloat(x1.toFloat)
+          else
+            b.putFloat((x0 * (1.0 - dx) + x1 * dx).toFloat)
+          b.putFloat(0.0f)
+          b.putFloat(yf)
+          b.putFloat(0.0f)
+          b.putFloat(1.0f)
+          b.putFloat(0.0f)
+
+          b.putInt(probeI)
+
+          val nx = dx
+          val ny = dy
+          val px = 1.0 - nx
+          val py = 1.0 - ny
+
+          b.put((px * py * 255.0).toByte)
+          b.put((nx * py * 255.0).toByte)
+          b.put((px * ny * 255.0).toByte)
+          b.put((nx * ny * 255.0).toByte)
+
+          vertX += 1
+          dx += invRes
+        }
+        vertY += 1
+        dy += invRes
+      }
+    }
+
+    groundVerts.position(0)
+    patch.vertices = VertexBuffer.createStatic(GroundSpec, groundVerts)
+
+    MemoryUtil.memFree(groundVerts)
+
+    patch
+  }
+
+  def createGroundIndexBuffer(res: Int, numX: Int, numY: Int): IndexBuffer = {
+    val numQuads = numX * numY * res * res
+    val groundIndices = MemoryUtil.memAlloc(numQuads * 6 * 2)
+    val vertsPerChunk = (res + 1) * (res + 1)
+
+    for {
+      chunkY <- 0 until numY
+      chunkX <- 0 until numX
+    } {
+      val baseVert = (chunkY * numX + chunkX) * vertsPerChunk
+
+      var vertY = 0
+      while (vertY < res) {
+        var base = baseVert + vertY * (res + 1)
+
+        var vertX = 0
+        while (vertX < res) {
+
+          val a = base.toShort
+          val b = (base + 1).toShort
+          val c = (base + (res + 1)).toShort
+          val d = (base + 1 + (res + 1)).toShort
+
+          groundIndices.putShort(c)
+          groundIndices.putShort(b)
+          groundIndices.putShort(a)
+          groundIndices.putShort(b)
+          groundIndices.putShort(c)
+          groundIndices.putShort(d)
+
+          base += 1
+          vertX += 1
+        }
+        vertY += 1
+      }
+
+    }
+
+    groundIndices.position(0)
+    val indexBuffer = IndexBuffer.createStatic(groundIndices)
+
+    MemoryUtil.memFree(groundIndices)
+
+    indexBuffer
+  }
+
+  val groundIndices = createGroundIndexBuffer(16, 3, 3)
+
+  val groundPatches = for {
+    x <- -10 to 10 by 3
+    y <- -10 to 10 by 3
+  } yield createGroundPatch(x, y, 16, 3, 3)
 
   TestModelShader.load()
   TestShadowShader.load()
@@ -244,6 +455,14 @@ object TestCableSystem extends App {
 
   var toggle = true
   var zoom = 0.5
+
+  val cableMesh: CableMesh = {
+    val cables = getCablePaths(asset)
+    val cable = cables.head.toBuffer
+    cable += new CableNode(Vector3(4.0, 0.2, 5.0), Vector3(5.0, 0.0, 0.0))
+    cable += new CableNode(Vector3(8.0, 0.2, 3.0), Vector3(2.0, 0.0, -3.0))
+    CableRenderSystem.createCableMesh(cable, 0.1)
+  }
 
   val startTime = AppWindow.currentTime
   var prevTime = startTime
@@ -366,6 +585,45 @@ object TestCableSystem extends App {
       renderer.drawElementsInstanced(draw.num, numElems, part.indexBuffer, part.vertexBuffer)
     }
 
+    TestCableShader.get.use()
+
+    renderer.pushUniform(TestCableShader.CableUniform, u => {
+      TestCableShader.CableUniform.Pulse.set(u, time.toFloat, 0.0f, 0.0f, 0.0f)
+    })
+
+    renderer.setTextureTargetDepth(TestCableShader.Textures.ShadowMap, shadowTarget)
+    cableMesh.draw()
+
+    renderer.setTexture(ModelTextures.Albedo, ground_albedo.get.texture)
+    renderer.setTexture(ModelTextures.Normal, ground_normal.get.texture)
+    renderer.setTexture(ModelTextures.Roughness, ground_roughness.get.texture)
+    renderer.setTexture(ModelTextures.Metallic, ground_metallic.get.texture)
+    renderer.setTexture(ModelTextures.AoTex, ground_ao.get.texture)
+    TestGroundShader.get.use(p => {
+      if (toggle) {
+        p(TestGroundShader.Permutations.BrdfFunc_D) = 2
+        p(TestGroundShader.Permutations.BrdfFunc_V) = 2
+        p(TestGroundShader.Permutations.BrdfFunc_F) = 2
+      } else {
+        p(TestGroundShader.Permutations.BrdfFunc_D) = 2
+        p(TestGroundShader.Permutations.BrdfFunc_V) = 1
+        p(TestGroundShader.Permutations.BrdfFunc_F) = 1
+      }
+    })
+
+    for (patch <- groundPatches) {
+      renderer.pushUniform(ModelSystem.LightProbeUniform, u => {
+        val stride = ModelSystem.LightProbeUniform.LightProbes.arrayStrideInBytes
+        var base = ModelSystem.LightProbeUniform.LightProbes.offsetInBytes
+        val baseStride = LightProbe.SizeInVec4 * stride
+        for (probe <- patch.probes) {
+          probe.writeToUniform(u, base, stride)
+          base += baseStride
+        }
+      })
+      renderer.drawElements(groundIndices.numIndices, groundIndices, patch.vertices)
+    }
+
     if (mapping.justPressed(DebugInput.Reload)) {
       processResources()
       AssetLoader.reloadEverything()
@@ -384,6 +642,7 @@ object TestCableSystem extends App {
     if (mapping.justPressed(DebugInput.Toggle))
       toggle = !toggle
 
+    /*
     var totalPoints = 0
     if (toggle) {
     for (cable <- cables) {
@@ -428,6 +687,7 @@ object TestCableSystem extends App {
       }
     }
     }
+    */
 
     /*
     for (cable <- cables) {
@@ -473,11 +733,6 @@ object TestCableSystem extends App {
 
     {
       val draws = ArrayBuffer[ui.Font.TextDraw]()
-
-      {
-        val text = s"Points: $totalPoints"
-        draws += ui.Font.TextDraw(text, 0, text.length, Vector2(100.0, 114.0), 22.0, Color.rgb(0xFFFFFF), 0.0, 1)
-      }
 
       {
         val text = s"Toggle: $toggle"

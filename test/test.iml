@@ -22,5 +22,18 @@
     <orderEntry type="module" module-name="engine" />
     <orderEntry type="module" module-name="resource" />
     <orderEntry type="module" module-name="game" />
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="file://$MODULE_DIR$/../external/lwjgl/lwjgl" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="file://$MODULE_DIR$/../external/lwjgl/lwjgl" />
+        </SOURCES>
+        <jarDirectory url="file://$MODULE_DIR$/../external/lwjgl/lwjgl" recursive="false" />
+        <jarDirectory url="file://$MODULE_DIR$/../external/lwjgl/lwjgl" recursive="false" type="SOURCES" />
+      </library>
+    </orderEntry>
   </component>
 </module>

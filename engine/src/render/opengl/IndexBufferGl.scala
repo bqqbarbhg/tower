@@ -14,7 +14,7 @@ object IndexBufferGl {
 
   /** Create a index buffer with constant contents from `data` */
   def createStatic(data: ByteBuffer): IndexBufferGl = {
-    val buf = new IndexBufferGl()
+    val buf = new IndexBufferGl(data.remaining / 2)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buf.buffer)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, data, GL_STATIC_DRAW)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
@@ -22,7 +22,7 @@ object IndexBufferGl {
   }
 }
 
-class IndexBufferGl {
+class IndexBufferGl(val numIndices: Int) {
   val serial: Int = IndexBufferGl.nextSerial()
   val buffer: Int = glGenBuffers()
 
