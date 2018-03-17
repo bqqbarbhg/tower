@@ -76,14 +76,17 @@ object TestCableSystem extends App {
 
   model.lightProbe = LightSystem.addStaticProbe(Vector3(0.0, 0.5, 0.0)).probe
   // LightSystem.addDynamicLight(Vector3(40.0, 20.0, 20.0), Vector3(1.0, 0.0, 0.0) * 4.0, 150.0)
-  // LightSystem.addStaticLight(Vector3(-80.0, 20.0, 20.0), Vector3(0.5, 0.5, 1.0) * 1.0, 200.0)
   // LightSystem.addStaticLight(Vector3(100.0, 80.0, 20.0), Vector3(0.6, 0.5, 0.5) * 1.0, 100.0)
   // LightSystem.addStaticLight(Vector3(-20.0, 20.0, -20.0), Vector3(0.5, 0.5, 0.8) * 0.6, 100.0)
 
+  LightSystem.addStaticLight(Vector3(-10.0, 40.0, 20.0), Vector3(1.0, 0.5, 0.5) * 2.0, 60.0)
+  LightSystem.addStaticLight(Vector3(40.0, 40.0, 20.0), Vector3(0.5, 0.5, 2.0) * 2.0, 60.0)
 
+
+  val ambientAmount = 0.2
   val groundColor = Color.rgb(0x8a857f)
-  val groundIntensity = Vector3(groundColor.r, groundColor.g, groundColor.b)
-  LightSystem.globalProbe.addDirectional(Vector3(0.0, +1.0, 0.0), Vector3(0.1, 0.2, 0.3) * 0.4)
+  val groundIntensity = Vector3(groundColor.r, groundColor.g, groundColor.b) * ambientAmount
+  LightSystem.globalProbe.addDirectional(Vector3(0.0, +1.0, 0.0), Vector3(0.1, 0.2, 0.3) * 0.4 * ambientAmount)
   LightSystem.globalProbe.addDirectional(Vector3(0.0, -1.0, 0.0), groundIntensity * 0.25 * 0.5)
   LightSystem.globalProbe.addDirectional(Vector3(+1.0, 0.0, 0.0), groundIntensity * 0.125 * 0.5)
   LightSystem.globalProbe.addDirectional(Vector3(-1.0, 0.0, 0.0), groundIntensity * 0.125 * 0.5)
@@ -263,6 +266,7 @@ object TestCableSystem extends App {
   }
 
   object TestCableShader extends ShaderAsset("test/cable_test") {
+    uniform(ModelSystem.LightProbeUniform)
     uniform(GlobalUniform)
 
     uniform(CableUniform)
@@ -461,7 +465,9 @@ object TestCableSystem extends App {
     val cable = cables.head.toBuffer
     cable += new CableNode(Vector3(4.0, 0.2, 5.0), Vector3(5.0, 0.0, 0.0))
     cable += new CableNode(Vector3(8.0, 0.2, 3.0), Vector3(2.0, 0.0, -3.0))
-    CableRenderSystem.createCableMesh(cable, 0.1)
+    cable += new CableNode(Vector3(12.0, 0.2, 1.0), Vector3(5.0, 0.0, 0.0))
+    cable += new CableNode(Vector3(40.0, 0.2, 5.0), Vector3(5.0, 0.0, 0.0))
+    CableRenderSystem.createCableMesh(cable, 0.2)
   }
 
   val startTime = AppWindow.currentTime

@@ -1,6 +1,7 @@
 package game.system
 
 import core._
+import game.lighting.LightProbe
 import org.lwjgl.system.MemoryUtil
 import render._
 import util.BinarySearch
@@ -54,6 +55,8 @@ object CableRenderSystem {
       Attrib(3, F32, Identifier("Position")),
       Attrib(1, F32, Identifier("Distance")),
       Attrib(3, F32, Identifier("Normal")),
+      Attrib(4, UI8, Identifier("ProbeIndex")),
+      Attrib(4, UN8, Identifier("ProbeWeight")),
     ))
   }
 
@@ -65,14 +68,27 @@ object CableRenderSystem {
     */
   case class CableNode(position: Vector3, tangent: Vector3)
 
-  class CableMesh {
+  class CableMeshPart {
+    var lightProbes: Array[LightProbe] = null
     var vertexBuffer: VertexBuffer = null
     var numRings: Int = 0
-    var length: Double = 0.0
 
     def draw(): Unit = {
-      var baseRing = 0
       val renderer = Renderer.get
+      var baseRing = 0
+
+      renderer.pushUniform(ModelSystem.LightProbeUniform, u => {
+        import ModelSystem.LightProbeUniform
+        var ix = 0
+        var base = LightProbeUniform.LightProbes.offsetInBytes
+        val stride = LightProbeUniform.LightProbes.arrayStrideInBytes
+        val baseStride = LightProbe.SizeInVec4 * stride
+        while (ix < lightProbes.length) {
+          lightProbes(ix).writeToUniform(u, base, stride)
+          ix += 1
+          base += baseStride
+        }
+      })
 
       val maxRing = numRings - 1
       while (baseRing < maxRing) {
@@ -82,7 +98,18 @@ object CableRenderSystem {
         renderer.drawElements(quadsToDraw * 6, indexBuffer, vertexBuffer, baseVertex = baseVertex)
         baseRing += toDraw
       }
+    }
+  }
 
+  class CableMesh {
+    var numRings: Int = 0
+    var length: Double = 0.0
+    var parts: Array[CableMeshPart] = null
+
+    def draw(): Unit = {
+      for (part <- parts) {
+        part.draw()
+      }
     }
 
   }
@@ -189,6 +216,9 @@ object CableRenderSystem {
     var tangent: Vector3 = Vector3.Zero
     var bitangent: Vector3 = Vector3.Zero
 
+    var prevTangent: Vector3 = Vector3.Zero
+    var prevBitangent: Vector3 = Vector3.Zero
+
     var length: Double = 0.0
     var prevPos = points(0)
 
@@ -198,20 +228,75 @@ object CableRenderSystem {
 
     val angleStepPerVert = (math.Pi * 2.0) / VertsPerRing
 
-    /** Append a ring based on the current tangent frame */
-    def appendRing(pos: Vector3): Unit = {
+    val probeRet = new Array[LightProbe](4)
+    val weightRet = new Array[Double](4)
+
+    val parts = ArrayBuffer[CableMeshPart]()
+
+    val partProbes = ArrayBuffer[LightProbe]()
+    var partNumRings = 0
+
+    def flushCurrentPart(): Unit = {
+      val part = new CableMeshPart()
+      val finished = vertexData.duplicateEx
+      finished.finish()
+      part.numRings = partNumRings
+      part.lightProbes = partProbes.toArray
+      part.vertexBuffer = VertexBuffer.createStatic(CableSpec, finished)
+      parts += part
+
+      partNumRings = 0
+    }
+
+    /** Append a ring based on a specified tangent frame */
+    def appendRingVertices(pos: Vector3, up: Vector3, right: Vector3): Unit = {
+      GroundSystem.getProbesAndWeights(pos, probeRet, weightRet)
+
+      var ix0 = partProbes.indexOf(probeRet(0))
+      var ix1 = partProbes.indexOf(probeRet(1))
+      var ix2 = partProbes.indexOf(probeRet(2))
+      var ix3 = partProbes.indexOf(probeRet(3))
+
+      val MaxProbes = ModelSystem.MaxLightProbesPerBlock
+      if (ix0 < 0 && partProbes.length < MaxProbes) { ix0 = partProbes.length; partProbes += probeRet(0) }
+      if (ix1 < 0 && partProbes.length < MaxProbes) { ix1 = partProbes.length; partProbes += probeRet(1) }
+      if (ix2 < 0 && partProbes.length < MaxProbes) { ix2 = partProbes.length; partProbes += probeRet(2) }
+      if (ix3 < 0 && partProbes.length < MaxProbes) { ix3 = partProbes.length; partProbes += probeRet(3) }
+
+      // Ran out of probe space: Emit previous and current rings again
+      if (ix0 < 0 || ix1 < 0 || ix2 < 0 || ix3 < 0) {
+        flushCurrentPart()
+        appendRingVertices(prevPos, prevTangent, prevBitangent)
+        appendRingVertices(pos, up, right)
+        return
+      }
+
+      partNumRings += 1
+      val wg0 = clamp(weightRet(0) * 255.0, 0, 255.0).toInt
+      val wg1 = clamp(weightRet(1) * 255.0, 0, 255.0).toInt
+      val wg2 = clamp(weightRet(2) * 255.0, 0, 255.0).toInt
+      val wg3 = clamp(weightRet(3) * 255.0, 0, 255.0).toInt
+
+      ix0 *= LightProbe.SizeInVec4
+      ix1 *= LightProbe.SizeInVec4
+      ix2 *= LightProbe.SizeInVec4
+      ix3 *= LightProbe.SizeInVec4
+
+      // Note: This is endian-independent since both vectors get
+      // reversed between little and big endian systems and the shader uses
+      // the vectors as unordered index-weight pairs.
+      val probeIx = ix0 | ix1 << 8 | ix2 << 16 | ix3 << 24
+      val probeWg = wg0 | wg1 << 8 | wg2 << 16 | wg3 << 24
+
       var ix = 0
       var angle = 0.0
-
-      length += (pos - prevPos).length
-
       while (ix < VertsPerRing) {
         val s = math.sin(angle)
         val c = math.cos(angle)
 
-        val nx = s*tangent.x + c*bitangent.x
-        val ny = s*tangent.y + c*bitangent.y
-        val nz = s*tangent.z + c*bitangent.z
+        val nx = s*up.x + c*right.x
+        val ny = s*up.y + c*right.y
+        val nz = s*up.z + c*right.z
 
         vertexData.putFloat((pos.x + nx * radius).toFloat)
         vertexData.putFloat((pos.y + ny * radius).toFloat)
@@ -220,11 +305,21 @@ object CableRenderSystem {
         vertexData.putFloat(nx.toFloat)
         vertexData.putFloat(ny.toFloat)
         vertexData.putFloat(nz.toFloat)
+        vertexData.putInt(probeIx)
+        vertexData.putInt(probeWg)
 
         ix += 1
         angle += angleStepPerVert
       }
+    }
 
+    /** Append a ring based on the current tangent frame */
+    def appendRing(pos: Vector3): Unit = {
+      appendRingVertices(pos, tangent, bitangent)
+      length += (pos - prevPos).length
+
+      prevTangent = tangent
+      prevBitangent = bitangent
       prevPos = pos
     }
 
@@ -267,13 +362,13 @@ object CableRenderSystem {
       appendRing(p1)
     }
 
-    vertexData.finish()
+    flushCurrentPart()
+    MemoryUtil.memFree(vertexData)
 
     val mesh = new CableMesh()
-    mesh.vertexBuffer = VertexBuffer.createStatic(CableSpec, vertexData)
+    mesh.parts = parts.toArray
     mesh.numRings = points.length
     mesh.length = length
-    MemoryUtil.memFree(vertexData)
 
     mesh
   }
