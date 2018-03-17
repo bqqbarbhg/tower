@@ -244,8 +244,16 @@ class RendererGl {
       glEnable(GL_BLEND)
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     } else {
-      glDisable(GL_BLEND)
     }
+  }
+
+  def setBlendNone(): Unit = {
+    glDisable(GL_BLEND)
+  }
+
+  def setBlendAdd(): Unit = {
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_ONE, GL_ONE)
   }
 
   def setCull(enable: Boolean): Unit = {

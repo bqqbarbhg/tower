@@ -12,7 +12,7 @@ object ProcessSprite {
     val sprite = new Sprite(image)
 
     if (config.crop) {
-      CropSprite.cropSprite(sprite)
+      CropSprite.cropSprite(sprite, config)
     }
 
     sprite

@@ -95,7 +95,7 @@ object GenerateAtlas {
     atlas.spriteImages = spriteSeq
 
     for (page <- pageSizes) {
-      atlas.pages += Image.create32(page.w, page.h, true)
+      atlas.pages += Image.create32(page.w, page.h, config.srgb)
     }
 
     for ((loc, spriteIndex) <- atlas.locations.zipWithIndex) {

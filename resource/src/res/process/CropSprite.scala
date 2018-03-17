@@ -10,13 +10,19 @@ import util.Rectangle
 object CropSprite {
 
   /** Crop the sprite in-place */
-  def cropSprite(sprite: Sprite): Unit = {
+  def cropSprite(sprite: Sprite, config: Config.Res.Sprite): Unit = {
     val img = sprite.image
 
     val rows = 0 until img.height
     val cols = 0 until img.width
 
-    def pixelVisible(x: Int, y: Int) = img.getPixel(x, y).a >= 0.0001
+    def pixelVisible(x: Int, y: Int) = {
+      val pixel = img.getPixel(x, y)
+      if (config.cropByAllChannels)
+        pixel.r >= 0.0001 || pixel.g >= 0.0001 || pixel.b >= 0.0001 || pixel.a >= 0.0001
+      else
+        pixel.a >= 0.0001
+    }
     def colVisible(x: Int) = rows.exists(pixelVisible(x, _))
     def rowVisible(y: Int) = cols.exists(pixelVisible(_, y))
 

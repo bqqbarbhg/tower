@@ -54,15 +54,17 @@ object Sprite {
       if (numSprites * 2 >= identifiers.length) {
         val oldIdentifiers = identifiers
         val oldPairs = atlasIndexPairs
-        val newSize = math.max(numSprites * 2, 32)
+        val newSize = math.max(identifiers.length * 2, 32)
         identifiers = new Array[Int](newSize)
         atlasIndexPairs = new Array[Long](newSize)
         numSprites = 0
 
         for ((rawIdentifier, rawPair) <- (oldIdentifiers zip oldPairs)) {
-          val identifier = new Identifier(rawIdentifier)
-          val pair = new AtlasIndexPair(rawPair)
-          insert(identifier, pair)
+          if (rawIdentifier != 0) {
+            val identifier = new Identifier(rawIdentifier)
+            val pair = new AtlasIndexPair(rawPair)
+            insert(identifier, pair)
+          }
         }
       }
 
@@ -74,6 +76,7 @@ object Sprite {
 
       identifiers(pos) = name.index
       atlasIndexPairs(pos) = pair.value
+      numSprites += 1
     }
 
     /**

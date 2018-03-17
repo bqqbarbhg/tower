@@ -7,6 +7,9 @@ import Color._
 
 object Color {
 
+  val White = Color(1.0, 1.0, 1.0)
+  val Black = Color(0.0, 0.0, 0.0)
+
   def linearToSrgb(linear: Double): Double = if (linear < 0.0031308) {
     12.92 * linear
   } else {

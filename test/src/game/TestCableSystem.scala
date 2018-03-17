@@ -12,7 +12,7 @@ import io.content._
 import _root_.main.EngineStartup
 import platform.AppWindow
 import res.runner.{RunOptions, Runner}
-import ui.DebugDraw
+import ui.{DebugDraw, SpriteBatch}
 import CableRenderSystem.{CableMesh, CableNode}
 import game.lighting.LightProbe
 import gfx.Shader
@@ -79,8 +79,8 @@ object TestCableSystem extends App {
   // LightSystem.addStaticLight(Vector3(100.0, 80.0, 20.0), Vector3(0.6, 0.5, 0.5) * 1.0, 100.0)
   // LightSystem.addStaticLight(Vector3(-20.0, 20.0, -20.0), Vector3(0.5, 0.5, 0.8) * 0.6, 100.0)
 
-  LightSystem.addStaticLight(Vector3(-10.0, 40.0, 20.0), Vector3(1.0, 0.5, 0.5) * 2.0, 60.0)
-  LightSystem.addStaticLight(Vector3(40.0, 40.0, 20.0), Vector3(0.5, 0.5, 2.0) * 2.0, 60.0)
+  LightSystem.addStaticLight(Vector3(-10.0, 20.0, 20.0), Vector3(1.0, 1.0, 1.0) * 2.0, 60.0)
+  //LightSystem.addStaticLight(Vector3(20.0, 20.0, 20.0), Vector3(0.5, 0.5, 3.0) * 2.0, 60.0)
 
 
   val ambientAmount = 0.2
@@ -253,7 +253,15 @@ object TestCableSystem extends App {
     uniform(ModelSystem.LightProbeUniform)
     uniform(GlobalUniform)
 
-    override val Textures = ModelTextures
+    override object Textures extends SamplerBlock {
+      val Albedo = sampler2D("Albedo", Sampler.RepeatAnisotropic)
+      val Normal = sampler2D("Normal", Sampler.RepeatAnisotropic)
+      val Roughness = sampler2D("Roughness", Sampler.RepeatAnisotropic)
+      val Metallic = sampler2D("Metallic", Sampler.RepeatAnisotropic)
+      val AoTex = sampler2D("AoTex", Sampler.RepeatAnisotropic)
+      val ShadowMap = sampler2D("ShadowMap", Sampler.ClampNearestNoMip)
+      val AmbientBendTex = sampler2D("AmbientBendTex", Sampler.ClampBilinearNoMip)
+    }
   }
 
   object TestShadowShader extends ShaderAsset("test/instanced_shadow") {
@@ -441,6 +449,8 @@ object TestCableSystem extends App {
     indexBuffer
   }
 
+  AssetLoader.preloadAtlases()
+
   val groundIndices = createGroundIndexBuffer(16, 3, 3)
 
   val groundPatches = for {
@@ -454,6 +464,14 @@ object TestCableSystem extends App {
   val shadowTarget = RenderTarget.create(2048, 2048, None, Some(TexFormat.D24S8), true)
     .withLabel("Shadow Target")
 
+  val normalBendTarget = RenderTarget.create(2048, 2048, Some(TexFormat.Rgba), None, false)
+
+  val spriteBatch = new SpriteBatch()
+  val turretSpriteN = Identifier("game/ao-sprite/turret_n.png")
+  val turretSpriteE = Identifier("game/ao-sprite/turret_e.png")
+  val turretSpriteS = Identifier("game/ao-sprite/turret_s.png")
+  val turretSpriteW = Identifier("game/ao-sprite/turret_w.png")
+
   var renderTarget: RenderTarget = null
   var angle = 0.0
 
@@ -465,8 +483,8 @@ object TestCableSystem extends App {
     val cable = cables.head.toBuffer
     cable += new CableNode(Vector3(4.0, 0.2, 5.0), Vector3(5.0, 0.0, 0.0))
     cable += new CableNode(Vector3(8.0, 0.2, 3.0), Vector3(2.0, 0.0, -3.0))
-    cable += new CableNode(Vector3(12.0, 0.2, 1.0), Vector3(5.0, 0.0, 0.0))
-    cable += new CableNode(Vector3(40.0, 0.2, 5.0), Vector3(5.0, 0.0, 0.0))
+    cable += new CableNode(Vector3(12.0, 0.2, 1.0), Vector3(10.0, 0.0, 0.0))
+    cable += new CableNode(Vector3(40.0, 0.2, 5.0), Vector3(30.0, 0.0, 0.0))
     CableRenderSystem.createCableMesh(cable, 0.2)
   }
 
@@ -520,10 +538,30 @@ object TestCableSystem extends App {
 
     renderer.advanceFrame()
 
+    renderer.setRenderTarget(normalBendTarget)
+    renderer.setDepthMode(false, false)
+    renderer.setWriteSrgb(false)
+    renderer.clear(Some(Color(0.0, 0.0, 0.0, 0.0)), None)
+
+    val colorN = Color(1.0, 0.0, 0.0, 0.0)
+    val colorE = Color(0.0, 1.0, 0.0, 0.0)
+    val colorS = Color(0.0, 0.0, 1.0, 0.0)
+    val colorW = Color(0.0, 0.0, 0.0, 1.0)
+
+    renderer.setBlendAdd()
+    spriteBatch.draw(turretSpriteN, Vector2(50.0, 50.0), Vector2(100.0, 100.0), colorN)
+    spriteBatch.draw(turretSpriteE, Vector2(50.0, 50.0), Vector2(100.0, 100.0), colorE)
+    spriteBatch.draw(turretSpriteS, Vector2(50.0, 50.0), Vector2(100.0, 100.0), colorS)
+    spriteBatch.draw(turretSpriteW, Vector2(50.0, 50.0), Vector2(100.0, 100.0), colorW)
+
+    spriteBatch.flush()
+
     renderer.setRenderTarget(shadowTarget)
     renderer.setDepthMode(true, true)
     renderer.setWriteSrgb(false)
     renderer.clear(None, Some(1.0))
+
+    renderer.setBlendNone()
 
     renderer.pushUniform(TestShadowShader.ShadowUniform, u => {
       TestShadowShader.ShadowUniform.ViewProjection.set(u, shadowViewProjection)
@@ -600,11 +638,12 @@ object TestCableSystem extends App {
     renderer.setTextureTargetDepth(TestCableShader.Textures.ShadowMap, shadowTarget)
     cableMesh.draw()
 
-    renderer.setTexture(ModelTextures.Albedo, ground_albedo.get.texture)
-    renderer.setTexture(ModelTextures.Normal, ground_normal.get.texture)
-    renderer.setTexture(ModelTextures.Roughness, ground_roughness.get.texture)
-    renderer.setTexture(ModelTextures.Metallic, ground_metallic.get.texture)
-    renderer.setTexture(ModelTextures.AoTex, ground_ao.get.texture)
+    renderer.setTexture(TestGroundShader.Textures.Albedo, ground_albedo.get.texture)
+    renderer.setTexture(TestGroundShader.Textures.Normal, ground_normal.get.texture)
+    renderer.setTexture(TestGroundShader.Textures.Roughness, ground_roughness.get.texture)
+    renderer.setTexture(TestGroundShader.Textures.Metallic, ground_metallic.get.texture)
+    renderer.setTexture(TestGroundShader.Textures.AoTex, ground_ao.get.texture)
+    renderer.setTextureTargetColor(TestGroundShader.Textures.AmbientBendTex, normalBendTarget, 0)
     TestGroundShader.get.use(p => {
       if (toggle) {
         p(TestGroundShader.Permutations.BrdfFunc_D) = 2

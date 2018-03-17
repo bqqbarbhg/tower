@@ -100,9 +100,13 @@ object Config {
       /** Allow cropping the transparent area of the sprite */
       var crop: Boolean = true
 
+      /** Crop portions of the sprite only if all the channels are zero */
+      var cropByAllChannels: Boolean = false
+
       override def visit(v: SimpleVisitor): Unit = {
         atlas = v.field("atlas", atlas)
         crop = v.field("crop", crop)
+        cropByAllChannels = v.field("cropByAllChannels", cropByAllChannels)
       }
     }
 
@@ -119,6 +123,9 @@ object Config {
       /** Maximum size of a page in the atlas */
       var maxPageSize: Int = 2048
 
+      /** Is the image generated for the atlas in sRGB */
+      var srgb: Boolean = true
+
       /** How to process the page textures */
       var texture = new Texture()
 
@@ -127,6 +134,7 @@ object Config {
         padding = v.field("padding", padding)
         maxPages = v.field("maxPages", maxPages)
         maxPageSize = v.field("maxPageSize", maxPageSize)
+        srgb = v.field("srgb", srgb)
         texture = v.field("texture", texture)
       }
     }
