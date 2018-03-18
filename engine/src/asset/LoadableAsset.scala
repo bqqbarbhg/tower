@@ -7,7 +7,9 @@ object LoadableAsset {
   val StateUndefined = 0
   val StateUnloaded = 1
   val StatePreloaded = 2
-  val StateLoaded = 3
+  val StateLoadQueued = 3
+  val StateLoading = 4
+  val StateLoaded = 5
 }
 
 /**
@@ -22,21 +24,23 @@ abstract class LoadableAsset {
   private var refcountState = 0
 
   protected def preloadAsset(): Iterable[LoadableAsset] = None
+  protected def startLoadingAsset(): Unit = { }
+  protected def isAssetLoaded(): Boolean = true
   protected def loadAsset(): Unit
   protected def unloadAsset(): Unit
 
   final def isUnloaded: Boolean = state == StateUnloaded
   final def isPreloaded: Boolean = state == StatePreloaded
+  final def isLoadQueued: Boolean = state == StateLoadQueued
+  final def isLoading: Boolean = state == StateLoading
   final def isLoaded: Boolean = state == StateLoaded
 
-  def acquire(): Unit = { refcountState += 1 }
-  def release(): Unit = { refcountState -= 1 }
+  final def isReferenced: Boolean = refcountState > 0
+  final def acquire(): Unit = { refcountState += 1 }
+  final def release(): Unit = { refcountState -= 1 }
 
   /**
     * Load the header of the object and collect dependencies.
-    *
-    * State transitions:
-    * - Unloaded -> Preloaded
     */
   final def preload(): Unit = {
     if (state == StateUnloaded) {
@@ -46,17 +50,49 @@ abstract class LoadableAsset {
   }
 
   /**
-    * Load the actual content of the asset.
-    *
-    * State transitions:
-    * - Unloaded  -> Loaded
-    * - Preloaded -> Loaded
+    * Queue load on this file an it's dependencies.
     */
-  final def load(): Unit = {
+  final def queueLoad(): Unit = {
     preload()
     if (state == StatePreloaded) {
       for (dep <- dependencies) {
         dep.acquire()
+        dep.queueLoad()
+      }
+      state = StateLoadQueued
+    }
+  }
+
+  /**
+    * Start loading the asset in the background.
+    */
+  final def startLoading(): Unit = {
+    queueLoad()
+    if (state == StateLoadQueued) {
+      startLoadingAsset()
+      state = StateLoading
+    }
+  }
+
+  /**
+    * Try finishing the load if possible.
+    */
+  final def tryFinishLoading(): Boolean = {
+    if (isAssetLoaded()) {
+      load()
+      true
+    } else {
+      false
+    }
+  }
+
+  /**
+    * Load the actual content of the asset.
+    */
+  final def load(): Unit = {
+    startLoading()
+    if (state == StateLoading) {
+      for (dep <- dependencies) {
         dep.load()
       }
       loadAsset()
@@ -66,16 +102,21 @@ abstract class LoadableAsset {
 
   /**
     * Release the content used by the asset.
-    *
-    * State transitions:
-    * - Loaded    -> Unloaded
-    * - Preloaded -> Unloaded
     */
   final def unload(): Unit = {
     if (state == StateLoaded) {
       unloadAsset()
+      state = StateLoading
+    }
+    if (state == StateLoading) {
+      load()
+      unloadAsset()
+      state = StateLoadQueued
+    }
+    if (state == StateLoadQueued) {
+      for (dep <- dependencies)
+        dep.release()
       state = StatePreloaded
-      for (dep <- dependencies) dep.release()
     }
     if (state == StatePreloaded) {
       state = StateUnloaded

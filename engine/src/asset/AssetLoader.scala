@@ -64,5 +64,26 @@ object AssetLoader {
     }
   }
 
+  def startLoading(): ArrayBuffer[LoadableAsset] = {
+    // Queue load on all referenced assets (may reference new assets)
+    for (asset <- assets) {
+      if (asset.isReferenced) {
+        asset.queueLoad()
+      }
+    }
+
+    val queuedLoads = new ArrayBuffer[LoadableAsset]()
+
+    // Start loading queued assets
+    for (asset <- assets) {
+      if (asset.isLoadQueued) {
+        queuedLoads += asset
+        asset.startLoading()
+      }
+    }
+
+    queuedLoads
+  }
+
 }
 

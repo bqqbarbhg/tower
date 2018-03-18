@@ -15,6 +15,7 @@ import res.runner.{RunOptions, Runner}
 import ui.{DebugDraw, SpriteBatch}
 import CableRenderSystem.{CableMesh, CableNode}
 import game.lighting.LightProbe
+import game.state.LoadingState
 import gfx.Shader
 import org.lwjgl.system.MemoryUtil
 import render.VertexSpec.Attrib
@@ -22,6 +23,7 @@ import render.VertexSpec.DataFmt._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.io.StdIn
 
 object TestCableSystem extends App {
 
@@ -181,6 +183,7 @@ object TestCableSystem extends App {
   val ground_metallic = TextureAsset("game/ground/sand_stone_metallic.png.s2tx")
   val ground_ao = TextureAsset("game/ground/sand_stone_ao.png.s2tx")
 
+
   object DebugInput extends InputSet("Debug") {
     val Reload = button("Reload")
     val Toggle = button("Toggle")
@@ -286,6 +289,27 @@ object TestCableSystem extends App {
       val ShadowMap = sampler2D("ShadowMap", Sampler.ClampNearestNoMip)
     }
   }
+
+  val bundle = new AssetBundle(
+    asset,
+    albedo, normal, roughness, metallic, ao,
+    ground_albedo, ground_normal, ground_roughness, ground_metallic, ground_ao,
+    TestGroundShader,
+    TestModelShader,
+    TestShadowShader,
+    TestCableShader,
+  )
+
+  bundle.acquire()
+
+  val loader = new LoadingState()
+  loader.start()
+
+  while (!loader.done && AppWindow.running) {
+    loader.update()
+  }
+
+  loader.stop()
 
   val GroundSpec = VertexSpec(Vector(
     Attrib(3, F32, Identifier("Position")),
