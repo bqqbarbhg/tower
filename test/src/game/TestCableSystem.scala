@@ -817,7 +817,7 @@ object TestCableSystem extends App {
 
       fontAsset.get.render(draws)
     }
-    
+
     renderer.endFrame()
 
     renderer.blitRenderTargetColor(RenderTarget.Backbuffer, renderTarget)

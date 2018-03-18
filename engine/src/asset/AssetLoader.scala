@@ -73,6 +73,7 @@ object AssetLoader {
     }
 
     val queuedLoads = new ArrayBuffer[LoadableAsset]()
+    val currentlyLoading = assets.filter(_.isLoading)
 
     // Start loading queued assets
     for (asset <- assets) {
@@ -81,6 +82,8 @@ object AssetLoader {
         asset.startLoading()
       }
     }
+
+    queuedLoads ++= currentlyLoading
 
     queuedLoads
   }
