@@ -104,12 +104,11 @@ abstract class LoadableAsset {
     * Release the content used by the asset.
     */
   final def unload(): Unit = {
-    if (state == StateLoaded) {
-      unloadAsset()
-      state = StateLoading
-    }
     if (state == StateLoading) {
       load()
+      state = StateLoaded
+    }
+    if (state == StateLoaded) {
       unloadAsset()
       state = StateLoadQueued
     }

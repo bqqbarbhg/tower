@@ -142,5 +142,7 @@ object OptsGl {
   var useRowMajorMatrix = true
   /** Use OpenGL debugging features (KHR_debug available and requested) */
   var useDebug = false
+  /** Use OpenGL profiling timers */
+  var useProfiling = false
 }
 

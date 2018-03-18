@@ -9,6 +9,7 @@ object EngineStartup {
 
   class Options {
     var debug: Boolean = false
+    var profile: Boolean = false
     var glCompatability: Boolean = false
     var initialWidth: Int = 1280
     var initialHeight: Int = 720
@@ -44,6 +45,10 @@ object EngineStartup {
       OptsGl.useVaoCache = false
       OptsGl.useUniformBlocks = false
       OptsGl.useTexStorage = false
+    }
+
+    if (opts.profile) {
+      OptsGl.useProfiling = true
     }
 
     IoThread.setName("Engine IO thread")

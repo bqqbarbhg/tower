@@ -2,6 +2,7 @@ package asset
 
 import gfx._
 import core._
+import task.Task
 
 object TextureAsset {
   def apply(name: String): TextureAsset = apply(Identifier(name))
@@ -10,6 +11,7 @@ object TextureAsset {
 
 class TextureAsset(val name: Identifier) extends LoadableAsset {
 
+  private var loadTask: Task[Texture] = null
   private var texImpl: Texture = null
 
   def get: Texture = {
@@ -17,9 +19,15 @@ class TextureAsset(val name: Identifier) extends LoadableAsset {
     texImpl
   }
 
+  override def isAssetLoaded() = loadTask.isCompleted
+
+  override def startLoadingAsset(): Unit = {
+    loadTask = Texture.deferredLoad(name)
+  }
+
   override def loadAsset(): Unit = {
     // @Todo: What to do about failed loads?
-    texImpl = Texture.load(name).get
+    texImpl = loadTask.get
   }
 
   override def unloadAsset(): Unit = {

@@ -177,7 +177,7 @@ object TestEngine extends App {
       renderer.resizeBackbuffer(viewWidth, viewHeight)
     }
 
-    renderer.advanceFrame()
+    renderer.beginFrame()
 
     renderer.setRenderTarget(RenderTarget.Backbuffer)
     renderer.setDepthMode(true, true)
@@ -261,6 +261,7 @@ object TestEngine extends App {
 
     sb.flush()
 
+    renderer.endFrame()
     AppWindow.swapBuffers()
 
     if (mapping.justPressed(DebugInput.Reload)) {

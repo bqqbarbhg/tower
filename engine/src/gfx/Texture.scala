@@ -7,6 +7,7 @@ import org.lwjgl.system.MemoryUtil
 import render._
 import util.BufferUtils._
 import io.content.Package
+import task.Task
 
 object Texture {
 
@@ -26,6 +27,31 @@ object Texture {
 
       texture
     })
+  }
+
+  def deferredLoad(name: Identifier): Task[Texture] = {
+    val fileTask = Task.Io.add[ByteBuffer](() => {
+      val file = Package.get.get(name).get
+      val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
+      val stream = file.read()
+      buffer.readFrom(stream)
+      buffer.finish()
+      stream.close()
+
+      buffer
+    })
+
+    val loadTask = Task.Main.add(fileTask, (buffer: ByteBuffer) => {
+      val texture = new Texture()
+      texture.load(buffer)
+      MemoryUtil.memFree(buffer)
+
+      texture.texture.setLabel(name.toString)
+
+      texture
+    })
+
+    loadTask
   }
 
   def createArray(names: Seq[Identifier]): Option[Texture] = {

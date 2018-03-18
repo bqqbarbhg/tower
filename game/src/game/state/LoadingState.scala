@@ -15,6 +15,7 @@ class LoadingState {
   var loadingAssets: ArrayBuffer[LoadableAsset] = null
   var numAssetsBegin = 0
   var numAssetsLeft = 0
+  var frameCount = 0
 
   private val fontAsset = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
   private val assetsRequiredForLoadingScreen = new AssetBundle(
@@ -45,10 +46,12 @@ class LoadingState {
           loadingAssets = loadingAssets.filter(_ != null)
         return
       }
+      ix += 1
     }
   }
 
   def update(): Unit = {
+    frameCount += 1
     AppWindow.pollEvents()
 
     val frameStart = java.lang.System.nanoTime()
@@ -64,6 +67,7 @@ class LoadingState {
 
     val renderer = Renderer.get
 
+    renderer.beginFrame()
     renderer.resizeBackbuffer(AppWindow.width, AppWindow.height)
     renderer.setRenderTarget(RenderTarget.Backbuffer)
     renderer.clear(Some(Color.rgb(0x6495ED)), None)
@@ -72,12 +76,23 @@ class LoadingState {
     val font = fontAsset.get
 
     val numLoaded = numAssetsBegin - numAssetsLeft
-    val text = s"Loading: $numLoaded/$numAssetsBegin"
 
     val draws = ArrayBuffer[TextDraw]()
-    draws += TextDraw(text, 0, text.length, Vector2(80.0, 80.0), 32.0, Color.Black, 2.0, 0)
-    draws += TextDraw(text, 0, text.length, Vector2(80.0, 80.0), 32.0, Color.White, 0.0, 1)
+
+    {
+      val text = s"Loading: $numLoaded/$numAssetsBegin"
+      draws += TextDraw(text, 0, text.length, Vector2(80.0, 80.0), 32.0, Color.Black, 2.0, 0)
+      draws += TextDraw(text, 0, text.length, Vector2(80.0, 80.0), 32.0, Color.White, 0.0, 1)
+    }
+
+    {
+      val text = s"Frame: $frameCount"
+      draws += TextDraw(text, 0, text.length, Vector2(80.0, 110.0), 24.0, Color.Black, 2.0, 0)
+      draws += TextDraw(text, 0, text.length, Vector2(80.0, 110.0), 24.0, Color.White, 0.0, 1)
+    }
+
     font.render(draws)
+    renderer.endFrame()
 
     AppWindow.swapBuffers()
   }

@@ -347,7 +347,7 @@ object TestScene extends App {
     val world = Matrix43.translate(0.0, 0.0, 0.0) * Matrix43.rotateY(time * 0.5) * Matrix43.scale(0.01)
     val groundWorld = Matrix43.translate(0.0, 0.0, 0.0) * Matrix43.scale(0.02)
 
-    renderer.advanceFrame()
+    renderer.beginFrame()
 
     modelState.worldTransform = world
     animState.time = time % anim.duration
@@ -494,6 +494,7 @@ object TestScene extends App {
 
     sb.flush()
 
+    renderer.endFrame()
     AppWindow.swapBuffers()
 
     val end = java.lang.System.nanoTime()

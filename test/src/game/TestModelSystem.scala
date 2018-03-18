@@ -153,7 +153,7 @@ object TestModelSystem extends App {
       Matrix4.perspective(viewWidth.toDouble / viewHeight.toDouble, math.Pi / 3.0, 0.01, 1000.0)
         * Matrix43.look(Vector3(0.0, 12.0, -14.0) * 4.0, Vector3(0.0, -1.0, 1.0)))
 
-    renderer.advanceFrame()
+    renderer.beginFrame()
     renderer.setRenderTarget(renderTarget)
     renderer.setDepthMode(true, true)
     renderer.setWriteSrgb(true)
@@ -202,6 +202,7 @@ object TestModelSystem extends App {
 
     renderer.blitRenderTargetColor(RenderTarget.Backbuffer, renderTarget)
 
+    renderer.endFrame()
     AppWindow.swapBuffers()
   }
 

@@ -61,6 +61,7 @@ object TestCableSystem extends App {
 
   val opts = new EngineStartup.Options()
   opts.debug = false
+  opts.profile = true
   opts.windowName = "Engine test"
   EngineStartup.start(opts)
 
@@ -81,11 +82,11 @@ object TestCableSystem extends App {
   // LightSystem.addStaticLight(Vector3(100.0, 80.0, 20.0), Vector3(0.6, 0.5, 0.5) * 1.0, 100.0)
   // LightSystem.addStaticLight(Vector3(-20.0, 20.0, -20.0), Vector3(0.5, 0.5, 0.8) * 0.6, 100.0)
 
-  LightSystem.addStaticLight(Vector3(-10.0, 20.0, 20.0), Vector3(1.0, 1.0, 1.0) * 2.0, 60.0)
+  // LightSystem.addStaticLight(Vector3(-10.0, 20.0, 20.0), Vector3(1.0, 1.0, 1.0) * 2.0, 60.0)
   //LightSystem.addStaticLight(Vector3(20.0, 20.0, 20.0), Vector3(0.5, 0.5, 3.0) * 2.0, 60.0)
 
 
-  val ambientAmount = 0.2
+  val ambientAmount = 1.0
   val groundColor = Color.rgb(0x8a857f)
   val groundIntensity = Vector3(groundColor.r, groundColor.g, groundColor.b) * ambientAmount
   LightSystem.globalProbe.addDirectional(Vector3(0.0, +1.0, 0.0), Vector3(0.1, 0.2, 0.3) * 0.4 * ambientAmount)
@@ -530,7 +531,7 @@ object TestCableSystem extends App {
       renderer.resizeBackbuffer(viewWidth, viewHeight)
 
       if (renderTarget != null) renderTarget.unload()
-      renderTarget = RenderTarget.create(viewWidth, viewHeight, Some("SRGB"), Some("D24S"), false, 8)
+      renderTarget = RenderTarget.create(viewWidth, viewHeight, Some("SRGB"), Some("D24S"), false, 4)
       renderTarget.setLabel("Multisample target")
     }
 
@@ -560,7 +561,7 @@ object TestCableSystem extends App {
 
     val draws = ModelSystem.getInstancedMesheDraws()
 
-    renderer.advanceFrame()
+    renderer.beginFrame()
 
     renderer.setRenderTarget(normalBendTarget)
     renderer.setDepthMode(false, false)
@@ -808,13 +809,20 @@ object TestCableSystem extends App {
         draws += ui.Font.TextDraw(text, 0, text.length, Vector2(100.0, 134.0), 22.0, Color.rgb(0xFFFFFF), 0.0, 1)
       }
 
+      {
+        val time = renderer.averageFrameTime
+        val text = f"GPU time: $time%.2fms"
+        draws += ui.Font.TextDraw(text, 0, text.length, Vector2(100.0, 174.0), 22.0, Color.rgb(0xFFFFFF), 0.0, 1)
+      }
+
       fontAsset.get.render(draws)
     }
+    
+    renderer.endFrame()
 
     renderer.blitRenderTargetColor(RenderTarget.Backbuffer, renderTarget)
 
     renderer.setRenderTarget(RenderTarget.Backbuffer)
-
 
     AppWindow.swapBuffers()
   }

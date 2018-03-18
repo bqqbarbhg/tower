@@ -12,11 +12,14 @@ import org.lwjgl.opengl.GL31._
 import org.lwjgl.opengl.GL32._
 import org.lwjgl.opengl.GL33._
 import org.lwjgl.system.MemoryUtil
-import scala.collection.mutable.ArrayBuffer
 
+import scala.collection.mutable.ArrayBuffer
 import core._
 import render._
 import RendererGl._
+import render.opengl.ProfilerGl.GpuTimeSpan
+
+import scala.collection.mutable
 
 object RendererGl {
   private var instance: RendererGl = null
@@ -55,8 +58,14 @@ class RendererGl {
   var frameIndex = 0
 
   var virtualUbosToFreeThisFrame = ArrayBuffer[ByteBuffer]()
-  private var writeSrgb: Boolean = false
 
+  val frameTimespans = mutable.Queue[GpuTimeSpan]()
+  var currentFrameSpan: Option[GpuTimeSpan] = None
+
+  val frameTimeHistory = Array.fill(32)(0.0)
+  var frameTimeHistoryIndex = 0
+
+  private var writeSrgb: Boolean = false
   private var activeTarget: RenderTargetGl = null
 
   /** Returns the current render target */
@@ -81,18 +90,42 @@ class RendererGl {
   }
 
   /** Needs to be called every frame */
-  def advanceFrame(): Unit = {
+  def beginFrame(): Unit = {
     vaoCache.advanceFrame()
     samplerCache.advanceFrame()
     if (uniformAllocator != null)
       uniformAllocator.advanceFrame()
+    ProfilerGl.advanceFrame()
 
     java.util.Arrays.fill(activeUniforms.asInstanceOf[Array[AnyRef]], null)
 
     for (ubo <- virtualUbosToFreeThisFrame)
       MemoryUtil.memFree(ubo)
     virtualUbosToFreeThisFrame.clear()
+
+    while (frameTimespans.nonEmpty && frameTimespans.front.ready) {
+      val ts = frameTimespans.dequeue()
+      val index = frameTimeHistoryIndex
+      frameTimeHistoryIndex = (frameTimeHistoryIndex + 1) % frameTimeHistory.length
+      val durationMs = (ts.durationNs.toDouble / 1000).toDouble / 1000.0
+      frameTimeHistory(index) = durationMs
+    }
+
+    if (OptsGl.useProfiling) {
+      assert(currentFrameSpan.isEmpty)
+      currentFrameSpan = Some(ProfilerGl.startSpan())
+    }
   }
+
+  def endFrame(): Unit = {
+    for (span <- currentFrameSpan) {
+      span.stop()
+      frameTimespans.enqueue(span)
+    }
+    currentFrameSpan = None
+  }
+
+  def averageFrameTime: Double = frameTimeHistory.sum / frameTimeHistory.length.toDouble
 
   def setInvalidShader(): Unit = {
     activeShader = null
