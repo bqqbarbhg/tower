@@ -819,6 +819,6 @@ object TestCableSystem extends App {
     AppWindow.swapBuffers()
   }
 
-  AppWindow.unload()
+  EngineStartup.stop()
 }
 

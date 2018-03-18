@@ -20,8 +20,12 @@ object EngineStartup {
       val executor = Task.Io
       executor.claimForThisThread()
 
-      while (true) {
-        executor.runNextWait()
+      try {
+        while (!Thread.interrupted()) {
+          executor.runNextWait()
+        }
+      } catch {
+        case e: InterruptedException => // Nop
       }
     }
   }
@@ -47,6 +51,12 @@ object EngineStartup {
     Task.Main.claimForThisThread()
 
     Renderer.initialize()
+  }
+
+  def stop(): Unit = {
+    AppWindow.unload()
+    IoThread.interrupt()
+    IoThread.join()
   }
 
 }

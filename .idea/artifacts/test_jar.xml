@@ -40,6 +40,8 @@
           <element id="dir-copy" path="$PROJECT_DIR$/../tower-data/data" />
         </element>
       </element>
+      <element id="module-output" name="game" />
+      <element id="module-output" name="resource" />
     </root>
   </artifact>
 </component>
