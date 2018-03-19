@@ -19,10 +19,10 @@ object Atlas {
 
     val Aspect = float
 
-    val UvX0 = short
-    val UvX1 = short
-    val UvY0 = short
-    val UvY1 = short
+    val UvBaseX = float
+    val UvBaseY = float
+    val UvScaleX = float
+    val UvScaleY = float
 
     val Page = byte
   }
@@ -98,15 +98,12 @@ class Atlas(val atlasIndex: Int) {
         SpriteBounds.Page.set(D, A, (page + 1).toByte)
       }
 
-      val uvX = buffer.getShort()
-      val uvY = buffer.getShort()
+      val uvX0 = buffer.getShort()
+      val uvY0 = buffer.getShort()
       val uvW = buffer.getShort()
       val uvH = buffer.getShort()
-
-      SpriteBounds.UvX0.set(D, A, uvX)
-      SpriteBounds.UvY0.set(D, A, uvY)
-      SpriteBounds.UvX1.set(D, A, (uvX + uvW).toShort)
-      SpriteBounds.UvY1.set(D, A, (uvY + uvH).toShort)
+      val uvX1 = uvX0 + uvW
+      val uvY1 = uvY0 + uvH
 
       val offsetX = buffer.getShort().toDouble
       val offsetY = buffer.getShort().toDouble
@@ -121,14 +118,21 @@ class Atlas(val atlasIndex: Int) {
       val aspect = realW / realH
       SpriteBounds.Aspect.set(D, A, aspect.toFloat)
 
-      val x0 = relX - 0.5
-      val x1 = relX + relW - 0.5
-      val y0 = (relY - 0.5) * aspect
-      val y1 = (relY + relH - 0.5) * aspect
+      val x0 = relX
+      val x1 = relX + relW
+      val y0 = relY
+      val y1 = relY + relH
       SpriteBounds.VertX0.set(D, A, x0.toFloat)
       SpriteBounds.VertX1.set(D, A, x1.toFloat)
       SpriteBounds.VertY0.set(D, A, y0.toFloat)
       SpriteBounds.VertY1.set(D, A, y1.toFloat)
+
+      val denX = x1 - x0
+      val denY = y1 - y0
+      SpriteBounds.UvScaleX.set(D, A, ((uvX1 - uvX0) / denX).toFloat)
+      SpriteBounds.UvScaleY.set(D, A, ((uvY1 - uvY0) / denY).toFloat)
+      SpriteBounds.UvBaseX.set(D, A, ((x1*uvX0 - x0*uvX1) / denX).toFloat)
+      SpriteBounds.UvBaseY.set(D, A, ((y1*uvY0 - y0*uvY1) / denY).toFloat)
 
       val pair = AtlasIndexPair(atlasIndex, i)
       Sprite.SpriteMap.insert(name, pair)

@@ -456,6 +456,7 @@ class Font {
     */
   def getAdvance(char: Char, height: Double, previousChar: Char = 0): Float = {
     val index = findCharsetIndexFromCodepoint(char)
+    if (index < 0) return 0.0f
     val D = this.data
     val A = charInfoBase + index * CharInfo.size
     val kernCount = CharInfo.KernCount.get(D, A)

@@ -83,7 +83,7 @@ object ImportFileShader extends ImportFileType {
 }
 
 object ImportFileLocale extends ImportFileType {
-  def version = 3
+  def version = 8
 
   def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
     // No options

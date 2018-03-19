@@ -101,7 +101,7 @@ object BufferUtils {
     def putString(str: String): Unit = {
       val utf8 = str.getBytes("UTF-8")
       val pad = (4 - (utf8.length + 2) % 4) % 4
-      buffer.putShort(str.length.toShort)
+      buffer.putShort(utf8.length.toShort)
       buffer.put(utf8)
       for (p <- 0 until pad) buffer.put(0.toByte)
     }

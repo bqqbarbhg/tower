@@ -531,7 +531,7 @@ object TestCableSystem extends App {
       renderer.resizeBackbuffer(viewWidth, viewHeight)
 
       if (renderTarget != null) renderTarget.unload()
-      renderTarget = RenderTarget.create(viewWidth, viewHeight, Some("SRGB"), Some("D24S"), false, 4)
+      renderTarget = RenderTarget.create(viewWidth, viewHeight, Some("SRGB"), Some("D24S"), false, 8)
       renderTarget.setLabel("Multisample target")
     }
 

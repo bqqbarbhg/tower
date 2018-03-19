@@ -2,6 +2,6 @@ package res.intermediate
 
 import io.SimpleSerialization._
 
-class Locale(val map: SMap) extends Resource {
+class Locale(var map: SMap) extends Resource {
   def unload(): Unit = { }
 }

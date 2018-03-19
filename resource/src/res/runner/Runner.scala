@@ -10,7 +10,7 @@ import util.BufferUtils._
 import util.{BufferHash, BufferIntegrityException}
 import res.intermediate.{AssetFile, Config, ConfigFile}
 import core._
-
+import process.HyphenateLocale
 import res.importer._
 import res.intermediate._
 import res.output._
@@ -473,6 +473,7 @@ class Runner(val opts: RunOptions) {
         val resources = asset.importAsset()
         assert(resources.size == 1)
         val locale = resources.head.asInstanceOf[Locale]
+        HyphenateLocale.hyphenateLocale(locale, assetRoot.getAbsolutePath)
 
         val flatLocale = FlattenLocale.flattenLocale(locale)
 

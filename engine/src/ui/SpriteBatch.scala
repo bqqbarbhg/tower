@@ -54,12 +54,36 @@ object SpriteBatch {
 
   val SpriteSpec = VertexSpec(Vector(
     Attrib(2, DataFmt.F32, Identifier("Position")),
-    //  0..11: UV X
-    // 12..23: UV Y
-    // 24..30: Page index
-    Attrib(1, DataFmt.I32, Identifier("Packed")),
+    Attrib(2, DataFmt.F32, Identifier("TexCoord")),
     Attrib(4, DataFmt.UN8, Identifier("Color")),
+    Attrib(1, DataFmt.I32, Identifier("Page")),
   ))
+
+  class SpriteDraw {
+    // Sprite name
+    var sprite: Identifier = Identifier.Empty
+
+    // Color
+    var color: Color = Color.White
+
+    // 2x3 transform matrix
+    var m11 = 1.0f
+    var m12 = 0.0f
+    var m13 = 0.0f
+    var m21 = 0.0f
+    var m22 = 1.0f
+    var m23 = 0.0f
+
+    // Anchor point
+    var anchorX = 0.0f
+    var anchorY = 0.0f
+
+    // Crop rectangle
+    var cropX0 = 0.0f
+    var cropY0 = 0.0f
+    var cropX1 = 1.0f
+    var cropY1 = 1.0f
+  }
 }
 
 class SpriteBatch {
@@ -74,8 +98,11 @@ class SpriteBatch {
   private var gpuBuffer: ByteBuffer = null
   private var numSpritesInBatch = 0
 
-  def draw(sprite: Identifier, position: Vector2, size: Vector2, color: Color): Unit = {
-    val pair = SpriteMap.get(sprite)
+  /**
+    * Draw a generic sprite.
+    */
+  def draw(pos: SpriteDraw): Unit = {
+    val pair = SpriteMap.get(pos.sprite)
     if (!pair.valid) return
 
     if (currentAtlasIndex != pair.atlas || numSpritesInBatch == BatchMaxSprites) {
@@ -89,39 +116,78 @@ class SpriteBatch {
     val A = currentAtlas.spriteBase + SpriteBounds.size * pair.index
     localBuffer.position(0)
 
-    val page = SpriteBounds.Page.get(D, A)
+    val page = SpriteBounds.Page.get(D, A).toInt
 
-    val vertX0 = SpriteBounds.VertX0.get(D, A) * size.x.toFloat + position.x.toFloat
-    val vertX1 = SpriteBounds.VertX1.get(D, A) * size.x.toFloat + position.x.toFloat
-    val vertY0 = SpriteBounds.VertY0.get(D, A) * size.y.toFloat + position.y.toFloat
-    val vertY1 = SpriteBounds.VertY1.get(D, A) * size.y.toFloat + position.y.toFloat
+    var vertX0 = SpriteBounds.VertX0.get(D, A)
+    var vertX1 = SpriteBounds.VertX1.get(D, A)
+    var vertY0 = SpriteBounds.VertY0.get(D, A)
+    var vertY1 = SpriteBounds.VertY1.get(D, A)
 
-    val uvX0 = SpriteBounds.UvX0.get(D, A) | page << 24
-    val uvX1 = SpriteBounds.UvX1.get(D, A) | page << 24
-    val uvY0 = SpriteBounds.UvY0.get(D, A) << 12
-    val uvY1 = SpriteBounds.UvY1.get(D, A) << 12
+    var uvBaseX = SpriteBounds.UvBaseX.get(D, A)
+    var uvBaseY = SpriteBounds.UvBaseY.get(D, A)
+    var uvScaleX = SpriteBounds.UvScaleX.get(D, A)
+    var uvScaleY = SpriteBounds.UvScaleY.get(D, A)
 
-    val colorInt = color.toSrgbInt32
+    // Crop
+    vertX0 = math.max(pos.cropX0, vertX0)
+    vertY0 = math.max(pos.cropY0, vertY0)
+    vertX1 = math.min(pos.cropX1, vertX1)
+    vertY1 = math.min(pos.cropY1, vertY1)
 
-    localBuffer.putFloat(vertX0)
-    localBuffer.putFloat(vertY0)
-    localBuffer.putInt(uvX0 | uvY0)
+    // Cropped out of existence
+    if (vertX1 <= vertX0 || vertY1 <= vertY0) return
+
+    // Retrieve cropped UV coordinates
+    val uvX0 = vertX0 * uvScaleX + uvBaseX
+    val uvY0 = vertY0 * uvScaleY + uvBaseY
+    val uvX1 = vertX1 * uvScaleX + uvBaseX
+    val uvY1 = vertY1 * uvScaleY + uvBaseY
+
+    // Adjust anchor
+    vertX0 -= pos.anchorX
+    vertY0 -= pos.anchorY
+    vertX1 -= pos.anchorX
+    vertY1 -= pos.anchorY
+
+    val colorInt = pos.color.toSrgbInt32
+
+    val xx0 = vertX0*pos.m11 + pos.m13
+    val xx1 = vertX1*pos.m11 + pos.m13
+    val yy0 = vertY0*pos.m22 + pos.m23
+    val yy1 = vertY1*pos.m22 + pos.m23
+
+    val xy0 = vertY0*pos.m12
+    val xy1 = vertY1*pos.m12
+    val yx0 = vertX0*pos.m21
+    val yx1 = vertX1*pos.m21
+
+    localBuffer.putFloat(xx0 + xy0)
+    localBuffer.putFloat(yx0 + yy0)
+    localBuffer.putFloat(uvX0)
+    localBuffer.putFloat(uvY0)
     localBuffer.putInt(colorInt)
+    localBuffer.putInt(page)
 
-    localBuffer.putFloat(vertX1)
-    localBuffer.putFloat(vertY0)
-    localBuffer.putInt(uvX1 | uvY0)
+    localBuffer.putFloat(xx1 + xy0)
+    localBuffer.putFloat(yx1 + yy0)
+    localBuffer.putFloat(uvX1)
+    localBuffer.putFloat(uvY0)
     localBuffer.putInt(colorInt)
+    localBuffer.putInt(page)
 
-    localBuffer.putFloat(vertX0)
-    localBuffer.putFloat(vertY1)
-    localBuffer.putInt(uvX0 | uvY1)
+    localBuffer.putFloat(xx0 + xy1)
+    localBuffer.putFloat(yx0 + yy1)
+    localBuffer.putFloat(uvX0)
+    localBuffer.putFloat(uvY1)
     localBuffer.putInt(colorInt)
+    localBuffer.putInt(page)
 
-    localBuffer.putFloat(vertX1)
-    localBuffer.putFloat(vertY1)
-    localBuffer.putInt(uvX1 | uvY1)
+    localBuffer.putFloat(xx1 + xy1)
+    localBuffer.putFloat(yx1 + yy1)
+    localBuffer.putFloat(uvX1)
+    localBuffer.putFloat(uvY1)
     localBuffer.putInt(colorInt)
+    localBuffer.putInt(page)
 
     localBuffer.position(0)
     val copySize = SpriteSpec.sizeInBytes * 4
@@ -133,6 +199,17 @@ class SpriteBatch {
     gpuBuffer.skip(copySize)
 
     numSpritesInBatch += 1
+  }
+
+  def draw(sprite: Identifier, position: Vector2, scale: Vector2, color: Color): Unit = {
+    val sd = new SpriteDraw()
+    sd.sprite = sprite
+    sd.color = color
+    sd.m13 = position.x.toFloat
+    sd.m23 = position.y.toFloat
+    sd.m11 = scale.x.toFloat
+    sd.m22 = scale.y.toFloat
+    draw(sd)
   }
 
   def flush(): Unit = {
