@@ -31,7 +31,9 @@ object Texture {
 
   def deferredLoad(name: Identifier): Task[Texture] = {
     val fileTask = Task.Io.add[ByteBuffer](() => {
-      val file = Package.get.get(name).get
+      val file = Package.get.get(name).getOrElse {
+        throw new RuntimeException(s"Asset not found: $name")
+      }
       val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
       val stream = file.read()
       buffer.readFrom(stream)

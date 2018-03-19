@@ -20,9 +20,19 @@ object LoadingState {
 
   private val lMain = 0
 
+  lazy val assetBundle = {
+    val bundle = new AssetBundle(
+      Font.FontShader,
+      MainFont,
+    )
+
+    bundle.acquire()
+    bundle
+  }
+
 }
 
-class LoadingState {
+class LoadingState extends GameState {
 
   var loadingAssets: ArrayBuffer[LoadableAsset] = null
   var numAssetsBegin = 0
@@ -31,25 +41,18 @@ class LoadingState {
   var isLoading = false
   val canvas = new Canvas()
 
-  private val assetsRequiredForLoadingScreen = new AssetBundle(
-    Font.FontShader,
-    MainFont,
-  )
-
-  def start(): Unit = {
+  override def load(): Unit = {
+    LoadingState.assetBundle.load()
   }
 
-  def startLoading(): Unit = {
-    assetsRequiredForLoadingScreen.acquire()
-    assetsRequiredForLoadingScreen.load()
+  override def start(): Unit = {
     loadingAssets = AssetLoader.startLoading()
     numAssetsBegin = loadingAssets.length
     numAssetsLeft = numAssetsBegin
     isLoading = true
   }
 
-  def stop(): Unit = {
-    assetsRequiredForLoadingScreen.release()
+  override def stop(): Unit = {
     loadingAssets = null
   }
 
@@ -67,7 +70,7 @@ class LoadingState {
     }
   }
 
-  def update(): Unit = {
+  override def update(): Unit = {
     frameCount += 1
     AppWindow.pollEvents()
 
@@ -87,7 +90,6 @@ class LoadingState {
 
 
     renderer.beginFrame()
-    renderer.resizeBackbuffer(AppWindow.width, AppWindow.height)
     renderer.setRenderTarget(RenderTarget.Backbuffer)
     renderer.clear(Some(Color.rgb(0x6495ED)), None)
     renderer.setBlend(true)
@@ -109,6 +111,6 @@ class LoadingState {
     AppWindow.swapBuffers()
   }
 
-  def done: Boolean = numAssetsLeft == 0
+  override def done: Boolean = numAssetsLeft == 0 && isLoading
 
 }

@@ -1,6 +1,10 @@
 package main
 
 import core.StackAllocator
+import game.state._
+import game.system.RenderingSystem
+import platform.AppWindow
+import io.content._
 
 object EditorMain extends App {
 
@@ -20,7 +24,27 @@ object EditorMain extends App {
     runner.run()
   }
 
+  val pack = new MultiPackage()
+  JarPackage.create("data") match {
+    case Some(jar) => pack.add(jar, 1)
+    case None => // Nop
+  }
+
+  pack.add(new DirectoryPackage("data"), 0)
+
+  Package.set(pack)
+
   val opts = new GameStartup.Options()
   opts.engine.debug = arg.flag("debug")
+  opts.engine.glCompatability = true
   GameStartup.start(opts)
+
+  GameState.push(new MenuState())
+
+  while (AppWindow.running) {
+    RenderingSystem.updateScreenSize(AppWindow.width, AppWindow.height)
+    GameState.update()
+  }
+
+  GameStartup.stop()
 }

@@ -62,10 +62,6 @@ object TestCableSystem extends App {
   opts.windowName = "Engine test"
   EngineStartup.start(opts)
 
-  val loader = new LoadingState()
-  loader.start()
-  loader.update()
-
   processResources()
 
   var prevWidth = -1
@@ -280,14 +276,7 @@ object TestCableSystem extends App {
   )
 
   bundle.acquire()
-
-  loader.startLoading()
-
-  while (!loader.done && AppWindow.running) {
-    loader.update()
-  }
-
-  loader.stop()
+  bundle.load()
 
   val entity = new Entity()
   val model = ModelSystem.addModel(entity, asset)
@@ -563,7 +552,7 @@ object TestCableSystem extends App {
     ModelSystem.collectMeshInstances()
     ModelSystem.setupUniforms()
 
-    val draws = ModelSystem.getInstancedMesheDraws()
+    val draws = ModelSystem.getInstancedMeshDraws()
 
     renderer.beginFrame()
 

@@ -165,7 +165,7 @@ object TestModelSystem extends App {
     ModelSystem.updateMatrices()
     ModelSystem.collectMeshInstances()
     ModelSystem.setupUniforms()
-    val draws = ModelSystem.getInstancedMesheDraws()
+    val draws = ModelSystem.getInstancedMeshDraws()
 
     renderer.pushUniform(GlobalUniform, u => {
       GlobalUniform.ViewProjection.set(u, viewProjection)

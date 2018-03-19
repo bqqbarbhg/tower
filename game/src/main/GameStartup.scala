@@ -12,4 +12,8 @@ object GameStartup {
     EngineStartup.start(opts.engine)
   }
 
+  def stop(): Unit = {
+    EngineStartup.stop()
+  }
+
 }

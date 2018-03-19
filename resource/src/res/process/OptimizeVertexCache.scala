@@ -136,18 +136,18 @@ object OptimizeVertexCache {
     */
   def optimizeVertexBufferIndex(mesh: Mesh): Unit = {
     val indexRemap = mutable.HashMap[Int, Int]()
-    val newVertices = new Array[Vertex](mesh.vertices.length)
+    val newVertices = new ArrayBuffer[Vertex]()
 
     val newIndices = (for (ix <- mesh.indices) yield {
       indexRemap.getOrElseUpdate(ix, {
         val newIndex = indexRemap.size
-        newVertices(newIndex) = mesh.vertices(ix)
+        newVertices += mesh.vertices(ix)
         newIndex
       })
     })
 
     mesh.indices = newIndices
-    mesh.vertices = newVertices
+    mesh.vertices = newVertices.toArray
   }
 
 }

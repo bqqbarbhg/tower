@@ -32,6 +32,14 @@ object ModelSystem {
     var next: MeshInstance = null
   }
 
+  class ManualMeshDraw {
+    /** Mesh to use */
+    var mesh: Mesh = null
+
+    /** World transorm matrix */
+    var worldTransform: Matrix43 = null
+  }
+
   class InstancedMeshDraw {
     /** Mesh to use */
     var mesh: Mesh = null
@@ -53,6 +61,10 @@ object ModelSystem {
     private[system] var model: Model = asset.get
     private[system] var state: ModelState = new ModelState(model)
     private[system] var nodeRefs = Array[NodeRef]()
+    private[system] var manualDrawList: ArrayBuffer[ManualMeshDraw] = null
+
+    /** Draw this model manually using `manualDraws` */
+    var useManualDraws: Boolean = false
 
     /**
       * Transform relative to the parent.
@@ -72,6 +84,12 @@ object ModelSystem {
       nodeRefs :+= ref
       ref
     }
+
+    /** Returns a list of transformed meshes for this model */
+    def manualDraws: Seq[ManualMeshDraw] = if (manualDrawList == null)
+      Array[ManualMeshDraw]()
+    else
+      manualDrawList
   }
 
   class NodeRef private[system](private[system] val ref: ModelRef, val name: Identifier) {
@@ -132,7 +150,12 @@ object ModelSystem {
       val model = modelRef.model
       val state = modelRef.state
 
-      val world = Matrix43.translate(parent.position) * modelRef.transform
+      val world = if (parent != null) {
+        Matrix43.translate(parent.position) * modelRef.transform
+      } else {
+        modelRef.transform
+      }
+
       state.worldTransform = world
 
       for (nodeRef <- modelRef.nodeRefs) {
@@ -158,21 +181,41 @@ object ModelSystem {
       val model = modelRef.model
       val state = modelRef.state
 
-      var ix = 0
-      while (ix < model.numMeshes) {
-        val mesh = model.meshes(ix)
-        val nodeIx = model.meshParentNode(ix)
+      if (!modelRef.useManualDraws) {
+        var ix = 0
+        while (ix < model.numMeshes) {
+          val mesh = model.meshes(ix)
+          val nodeIx = model.meshParentNode(ix)
 
-        val prev = meshInstances.getOrElse(mesh, null)
+          val prev = meshInstances.getOrElse(mesh, null)
 
-        // @Todo: Pool MeshInstances?
-        val instance = new MeshInstance()
-        instance.worldTransform = state.nodeWorldTransform(nodeIx)
-        instance.lightProbe = modelRef.lightProbe
-        instance.next = prev
+          // @Todo: Pool MeshInstances?
+          val instance = new MeshInstance()
+          instance.worldTransform = state.nodeWorldTransform(nodeIx)
+          instance.lightProbe = modelRef.lightProbe
+          instance.next = prev
 
-        meshInstances(mesh) = instance
-        ix += 1
+          meshInstances(mesh) = instance
+          ix += 1
+        }
+      } else {
+        var ix = 0
+        if (modelRef.manualDrawList == null)
+          modelRef.manualDrawList = new ArrayBuffer[ManualMeshDraw]()
+        else
+          modelRef.manualDrawList.clear()
+
+        while (ix < model.numMeshes) {
+          val mesh = model.meshes(ix)
+          val nodeIx = model.meshParentNode(ix)
+
+          val draw = new ManualMeshDraw()
+          draw.mesh = mesh
+          draw.worldTransform = state.nodeWorldTransform(nodeIx)
+          modelRef.manualDrawList += draw
+
+          ix += 1
+        }
       }
     }
 
@@ -273,7 +316,7 @@ object ModelSystem {
     *
     * Must be called after `setupUniforms()`
     */
-  def getInstancedMesheDraws(): Seq[InstancedMeshDraw] = instancedMeshDraws
+  def getInstancedMeshDraws(): Seq[InstancedMeshDraw] = instancedMeshDraws
 
 }
 

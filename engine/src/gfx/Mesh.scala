@@ -79,5 +79,11 @@ class Mesh {
       part.unload()
     }
   }
+
+  def draw(): Unit = {
+    for (part <- parts) {
+      part.draw()
+    }
+  }
 }
 

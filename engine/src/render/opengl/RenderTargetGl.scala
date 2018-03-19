@@ -127,5 +127,7 @@ class RenderTargetGl(val width: Int, val height: Int, val colorFormat: Array[Str
     this
   }
 
+  def aspectRatio: Double = width.toDouble / height.toDouble
+
 }
 
