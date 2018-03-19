@@ -20,9 +20,10 @@ object WordWrap {
     * @param text Text to wrap
     * @param offset First index of `text` to use
     * @param length Number of characters to use in `text`
+    * @param hyphenate Should the word-wrap hyphenate words if possible
     * @return Lines of text to render
     */
-  def wrapText(font: Font, height: Double, boxWidth: Double, text: String, offset: Int, length: Int): ArrayBuffer[String] = {
+  def wrapText(font: Font, height: Double, boxWidth: Double, text: String, offset: Int, length: Int, hyphenate: Boolean): ArrayBuffer[String] = {
     var begin = offset
     var ix = begin
     val textEnd = offset + length
@@ -84,7 +85,7 @@ object WordWrap {
         val ch = text(ix)
         width -= getAdvance(ix, ch)
         if (shouldWrapAt(ch)) return ix
-        if (isSoftHyphen(ch)) {
+        if (hyphenate && isSoftHyphen(ch)) {
           val shyWidth = width + getAdvance(ix, '-')
           if (shyWidth <= boxWidth) return ix
         }
