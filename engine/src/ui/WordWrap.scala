@@ -5,7 +5,8 @@ import collection.mutable.ArrayBuffer
 object WordWrap {
 
   /** Is `ch` a good character to break the line at */
-  def shouldWrapAt(ch: Char): Boolean = ch == '\r' || ch == ' '
+  def isWhitespace(ch: Char): Boolean = ch == '\r' || ch == ' '
+  def shouldWrapAfter(ch: Char): Boolean = isWhitespace(ch) || ch == '-'
 
   /** Is `ch` a soft hyphen */
   def isSoftHyphen(ch: Char): Boolean = ch == 0xAD
@@ -20,10 +21,10 @@ object WordWrap {
     * @param text Text to wrap
     * @param offset First index of `text` to use
     * @param length Number of characters to use in `text`
-    * @param hyphenate Should the word-wrap hyphenate words if possible
+    * @param hyphenateThreshold How big the gain should be before hyphenating (if allowed)
     * @return Lines of text to render
     */
-  def wrapText(font: Font, height: Double, boxWidth: Double, text: String, offset: Int, length: Int, hyphenate: Boolean): ArrayBuffer[String] = {
+  def wrapText(font: Font, height: Double, boxWidth: Double, text: String, offset: Int, length: Int, hyphenateThreshold: Option[Double]): ArrayBuffer[String] = {
     var begin = offset
     var ix = begin
     val textEnd = offset + length
@@ -41,7 +42,7 @@ object WordWrap {
       // Eat all line-wrapping characters from the end
       if (end < textEnd) {
         isShy = isSoftHyphen(text(end))
-        while (end > begin + 1 && shouldWrapAt(text(end - 1))) {
+        while (end > begin + 1 && isWhitespace(text(end - 1))) {
           end -= 1
         }
       }
@@ -53,8 +54,8 @@ object WordWrap {
       }
 
       // Eat all line-wrapping characters from the next beginning
-      begin = end + 1
-      while (begin < textEnd && shouldWrapAt(text(begin))) {
+      begin = end
+      while (begin < textEnd && isWhitespace(text(begin))) {
         begin += 1
       }
 
@@ -81,15 +82,27 @@ object WordWrap {
       // Scan backwards to find best break
       var width = totalWidth
       var ix = end
+      var bestHyphenIx = -1
       while (ix > begin + 1) {
         val ch = text(ix)
         width -= getAdvance(ix, ch)
-        if (shouldWrapAt(ch)) return ix
-        if (hyphenate && isSoftHyphen(ch)) {
+        if (shouldWrapAfter(ch)) {
+          // `.get` is safe because bestHyphenIx is only set if `hyphenateThreshold.isDefined`
+          return if (bestHyphenIx >= 0 && bestHyphenIx >= ix && boxWidth - width >= hyphenateThreshold.get) {
+            bestHyphenIx
+          } else {
+            ix + 1
+          }
+        }
+        if (hyphenateThreshold.isDefined && bestHyphenIx < 0 && isSoftHyphen(ch)) {
           val shyWidth = width + getAdvance(ix, '-')
-          if (shyWidth <= boxWidth) return ix
+          if (shyWidth <= boxWidth) bestHyphenIx = ix
         }
         ix -= 1
+      }
+
+      if (bestHyphenIx >= 0 && hyphenateThreshold.isDefined) {
+        return bestHyphenIx
       }
 
       // If none were found scan forward until line is full

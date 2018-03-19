@@ -53,7 +53,8 @@ class Canvas {
     var pos = position
 
     val lines = WordWrap.wrapText(style.font.get, style.height, bounds.x, text, offset, length,
-      hyphenate = true)
+      hyphenateThreshold = Some(100.0))
+
     var y = position.y
     for (line <- lines) {
       if (y + style.height > bounds.y) return y

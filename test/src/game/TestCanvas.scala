@@ -19,6 +19,9 @@ object TestCanvas extends App {
     val Test = new LocaleGetter("Test") {
       private val key_long: Int = addSimple("long")
       def long: String = Locale.getSimple(key_long)
+
+      private val key_hyphen: Int = addSimple("hyphen")
+      def hyphen: String = Locale.getSimple(key_hyphen)
     }
   }
 
@@ -59,7 +62,9 @@ object TestCanvas extends App {
     renderer.clear(Some(Color.rgb(0x6495ED)), None)
     renderer.setBlend(true)
 
-    canvas.drawTextWrapped(0, style, Vector2(100.0, 100.0), Vector2(viewWidth - 200.0, 1000.0), LC.Test.long)
+    val yy = canvas.drawTextWrapped(0, style, Vector2(100.0, 100.0), Vector2(viewWidth - 200.0, 1000.0), LC.Test.long)
+   canvas.drawTextWrapped(0, style, Vector2(100.0, yy + 20.0), Vector2(viewWidth - 200.0, 1000.0), LC.Test.hyphen)
+
     canvas.render()
 
     renderer.endFrame()
