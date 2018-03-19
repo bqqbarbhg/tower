@@ -13,7 +13,7 @@ object Atlas {
 
 class Atlas(val name: String) extends Resource {
 
-  val sprites: ArrayBuffer[AssetFile] = ArrayBuffer[AssetFile]()
+  val spriteAssets: ArrayBuffer[AssetFile] = ArrayBuffer[AssetFile]()
   var hasChanged: Boolean = false
 
   var locations: Array[SpriteLocation] = Array[SpriteLocation]()

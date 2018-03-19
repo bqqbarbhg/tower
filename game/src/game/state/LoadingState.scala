@@ -14,16 +14,23 @@ import scala.collection.mutable.ArrayBuffer
 object LoadingState {
 
 
+  private val LoadingAtlas = AtlasAsset("atlas/loading.s2at")
   private val MainFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
-  private val tLoading = TextStyle(MainFont, 44.0, outline = Outline(2.0))
-  private val tLoadInfo = TextStyle(MainFont, 24.0, outline = Outline(1.0))
+  private val tLoading = TextStyle(MainFont, 44.0)
+  private val tLoadInfo = TextStyle(MainFont, 24.0)
+
+  val TurretSpinnerFill = Array.tabulate(8)(i => Identifier(s"loading/sprite/loading_turret_anim_fill.png.$i"))
+  val TurretSpinnerOutline = Array.tabulate(8)(i => Identifier(s"loading/sprite/loading_turret_anim_outline.png.$i"))
+  val Background = Identifier("loading/sprite/background.png")
 
   private val lMain = 0
+  private val lSpinner = 1
 
   lazy val assetBundle = {
     val bundle = new AssetBundle(
       Font.FontShader,
       MainFont,
+      LoadingAtlas,
     )
 
     bundle.acquire()
@@ -50,6 +57,8 @@ class LoadingState extends GameState {
     numAssetsBegin = loadingAssets.length
     numAssetsLeft = numAssetsBegin
     isLoading = true
+
+    canvas.setLayerBlend(lSpinner, Renderer.BlendAddAlpha)
   }
 
   override def stop(): Unit = {
@@ -88,14 +97,39 @@ class LoadingState extends GameState {
       } while (timeDeltaMs < 8)
     }
 
+    val time = AppWindow.currentTime
 
     renderer.beginFrame()
     renderer.setRenderTarget(RenderTarget.Backbuffer)
-    renderer.clear(Some(Color.rgb(0x6495ED)), None)
-    renderer.setBlend(true)
+    renderer.clear(Some(Color.rgb(0x333333)), None)
 
     if (isLoading) {
       val numLoaded = numAssetsBegin - numAssetsLeft
+
+      val frame = ((time * 20.0).toInt) % TurretSpinnerFill.length
+      val fill = TurretSpinnerFill(frame)
+      val outline = TurretSpinnerOutline(frame)
+
+
+      val colA = Color.rgb(0xFFAAAA)
+      val colB = Color.rgb(0xAAAAFF)
+      val outlineColor = Color.lerp(colA, colB, math.sin(time * 2.0 * math.Pi) * 0.5 + 0.5)
+      val fillColor = (outlineColor * 0.5).copy(a = 0.2)
+
+
+      val rotateTime = time * 0.5
+      val pulseTime = time * 5.0
+      val scale = 2.0
+
+      val pulse = math.sin(pulseTime)
+      var dx = pulse * math.cos(rotateTime) * scale
+      val dy = pulse * math.sin(rotateTime) * scale
+
+      canvas.draw(lMain, Background, 0.0, 0.0, 1280.0, 720.0)
+
+      canvas.draw(lSpinner, outline, 0.0 - dx, 600.0 - dy, 200.0, 100.0, Color.rgb(0xFF0000))
+      canvas.draw(lSpinner, outline, 0.0, 600.0, 200.0, 100.0, Color.rgb(0x00FF00))
+      canvas.draw(lSpinner, outline, 0.0 + dx, 600.0 + dy, 200.0, 100.0, Color.rgb(0x0000FF))
 
       val xx = 100.0
       var yy = 100.0

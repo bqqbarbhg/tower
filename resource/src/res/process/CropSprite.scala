@@ -13,8 +13,9 @@ object CropSprite {
   def cropSprite(sprite: Sprite, config: Config.Res.Sprite): Unit = {
     val img = sprite.image
 
-    val rows = 0 until img.height
-    val cols = 0 until img.width
+    val ib = sprite.imageBounds
+    val rows = ib.y until (ib.y + ib.h)
+    val cols = ib.x until (ib.x + ib.w)
 
     def pixelVisible(x: Int, y: Int) = {
       val pixel = img.getPixel(x, y)

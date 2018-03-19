@@ -1,6 +1,7 @@
 package res.process
 
 import res.intermediate._
+import util.Rectangle
 
 /**
   * Processes images into sprites. The sprites take ownership of the images they
@@ -8,14 +9,38 @@ import res.intermediate._
   */
 object ProcessSprite {
 
-  def processSprite(image: Image, config: Config.Res.Sprite): Sprite = {
-    val sprite = new Sprite(image)
-
+  private def processSpriteImpl(sprite: Sprite, config: Config.Res.Sprite): Unit = {
     if (config.crop) {
       CropSprite.cropSprite(sprite, config)
     }
+  }
 
-    sprite
+  def processSprite(image: Image, name: String, config: Config.Res.Sprite): Seq[Sprite] = {
+    val sprites: Seq[Sprite] = if (config.animation) {
+      val frameW = image.width / config.framesX
+      val frameH = image.height / config.framesY
+      var ix = 0
+      val frames = for {
+        y <- 0 until config.framesY
+        x <- 0 until config.framesX
+      } yield {
+        val frame = new Sprite(image, name + "." + ix)
+        frame.imageBounds = Rectangle(image.width * x / config.framesX, image.height * y / config.framesY, frameW, frameH)
+        frame.bounds = frame.imageBounds
+        ix += 1
+        frame
+      }
+
+      frames.toSeq
+    } else {
+      Array(new Sprite(image, name))
+    }
+
+    for (sprite <- sprites) {
+      processSpriteImpl(sprite, config)
+    }
+
+    sprites
   }
 
 }

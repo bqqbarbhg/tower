@@ -235,7 +235,7 @@ class Runner(val opts: RunOptions) {
           println(s"${assetRelative(asset.file)} ERROR: Sprite has no atlas set")
         } else {
           val atlas = atlases.getOrElseUpdate(atlasName, new Atlas(atlasName))
-          atlas.sprites += asset
+          atlas.spriteAssets += asset
           if (asset.hasChanged) atlas.hasChanged = true
           if (opts.debug) println(s"Sprite ${assetRelative(asset.file)} -> $atlasName")
         }
@@ -247,16 +247,16 @@ class Runner(val opts: RunOptions) {
       val dirtyAtlases = atlases.values.filter(_.hasChanged)
       println(s"Processing atlases... ${dirtyAtlases.size} found")
       for (atlas <- dirtyAtlases) {
-        if (opts.verbose) println(s"> ${atlas.name} (${atlas.sprites.length} sprites)")
-        val spriteAssets = atlas.sprites.flatMap(_.importAsset())
+        if (opts.verbose) println(s"> ${atlas.name} (${atlas.spriteAssets.length} sprites)")
+        val spriteAssets = atlas.spriteAssets.flatMap(_.importAsset())
         val spriteImages = spriteAssets.map(_.asInstanceOf[Image])
-        assert(spriteImages.nonEmpty && spriteImages.size == atlas.sprites.size)
+        assert(spriteImages.nonEmpty && spriteImages.size == atlas.spriteAssets.size)
 
-        val sprites = for ((file, image) <- (atlas.sprites zip spriteImages)) yield {
-          ProcessSprite.processSprite(image, file.config.res.sprite)
-        }
+        val sprites = (for ((file, image) <- (atlas.spriteAssets zip spriteImages)) yield {
+          ProcessSprite.processSprite(image, assetRelative(file.file), file.config.res.sprite)
+        }).flatten
 
-        val config = atlas.sprites.head.config
+        val config = atlas.spriteAssets.head.config
         if (GenerateAtlas.generateAtlas(atlas, sprites, config.res.atlas)) {
 
           val pageFileBase = Paths.get(opts.dataRoot, "atlas", s"${atlas.name}").toFile
@@ -275,15 +275,13 @@ class Runner(val opts: RunOptions) {
             texture.unload()
           }
 
-          val spriteNames = atlas.sprites.map(a => assetRelative(a.file))
-
           val filename = Paths.get(opts.dataRoot, "atlas", s"${atlas.name}.s2at").toFile
-          AtlasFile.save(writer, filename, atlas, pageNameBase, spriteNames)
+          AtlasFile.save(writer, filename, atlas, pageNameBase)
         } else {
           println(s"Atlas ${atlas.name} ERROR: Failed to pack")
         }
 
-        sprites.foreach(_.unload())
+        spriteImages.foreach(_.unload())
         atlas.unload()
       }
     }

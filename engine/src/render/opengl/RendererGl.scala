@@ -35,6 +35,12 @@ object RendererGl {
     instance
   }
 
+  abstract class BlendMode(val enable: Boolean, val src: Int, val dst: Int)
+
+  case object BlendNone extends BlendMode(false, GL_ONE, GL_ZERO)
+  case object BlendAlpha extends BlendMode(true, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+  case object BlendAddAlpha extends BlendMode(true, GL_SRC_ALPHA, GL_ONE)
+
   /**
     * A re-usable reference to an uniform block.
     * Note that it may have a limited lifetime depending on how it was obtained!
@@ -64,6 +70,8 @@ class RendererGl {
 
   val frameTimeHistory = Array.fill(32)(0.0)
   var frameTimeHistoryIndex = 0
+
+  private var prevBlendMode: BlendMode = BlendNone
 
   private var writeSrgb: Boolean = false
   private var activeTarget: RenderTargetGl = null
@@ -274,21 +282,18 @@ class RendererGl {
     else         glDisable(GL_FRAMEBUFFER_SRGB)
   }
 
-  def setBlend(enable: Boolean): Unit = {
-    if (enable) {
-      glEnable(GL_BLEND)
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    } else {
+  def setBlend(mode: BlendMode): Unit = {
+    if (mode == prevBlendMode) return
+
+    if (mode.enable != prevBlendMode.enable) {
+      if (mode.enable) glEnable(GL_BLEND)
+      else             glDisable(GL_BLEND)
     }
-  }
 
-  def setBlendNone(): Unit = {
-    glDisable(GL_BLEND)
-  }
+    if (mode.enable)
+      glBlendFunc(mode.src, mode.dst)
 
-  def setBlendAdd(): Unit = {
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_ONE, GL_ONE)
+    prevBlendMode = mode
   }
 
   def setCull(enable: Boolean): Unit = {

@@ -103,10 +103,22 @@ object Config {
       /** Crop portions of the sprite only if all the channels are zero */
       var cropByAllChannels: Boolean = false
 
+      /** Treat the sprite as a sprite-sheet animation */
+      var animation: Boolean = false
+
+      /** Aniamtion frames X */
+      var framesX: Int = 0
+
+      /** Aniamtion frames Y */
+      var framesY: Int = 0
+
       override def visit(v: SimpleVisitor): Unit = {
         atlas = v.field("atlas", atlas)
         crop = v.field("crop", crop)
         cropByAllChannels = v.field("cropByAllChannels", cropByAllChannels)
+        animation = v.field("animation", animation)
+        framesX = v.field("framesX", framesX)
+        framesY = v.field("framesY", framesY)
       }
     }
 

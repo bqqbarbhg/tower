@@ -1,5 +1,7 @@
 package ui
 
+import javafx.scene.effect.BlendMode
+
 import core._
 import render._
 import asset.FontAsset
@@ -20,6 +22,7 @@ object Canvas {
   case class TextStyle(font: FontAsset, height: Double, color: Color = Color.White, outline: Outline = NoOutline)
 
   private class InternalLayer(val index: Int) {
+    var blendMode: Renderer.BlendMode = Renderer.BlendAlpha
     val drawsForFont = mutable.HashMap[FontAsset, ArrayBuffer[TextDraw]]()
     val sprites = ArrayBuffer[SpriteDraw]()
   }
@@ -35,6 +38,28 @@ class Canvas {
       layers = (layers :+ layer).sortBy(_.index)
       layer
     }
+  }
+
+  def draw(layer: Int, sprite: Identifier, x: Double, y: Double, w: Double, h: Double): Unit = {
+    val sd = new SpriteDraw()
+    sd.sprite = sprite
+    sd.color = Color.White
+    sd.m13 = x.toFloat
+    sd.m23 = y.toFloat
+    sd.m11 = w.toFloat
+    sd.m22 = h.toFloat
+    getInternalLayer(layer).sprites += sd
+  }
+
+  def draw(layer: Int, sprite: Identifier, x: Double, y: Double, w: Double, h: Double, color: Color): Unit = {
+    val sd = new SpriteDraw()
+    sd.sprite = sprite
+    sd.color = color
+    sd.m13 = x.toFloat
+    sd.m23 = y.toFloat
+    sd.m11 = w.toFloat
+    sd.m22 = h.toFloat
+    getInternalLayer(layer).sprites += sd
   }
 
   def drawText(layer: Int, style: TextStyle, x: Double, y: Double, text: String): Double =
@@ -76,24 +101,33 @@ class Canvas {
     y
   }
 
+  def setLayerBlend(layer: Int, blendMode: Renderer.BlendMode): Unit = {
+    getInternalLayer(layer).blendMode = blendMode
+  }
+
   def render(): Unit = {
     val renderer = Renderer.get
-    renderer.setBlend(true)
 
     val sb = Canvas.sharedSpriteBatch
     var sbNeedsFlush = false
 
     for (layer <- layers) {
+      if (layer.sprites.nonEmpty) {
+        renderer.setBlend(layer.blendMode)
+        sbNeedsFlush = true
+      }
+
       for (sprite <- layer.sprites) {
         sb.draw(sprite)
       }
 
-      if (layer.sprites.nonEmpty)
-        sbNeedsFlush = true
+      if (layer.drawsForFont.nonEmpty) {
+        if (sbNeedsFlush) {
+          sb.flush()
+          sbNeedsFlush = false
+        }
 
-      if (layer.drawsForFont.nonEmpty && sbNeedsFlush) {
-        sb.flush()
-        sbNeedsFlush = false
+        renderer.setBlend(Renderer.BlendAlpha)
       }
 
       for ((font, texts) <- layer.drawsForFont) {

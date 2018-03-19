@@ -46,7 +46,7 @@ class MenuState extends GameState {
     renderer.setRenderTarget(RenderingSystem.MainTargetMsaa)
     renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
     renderer.setDepthMode(true, true)
-    renderer.setBlend(false)
+    renderer.setBlend(Renderer.BlendNone)
 
     ModelSystem.updateMatrices()
     ModelSystem.collectMeshInstances()

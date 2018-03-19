@@ -10,10 +10,8 @@ import res.runner.OutputFileWriter
 
 object AtlasFile {
 
-  def save(writer: OutputFileWriter, file: File, atlas: Atlas, pageNameBase: String, spriteNames: Seq[String]): Unit = {
+  def save(writer: OutputFileWriter, file: File, atlas: Atlas, pageNameBase: String): Unit = {
     // @Serialize(s2au)
-
-    assert(atlas.locations.length == spriteNames.length)
 
     val buffer = MemoryUtil.memAlloc(64*1024*1024)
 
@@ -25,17 +23,17 @@ object AtlasFile {
     buffer.putInt(atlas.locations.length)
     buffer.putInt(numPages)
 
-    for ((loc, sprite, name) <- (atlas.locations, atlas.spriteImages, spriteNames).zipped) {
-      buffer.putIdentifier(name)
+    for ((loc, sprite) <- (atlas.locations zip atlas.spriteImages)) {
+      buffer.putIdentifier(sprite.name)
       buffer.putInt(loc.page)
       buffer.putShort(loc.rect.x.toShort)
       buffer.putShort(loc.rect.y.toShort)
       buffer.putShort(loc.rect.w.toShort)
       buffer.putShort(loc.rect.h.toShort)
-      buffer.putShort(sprite.bounds.x.toShort)
-      buffer.putShort(sprite.bounds.y.toShort)
-      buffer.putShort(sprite.image.width.toShort)
-      buffer.putShort(sprite.image.height.toShort)
+      buffer.putShort((sprite.bounds.x - sprite.imageBounds.x).toShort)
+      buffer.putShort((sprite.bounds.y - sprite.imageBounds.y).toShort)
+      buffer.putShort(sprite.imageBounds.w.toShort)
+      buffer.putShort(sprite.imageBounds.h.toShort)
     }
 
     for (page <- 0 until numPages) {

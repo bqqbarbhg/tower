@@ -60,6 +60,8 @@ object Color {
 
   val littleEndian: Boolean = ByteOrder.nativeOrder == ByteOrder.LITTLE_ENDIAN
 
+  def lerp(a: Color, b: Color, t: Double): Color = a * (1.0 - t) + b * t
+
 }
 
 /**
