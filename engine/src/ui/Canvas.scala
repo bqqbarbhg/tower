@@ -12,6 +12,8 @@ import scala.collection.mutable.ArrayBuffer
 
 object Canvas {
 
+  lazy private val sharedSpriteBatch = new SpriteBatch()
+
   case class Outline(size: Double, color: Color = Color.Black)
   val NoOutline = Outline(0.0, Color.TransparentBlack)
 
@@ -25,7 +27,6 @@ object Canvas {
 
 class Canvas {
 
-  private val spriteBatch = new SpriteBatch()
   private var layers = Array[InternalLayer]()
 
   private def getInternalLayer(layerIndex: Int): InternalLayer = {
@@ -36,14 +37,25 @@ class Canvas {
     }
   }
 
-  def drawText(layer: Int, style: TextStyle, position: Vector2, text: String): Unit = drawText(layer, style, position, text, 0, text.length)
-  def drawText(layer: Int, style: TextStyle, position: Vector2, text: String, offset: Int, length: Int): Unit = {
+  def drawText(layer: Int, style: TextStyle, x: Double, y: Double, text: String): Double =
+    drawText(layer, style, Vector2(x, y), text, 0, text.length)
+
+  def drawText(layer: Int, style: TextStyle, x: Double, y: Double, text: String, offset: Int, length: Int): Double =
+    drawText(layer, style, Vector2(x, y), text, offset, length)
+
+  def drawText(layer: Int, style: TextStyle, position: Vector2, text: String): Double =
+    drawText(layer, style, position, text, 0, text.length)
+
+  def drawText(layer: Int, style: TextStyle, position: Vector2, text: String, offset: Int, length: Int): Double = {
     val il = getInternalLayer(layer)
+
     val draws = il.drawsForFont.getOrElseUpdate(style.font, ArrayBuffer[TextDraw]())
     draws += TextDraw(text, offset, length, position, style.height, style.color, 0.0, 1)
     if (style.outline.size > 0.0) {
       draws += TextDraw(text, offset, length, position, style.height, style.outline.color, style.outline.size, 0)
     }
+
+    position.y + style.height
   }
 
   def drawTextWrapped(layer: Int, style: TextStyle, position: Vector2, bounds: Vector2, text: String): Double =
@@ -59,8 +71,7 @@ class Canvas {
     for (line <- lines) {
       if (y + style.height > bounds.y) return y
 
-      drawText(layer, style, Vector2(position.x, y), line)
-      y += style.height
+      y = drawText(layer, style, Vector2(position.x, y), line)
     }
     y
   }
@@ -69,18 +80,19 @@ class Canvas {
     val renderer = Renderer.get
     renderer.setBlend(true)
 
+    val sb = Canvas.sharedSpriteBatch
     var sbNeedsFlush = false
 
     for (layer <- layers) {
       for (sprite <- layer.sprites) {
-        spriteBatch.draw(sprite)
+        sb.draw(sprite)
       }
 
       if (layer.sprites.nonEmpty)
         sbNeedsFlush = true
 
       if (layer.drawsForFont.nonEmpty && sbNeedsFlush) {
-        spriteBatch.flush()
+        sb.flush()
         sbNeedsFlush = false
       }
 
@@ -93,7 +105,7 @@ class Canvas {
     }
 
     if (sbNeedsFlush)
-      spriteBatch.flush()
+      sb.flush()
 
   }
 

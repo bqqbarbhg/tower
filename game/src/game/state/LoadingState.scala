@@ -3,12 +3,24 @@ package game.state
 import core._
 import asset._
 import render._
+import ui._
+import ui.Canvas._
 import platform.AppWindow
 import task.Task
-import ui.Font
-import ui.Font.TextDraw
+import LoadingState._
 
 import scala.collection.mutable.ArrayBuffer
+
+object LoadingState {
+
+
+  private val MainFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
+  private val tLoading = TextStyle(MainFont, 44.0, outline = Outline(2.0))
+  private val tLoadInfo = TextStyle(MainFont, 24.0, outline = Outline(1.0))
+
+  private val lMain = 0
+
+}
 
 class LoadingState {
 
@@ -16,19 +28,24 @@ class LoadingState {
   var numAssetsBegin = 0
   var numAssetsLeft = 0
   var frameCount = 0
+  var isLoading = false
+  val canvas = new Canvas()
 
-  private val fontAsset = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
   private val assetsRequiredForLoadingScreen = new AssetBundle(
     Font.FontShader,
-    fontAsset,
+    MainFont,
   )
 
   def start(): Unit = {
+  }
+
+  def startLoading(): Unit = {
     assetsRequiredForLoadingScreen.acquire()
     assetsRequiredForLoadingScreen.load()
     loadingAssets = AssetLoader.startLoading()
     numAssetsBegin = loadingAssets.length
     numAssetsLeft = numAssetsBegin
+    isLoading = true
   }
 
   def stop(): Unit = {
@@ -54,18 +71,20 @@ class LoadingState {
     frameCount += 1
     AppWindow.pollEvents()
 
+    val renderer = Renderer.get
     val frameStart = java.lang.System.nanoTime()
     var timeDeltaMs = 0
 
-    do {
-      Task.Main.runNextTry()
-      tryFinishOneAsset()
+    if (isLoading) {
+      do {
+        Task.Main.runNextTry()
+        tryFinishOneAsset()
 
-      val time = java.lang.System.nanoTime()
-      timeDeltaMs = ((time - frameStart) / 1000 / 1000).toInt
-    } while (timeDeltaMs < 8)
+        val time = java.lang.System.nanoTime()
+        timeDeltaMs = ((time - frameStart) / 1000 / 1000).toInt
+      } while (timeDeltaMs < 8)
+    }
 
-    val renderer = Renderer.get
 
     renderer.beginFrame()
     renderer.resizeBackbuffer(AppWindow.width, AppWindow.height)
@@ -73,25 +92,18 @@ class LoadingState {
     renderer.clear(Some(Color.rgb(0x6495ED)), None)
     renderer.setBlend(true)
 
-    val font = fontAsset.get
+    if (isLoading) {
+      val numLoaded = numAssetsBegin - numAssetsLeft
 
-    val numLoaded = numAssetsBegin - numAssetsLeft
+      val xx = 100.0
+      var yy = 100.0
+      yy = canvas.drawText(lMain, tLoading, xx, yy, "Loading...")
+      yy = canvas.drawText(lMain, tLoadInfo, xx, yy + 5.0, s"Assets: $numLoaded/$numAssetsBegin")
+      yy = canvas.drawText(lMain, tLoadInfo, xx, yy, s"Frame: $frameCount")
 
-    val draws = ArrayBuffer[TextDraw]()
-
-    {
-      val text = s"Loading: $numLoaded/$numAssetsBegin"
-      draws += TextDraw(text, 0, text.length, Vector2(80.0, 80.0), 32.0, Color.Black, 2.0, 0)
-      draws += TextDraw(text, 0, text.length, Vector2(80.0, 80.0), 32.0, Color.White, 0.0, 1)
+      canvas.render()
     }
 
-    {
-      val text = s"Frame: $frameCount"
-      draws += TextDraw(text, 0, text.length, Vector2(80.0, 110.0), 24.0, Color.Black, 2.0, 0)
-      draws += TextDraw(text, 0, text.length, Vector2(80.0, 110.0), 24.0, Color.White, 0.0, 1)
-    }
-
-    font.render(draws)
     renderer.endFrame()
 
     AppWindow.swapBuffers()

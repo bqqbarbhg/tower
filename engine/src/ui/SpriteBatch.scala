@@ -263,6 +263,7 @@ class SpriteBatch {
 
   def unload(): Unit = {
     MemoryUtil.memFree(localBuffer)
+    vertexBuffer.free()
   }
 
 }

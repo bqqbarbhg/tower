@@ -29,6 +29,8 @@ abstract class LoadableAsset {
   protected def loadAsset(): Unit
   protected def unloadAsset(): Unit
 
+  protected final def isAssetAndDependenciesLoaded(): Boolean = isAssetLoaded() && dependencies.forall(_.isLoaded)
+
   final def isUnloaded: Boolean = state == StateUnloaded
   final def isPreloaded: Boolean = state == StatePreloaded
   final def isLoadQueued: Boolean = state == StateLoadQueued
@@ -78,7 +80,7 @@ abstract class LoadableAsset {
     * Try finishing the load if possible.
     */
   final def tryFinishLoading(): Boolean = {
-    if (isAssetLoaded()) {
+    if (isAssetAndDependenciesLoaded()) {
       load()
       true
     } else {

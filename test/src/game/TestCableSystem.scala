@@ -46,10 +46,7 @@ object TestCableSystem extends App {
     }
   }
 
-  processResources()
-
   val pack = new MultiPackage()
-
   JarPackage.create("data") match {
     case Some(jar) => pack.add(jar, 1)
     case None => // Nop
@@ -65,36 +62,16 @@ object TestCableSystem extends App {
   opts.windowName = "Engine test"
   EngineStartup.start(opts)
 
+  val loader = new LoadingState()
+  loader.start()
+  loader.update()
+
+  processResources()
+
   var prevWidth = -1
   var prevHeight = -1
 
   val asset = ModelAsset("game/tower/tower_turret.fbx.s2md")
-
-  val entity = new Entity()
-  val model = ModelSystem.addModel(entity, asset)
-  entity.position = Vector3(0.0, 0.0, 0.0)
-
-  val head = model.findNode(Identifier("Head"))
-  val barrel = model.findNode(Identifier("Barrel"))
-
-  model.lightProbe = LightSystem.addStaticProbe(Vector3(0.0, 0.5, 0.0)).probe
-  // LightSystem.addDynamicLight(Vector3(40.0, 20.0, 20.0), Vector3(1.0, 0.0, 0.0) * 4.0, 150.0)
-  // LightSystem.addStaticLight(Vector3(100.0, 80.0, 20.0), Vector3(0.6, 0.5, 0.5) * 1.0, 100.0)
-  // LightSystem.addStaticLight(Vector3(-20.0, 20.0, -20.0), Vector3(0.5, 0.5, 0.8) * 0.6, 100.0)
-
-  // LightSystem.addStaticLight(Vector3(-10.0, 20.0, 20.0), Vector3(1.0, 1.0, 1.0) * 2.0, 60.0)
-  //LightSystem.addStaticLight(Vector3(20.0, 20.0, 20.0), Vector3(0.5, 0.5, 3.0) * 2.0, 60.0)
-
-
-  val ambientAmount = 1.0
-  val groundColor = Color.rgb(0x8a857f)
-  val groundIntensity = Vector3(groundColor.r, groundColor.g, groundColor.b) * ambientAmount
-  LightSystem.globalProbe.addDirectional(Vector3(0.0, +1.0, 0.0), Vector3(0.1, 0.2, 0.3) * 0.4 * ambientAmount)
-  LightSystem.globalProbe.addDirectional(Vector3(0.0, -1.0, 0.0), groundIntensity * 0.25 * 0.5)
-  LightSystem.globalProbe.addDirectional(Vector3(+1.0, 0.0, 0.0), groundIntensity * 0.125 * 0.5)
-  LightSystem.globalProbe.addDirectional(Vector3(-1.0, 0.0, 0.0), groundIntensity * 0.125 * 0.5)
-  LightSystem.globalProbe.addDirectional(Vector3(0.0, 0.0, +1.0), groundIntensity * 0.125 * 0.5)
-  LightSystem.globalProbe.addDirectional(Vector3(0.0, 0.0, -1.0), groundIntensity * 0.125 * 0.5)
 
   def getCablePaths(asset: ModelAsset): Array[Array[CableNode]] = {
     val model = asset.getShallowUnsafe
@@ -295,6 +272,7 @@ object TestCableSystem extends App {
     asset,
     albedo, normal, roughness, metallic, ao,
     ground_albedo, ground_normal, ground_roughness, ground_metallic, ground_ao,
+    fontAsset,
     TestGroundShader,
     TestModelShader,
     TestShadowShader,
@@ -303,14 +281,40 @@ object TestCableSystem extends App {
 
   bundle.acquire()
 
-  val loader = new LoadingState()
-  loader.start()
+  loader.startLoading()
 
   while (!loader.done && AppWindow.running) {
     loader.update()
   }
 
   loader.stop()
+
+  val entity = new Entity()
+  val model = ModelSystem.addModel(entity, asset)
+  entity.position = Vector3(0.0, 0.0, 0.0)
+
+  val head = model.findNode(Identifier("Head"))
+  val barrel = model.findNode(Identifier("Barrel"))
+
+  model.lightProbe = LightSystem.addStaticProbe(Vector3(0.0, 0.5, 0.0)).probe
+  // LightSystem.addDynamicLight(Vector3(40.0, 20.0, 20.0), Vector3(1.0, 0.0, 0.0) * 4.0, 150.0)
+  // LightSystem.addStaticLight(Vector3(100.0, 80.0, 20.0), Vector3(0.6, 0.5, 0.5) * 1.0, 100.0)
+  // LightSystem.addStaticLight(Vector3(-20.0, 20.0, -20.0), Vector3(0.5, 0.5, 0.8) * 0.6, 100.0)
+
+  // LightSystem.addStaticLight(Vector3(-10.0, 20.0, 20.0), Vector3(1.0, 1.0, 1.0) * 2.0, 60.0)
+  //LightSystem.addStaticLight(Vector3(20.0, 20.0, 20.0), Vector3(0.5, 0.5, 3.0) * 2.0, 60.0)
+
+
+  val ambientAmount = 1.0
+  val groundColor = Color.rgb(0x8a857f)
+  val groundIntensity = Vector3(groundColor.r, groundColor.g, groundColor.b) * ambientAmount
+  LightSystem.globalProbe.addDirectional(Vector3(0.0, +1.0, 0.0), Vector3(0.1, 0.2, 0.3) * 0.4 * ambientAmount)
+  LightSystem.globalProbe.addDirectional(Vector3(0.0, -1.0, 0.0), groundIntensity * 0.25 * 0.5)
+  LightSystem.globalProbe.addDirectional(Vector3(+1.0, 0.0, 0.0), groundIntensity * 0.125 * 0.5)
+  LightSystem.globalProbe.addDirectional(Vector3(-1.0, 0.0, 0.0), groundIntensity * 0.125 * 0.5)
+  LightSystem.globalProbe.addDirectional(Vector3(0.0, 0.0, +1.0), groundIntensity * 0.125 * 0.5)
+  LightSystem.globalProbe.addDirectional(Vector3(0.0, 0.0, -1.0), groundIntensity * 0.125 * 0.5)
+
 
   val GroundSpec = VertexSpec(Vector(
     Attrib(3, F32, Identifier("Position")),

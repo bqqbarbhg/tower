@@ -34,11 +34,13 @@ class Task[T](val executor: TaskExecutor, val dependencyCount: Int = 0, val fn: 
       waiters += task
   }
 
-  def run(): Unit = this.synchronized {
+  def run(): Unit = {
     result = fn()
-    completed = true
-    for (w <- waiters)
-      w.dependencyCompleted()
+    this.synchronized {
+      completed = true
+      for (w <- waiters)
+        w.dependencyCompleted()
+    }
   }
 
   def isCompleted: Boolean = completed

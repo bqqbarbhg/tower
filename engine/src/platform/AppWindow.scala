@@ -61,6 +61,11 @@ object AppWindow {
     }
   }
 
+  /** Show the window (if created invisible) */
+  def showWindow(): Unit = {
+    glfwShowWindow(window)
+  }
+
   /** Release resources */
   def unload(): Unit = {
     glfwDestroyWindow(window)
