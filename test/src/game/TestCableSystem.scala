@@ -161,6 +161,7 @@ object TestCableSystem extends App {
   object DebugInput extends InputSet("Debug") {
     val Reload = button("Reload")
     val Toggle = button("Toggle")
+    val ResToggle = button("ResToggle")
     val Left = button("Left")
     val Right = button("Right")
     val Up = button("Up")
@@ -175,6 +176,7 @@ object TestCableSystem extends App {
       |[Keyboard.Debug]
       |Reload = "R"
       |Toggle = "T"
+      |ResToggle = "Y"
       |Left = "A"
       |Right = "D"
       |Up = "W"
@@ -261,6 +263,30 @@ object TestCableSystem extends App {
 
     override object Textures extends SamplerBlock {
       val ShadowMap = sampler2D("ShadowMap", Sampler.ClampNearestNoMip)
+    }
+  }
+
+  object UpsampleSimpleShader extends ShaderAsset("shader/simple_upsample") {
+
+    override object Textures extends SamplerBlock {
+      val Multisample = sampler2D("Multisample", Sampler.ClampBilinearNoMip)
+    }
+  }
+
+  object UpsampleMsaaShader extends ShaderAsset("shader/msaa_upsample") {
+
+    uniform(VertexUniform)
+    object VertexUniform extends UniformBlock("VertexUniform") {
+      val TextureScale = vec4("TextureScale")
+    }
+
+    override object Permutations extends Shader.Permutations {
+      val SampleCount = frag("SampleCount", Array(2, 4, 8))
+    }
+
+    override object Textures extends SamplerBlock {
+      val Multisample = sampler2DMS("Multisample")
+      val SubsampleWeights = sampler2DArray("SubsampleWeights", Sampler.RepeatBilinearNoMip)
     }
   }
 
@@ -476,6 +502,36 @@ object TestCableSystem extends App {
     y <- -10 to 10 by 3
   } yield createGroundPatch(x, y, 16, 3, 3)
 
+  val QuadSpec = VertexSpec(Vector(
+    Attrib(2, F32, Identifier("Position"))
+  ))
+
+  val quadVerts = withStack {
+    val buffer = alloca(QuadSpec.sizeInBytes * 4)
+    buffer.putFloat(0.0f)
+    buffer.putFloat(0.0f)
+    buffer.putFloat(1.0f)
+    buffer.putFloat(0.0f)
+    buffer.putFloat(0.0f)
+    buffer.putFloat(1.0f)
+    buffer.putFloat(1.0f)
+    buffer.putFloat(1.0f)
+    buffer.finish()
+    VertexBuffer.createStatic(QuadSpec, buffer)
+  }
+
+  val quadIndices = withStack {
+    val buffer = alloca(2 * 6)
+    buffer.putShort(2)
+    buffer.putShort(1)
+    buffer.putShort(0)
+    buffer.putShort(1)
+    buffer.putShort(2)
+    buffer.putShort(3)
+    buffer.finish()
+    IndexBuffer.createStatic(buffer)
+  }
+
   TestModelShader.load()
   TestShadowShader.load()
 
@@ -491,9 +547,14 @@ object TestCableSystem extends App {
   val turretSpriteW = Identifier("game/ao-sprite/turret_w.png")
 
   var renderTarget: RenderTarget = null
+  var resolveTarget: RenderTarget = null
   var angle = 0.0
 
+  var subsampleTexture: TextureHandle = null
+  var numSamples: Int = 0
+
   var toggle = true
+  var resToggle = true
   var zoom = 0.5
 
   val cableMesh: CableMesh = {
@@ -511,6 +572,12 @@ object TestCableSystem extends App {
   while (AppWindow.running) {
     val renderer = Renderer.get
 
+    if (mapping.justPressed(DebugInput.Toggle))
+      toggle = !toggle
+
+    if (mapping.justPressed(DebugInput.ResToggle))
+      resToggle = !resToggle
+
     AppWindow.pollEvents()
 
     val time = AppWindow.currentTime - startTime
@@ -520,12 +587,88 @@ object TestCableSystem extends App {
     val viewWidth = AppWindow.width
     val viewHeight = AppWindow.height
 
-    if (viewWidth != prevWidth || viewHeight != prevHeight) {
+    var width = viewWidth
+    var height = viewHeight
+
+    if (resToggle) {
+      width = width * 3 / 4
+      height = height * 3 / 4
+    }
+
+    if (renderTarget == null || width != renderTarget.width || height != renderTarget.height) {
       renderer.resizeBackbuffer(viewWidth, viewHeight)
 
       if (renderTarget != null) renderTarget.unload()
-      renderTarget = RenderTarget.create(viewWidth, viewHeight, Some("SRGB"), Some("D24S"), false, 8)
+      if (resolveTarget != null) resolveTarget.unload()
+      renderTarget = RenderTarget.create(width, height, Some("SRGB"), Some("D24S"), false, 4)
+      resolveTarget = RenderTarget.create(width, height, Some("SRGB"), None, false)
       renderTarget.setLabel("Multisample target")
+
+      val samples = renderTarget.sampleLocations
+      numSamples = samples.length
+
+      val subRes = 32
+
+      if (subsampleTexture != null) subsampleTexture.free()
+      subsampleTexture = TextureHandle.createArray(subRes, subRes, "RGBA", numSamples, 1, false)
+      subsampleTexture.setLabel("Subsample lookup")
+
+      val sampleWeights = Array.fill(numSamples, subRes * subRes * 4)(0.0)
+
+      for {
+        y <- 0 until subRes
+        x <- 0 until subRes
+      } {
+        val p = Vector2(x.toDouble, y.toDouble) / (subRes - 1).toDouble + Vector2(0.5, 0.5)
+        val offset = (y * subRes + x) * 4
+
+        for ((sample, sampleIx) <- samples.zipWithIndex) {
+          val weights = sampleWeights(sampleIx)
+
+          val s00 = sample + Vector2(0.0, 0.0)
+          val s10 = sample + Vector2(1.0, 0.0)
+          val s01 = sample + Vector2(0.0, 1.0)
+          val s11 = sample + Vector2(1.0, 1.0)
+
+          weights(offset + 0) = math.pow(math.max(0.8 - (p - s00).length, 0.0), 2.0)
+          weights(offset + 1) = math.pow(math.max(0.8 - (p - s10).length, 0.0), 2.0)
+          weights(offset + 2) = math.pow(math.max(0.8 - (p - s01).length, 0.0), 2.0)
+          weights(offset + 3) = math.pow(math.max(0.8 - (p - s11).length, 0.0), 2.0)
+        }
+      }
+
+      for {
+        y <- 0 until subRes
+        x <- 0 until subRes
+      } {
+        var total = 0.0
+        val offset = (y * subRes + x) * 4
+        for (sampleIx <- 0 until numSamples) {
+          val weights = sampleWeights(sampleIx)
+          total += weights(offset + 0)
+          total += weights(offset + 1)
+          total += weights(offset + 2)
+          total += weights(offset + 3)
+        }
+
+        for (sampleIx <- 0 until numSamples) {
+          val weights = sampleWeights(sampleIx)
+          weights(offset + 0) /= total
+          weights(offset + 1) /= total
+          weights(offset + 2) /= total
+          weights(offset + 3) /= total
+        }
+      }
+
+      val buf = MemoryUtil.memAlloc(subRes * subRes * 4)
+      for ((weights, sampleIx) <- sampleWeights.zipWithIndex) {
+        for (w <- weights) {
+          buf.put(math.min((w * 255.0).toInt, 255).toByte)
+        }
+        buf.finish()
+        subsampleTexture.setLayerData(sampleIx, subRes, subRes, "RGBA", Array(buf))
+      }
+      MemoryUtil.memFree(buf)
     }
 
     if (mapping.isDown(DebugInput.Down)) zoom += dt * 2.0
@@ -541,8 +684,9 @@ object TestCableSystem extends App {
       Matrix4.orthographic(80.0, 80.0, 0.1, 100.0)
         * Matrix43.look(Vector3(0.25, 0.75, -0.25) * 40.0, -Vector3(0.25, 0.75, -0.25)))
 
-    head.localTransform = Matrix43.rotateZ(math.sin(time * 0.6) * 0.5) * Matrix43.rotateX(math.sin(time * 0.5) * 0.2)
-    barrel.localTransform = Matrix43.rotateY(time * -15.0)
+    val tt = 0.5
+    head.localTransform = Matrix43.rotateZ(math.sin(tt * 0.6) * 0.5) * Matrix43.rotateX(math.sin(tt * 0.5) * 0.2)
+    barrel.localTransform = Matrix43.rotateY(tt * -15.0)
 
     LightSystem.addDynamicLightsToCells()
     LightSystem.evaluateProbes()
@@ -613,7 +757,7 @@ object TestCableSystem extends App {
 
     val shader = TestModelShader.get
     shader.use(p => {
-      if (toggle) {
+      if (true) {
         p(TestModelShader.Permutations.BrdfFunc_D) = 2
         p(TestModelShader.Permutations.BrdfFunc_V) = 2
         p(TestModelShader.Permutations.BrdfFunc_F) = 2
@@ -663,7 +807,7 @@ object TestCableSystem extends App {
     renderer.setTexture(TestGroundShader.Textures.AoTex, ground_ao.get.texture)
     renderer.setTextureTargetColor(TestGroundShader.Textures.AmbientBendTex, normalBendTarget, 0)
     TestGroundShader.get.use(p => {
-      if (toggle) {
+      if (true) {
         p(TestGroundShader.Permutations.BrdfFunc_D) = 2
         p(TestGroundShader.Permutations.BrdfFunc_V) = 2
         p(TestGroundShader.Permutations.BrdfFunc_F) = 2
@@ -701,9 +845,6 @@ object TestCableSystem extends App {
     }
 
     val cables = getCablePaths(asset)
-
-    if (mapping.justPressed(DebugInput.Toggle))
-      toggle = !toggle
 
     /*
     var totalPoints = 0
@@ -791,6 +932,35 @@ object TestCableSystem extends App {
 
     DebugDraw.render(viewProjection)
 
+    renderer.setRenderTarget(RenderTarget.Backbuffer)
+
+    renderer.clear(Some(Color.Black), Some(1.0))
+    renderer.setBlend(Renderer.BlendNone)
+    renderer.setDepthMode(false, false)
+    renderer.setCull(false)
+
+    if (resToggle) {
+      renderer.blitRenderTargetColor(resolveTarget, renderTarget)
+      if (!toggle) {
+        UpsampleSimpleShader.get.use()
+        renderer.setTextureTargetColor(UpsampleSimpleShader.Textures.Multisample, resolveTarget, 0)
+        renderer.drawElements(6, quadIndices, quadVerts)
+      } else {
+        UpsampleMsaaShader.get.use(p => {
+          p(UpsampleMsaaShader.Permutations.SampleCount) = numSamples
+        })
+        renderer.pushUniform(UpsampleMsaaShader.VertexUniform, u => {
+          UpsampleMsaaShader.VertexUniform.TextureScale.set(u, renderTarget.width.toFloat, renderTarget.height.toFloat, 0.0f, 0.0f)
+        })
+        renderer.setTextureTargetColor(UpsampleMsaaShader.Textures.Multisample, renderTarget, 0)
+        renderer.setTexture(UpsampleMsaaShader.Textures.SubsampleWeights, subsampleTexture)
+        renderer.drawElements(6, quadIndices, quadVerts)
+      }
+    } else {
+      renderer.blitRenderTargetColor(RenderTarget.Backbuffer, renderTarget)
+      renderer.setRenderTarget(RenderTarget.Backbuffer)
+    }
+
     renderer.setBlend(Renderer.BlendAlpha)
     renderer.setDepthMode(false, false)
 
@@ -812,10 +982,6 @@ object TestCableSystem extends App {
     }
 
     renderer.endFrame()
-
-    renderer.blitRenderTargetColor(RenderTarget.Backbuffer, renderTarget)
-
-    renderer.setRenderTarget(RenderTarget.Backbuffer)
 
     AppWindow.swapBuffers()
   }

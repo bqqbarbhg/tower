@@ -227,6 +227,12 @@ class RendererGl {
     glBindSampler(sampler.index, samplerObj)
   }
 
+  def setTextureTargetColor(sampler: SamplerBlock.USampler2DMS, target: RenderTarget, index: Int): Unit = {
+    glActiveTexture(GL_TEXTURE0 + sampler.index)
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, target.colorHandles(index))
+    glBindSampler(sampler.index, 0)
+  }
+
   def setTextureTargetColor(sampler: SamplerBlock.USampler2D, target: RenderTarget, index: Int): Unit = {
     val samplerObj = samplerCache.getSampler(sampler.sampler)
     glActiveTexture(GL_TEXTURE0 + sampler.index)
@@ -319,11 +325,15 @@ class RendererGl {
       glDrawBuffer(GL_BACK)
     } else {
       glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst.fbo)
+      glDrawBuffer(GL_COLOR_ATTACHMENT0)
     }
 
     val x1 = src.width
     val y1 = src.height
     glBlitFramebuffer(0, 0, x1, y1, 0, 0, x1, y1, GL_COLOR_BUFFER_BIT, GL_NEAREST)
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0)
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
   }
 
   def clear(color: Option[Color], depth: Option[Double]): Unit = {

@@ -50,7 +50,7 @@ object AppWindow {
     window = glfwCreateWindow(width, height, title, NULL, NULL)
     glfwMakeContextCurrent(window)
     GL.createCapabilities()
-    glfwSwapInterval(1)
+    glfwSwapInterval(0)
 
     glfwSetKeyCallback(window, keyboard.keyCallback)
 

@@ -5,6 +5,7 @@ import org.lwjgl.opengl.GL21._
 import org.lwjgl.opengl.GL30._
 import org.lwjgl.opengl.GL32._
 import RenderTargetGl._
+import core.Vector2
 
 object RenderTargetGl {
   var Backbuffer: RenderTargetGl = null
@@ -43,7 +44,7 @@ class RenderTargetGl(val width: Int, val height: Int, val colorFormat: Array[Str
     } else {
       format match {
         case "RGBA" => glTexImage2D(binding, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0)
-        case "SRGB" => glTexImage2D(binding, 0, GL_SRGB, width, height, 0, GL_SRGB, GL_UNSIGNED_BYTE, 0)
+        case "SRGB" => glTexImage2D(binding, 0, GL_SRGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0)
       }
 
       glTexParameteri(binding, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
@@ -125,6 +126,19 @@ class RenderTargetGl(val width: Int, val height: Int, val colorFormat: Array[Str
   def withLabel(label: String): RenderTargetGl = {
     setLabel(label)
     this
+  }
+
+  lazy val sampleLocations: Seq[Vector2] = {
+    if (numSamples <= 1) {
+      Array(Vector2(0.5, 0.5))
+    } else {
+      glBindFramebuffer(GL_FRAMEBUFFER, fbo)
+      Array.tabulate(numSamples)(sample => {
+        val arr = Array(0.5f, 0.5f)
+        glGetMultisamplefv(GL_SAMPLE_POSITION, sample, arr)
+        Vector2(arr(0), arr(1))
+      })
+    }
   }
 
   def aspectRatio: Double = width.toDouble / height.toDouble

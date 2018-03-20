@@ -23,6 +23,7 @@ object Sampler {
   private val WCl = Wrap.Clamp
   private val WRe = Wrap.Repeat
 
+  val None                = new Sampler(WCl, WCl, FFi, FFi, FFi, 0.0,  "None")
   val ClampNearest        = new Sampler(WCl, WCl, FNe, FNe, FNe, 0.0,  "ClampNearest")
   val ClampBilinear       = new Sampler(WCl, WCl, FLi, FLi, FNe, 0.0,  "ClampBilinear")
   val ClampTrilinear      = new Sampler(WCl, WCl, FLi, FLi, FLi, 0.0,  "ClampTrilinear")
