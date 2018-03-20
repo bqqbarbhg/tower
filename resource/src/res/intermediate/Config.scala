@@ -234,6 +234,31 @@ object Config {
         }
       }
 
+      class Mesh extends SimpleSerializable {
+
+        /** Filter for node name */
+        var name: String = ""
+
+        /** Texture name to use for the mesh (overrides material) */
+        var texture: String = ""
+
+        private var cachedNameRegexSrc = ""
+        private var cachedNameRegex: Option[Regex] = None
+        def nameRegex: Option[Regex] = {
+          if (cachedNameRegexSrc != name) {
+            cachedNameRegexSrc = name
+            cachedNameRegex = Some(Filter.globToRegex(name))
+          }
+          cachedNameRegex
+        }
+
+        override def visit(v: SimpleVisitor): Unit = {
+          name = v.field("name", name)
+          texture = v.field("texture", texture)
+        }
+
+      }
+
     }
 
 
@@ -245,9 +270,13 @@ object Config {
       /** Node-specific configuration */
       var nodes: ArrayBuffer[Model.Node] = new ArrayBuffer[Model.Node]()
 
+      /** Mesh-specific configuration */
+      var meshes: ArrayBuffer[Model.Mesh] = new ArrayBuffer[Model.Mesh]()
+
       override def visit(v: SimpleVisitor): Unit = {
         scale = v.field("scale", scale)
         nodes = v.field("nodes", nodes, new Model.Node())
+        meshes = v.field("meshes", meshes, new Model.Mesh())
       }
     }
 

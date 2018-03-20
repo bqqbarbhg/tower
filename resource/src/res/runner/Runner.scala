@@ -405,6 +405,8 @@ class Runner(val opts: RunOptions) {
           writer.dataRelative(dataRel)
         }
 
+        PatchModelProperties.patchModelProperties(meshes, asset.config.res.model)
+
         for (mesh <- meshes) {
           mesh.material = ResolveMaterial.resolveMaterialFromTexture(mesh.textureName, siblingTextures, resolveTextureFile)
         }

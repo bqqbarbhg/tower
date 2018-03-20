@@ -19,7 +19,25 @@ object Canvas {
   case class Outline(size: Double, color: Color = Color.Black)
   val NoOutline = Outline(0.0, Color.TransparentBlack)
 
-  case class TextStyle(font: FontAsset, height: Double, color: Color = Color.White, outline: Outline = NoOutline)
+  case class TextStyle(font: FontAsset, height: Double, color: Color = Color.White, outline: Outline = NoOutline) {
+
+    def measureWidth(text: String): Double = measureWidth(text, 0, text.length)
+    def measureWidth(text: String, offset: Int, length: Int): Double = {
+      val actualFont = font.get
+      var ix = offset
+      val end = offset + length
+      var pos = 0.0
+      var prevChar = '\0'
+      while (ix < end) {
+        val ch = text(ix)
+        pos += actualFont.getAdvance(ch, height, prevChar)
+        prevChar = ch
+        ix += 1
+      }
+      pos
+    }
+
+  }
 
   private class InternalLayer(val index: Int) {
     var blendMode: Renderer.BlendMode = Renderer.BlendAlpha
@@ -40,6 +58,10 @@ class Canvas {
     }
   }
 
+  def draw(layer: Int, sprite: Identifier, layout: Layout): Unit = {
+    draw(layer, sprite, layout.x0, layout.y0, layout.width, layout.height)
+  }
+
   def draw(layer: Int, sprite: Identifier, x: Double, y: Double, w: Double, h: Double): Unit = {
     val sd = new SpriteDraw()
     sd.sprite = sprite
@@ -51,6 +73,10 @@ class Canvas {
     getInternalLayer(layer).sprites += sd
   }
 
+  def draw(layer: Int, sprite: Identifier, layout: Layout, color: Color): Unit = {
+    draw(layer, sprite, layout.x0, layout.y0, layout.width, layout.height, color)
+  }
+
   def draw(layer: Int, sprite: Identifier, x: Double, y: Double, w: Double, h: Double, color: Color): Unit = {
     val sd = new SpriteDraw()
     sd.sprite = sprite
@@ -60,6 +86,14 @@ class Canvas {
     sd.m11 = w.toFloat
     sd.m22 = h.toFloat
     getInternalLayer(layer).sprites += sd
+  }
+
+  def drawText(layer: Int, style: TextStyle, layout: Layout, text: String): Double =
+    drawText(layer, style, layout, text, 0, text.length)
+
+  def drawText(layer: Int, style: TextStyle, layout: Layout, text: String, offset: Int, length: Int): Double = {
+    val sizedStyle = style.copy(height = layout.height)
+    drawText(layer, sizedStyle, layout.x0, layout.y0, text, offset, length)
   }
 
   def drawText(layer: Int, style: TextStyle, x: Double, y: Double, text: String): Double =

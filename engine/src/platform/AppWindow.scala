@@ -1,5 +1,6 @@
 package platform
 
+import core._
 import input.device.Keyboard
 import org.lwjgl.glfw.GLFW._
 import org.lwjgl.opengl.GL
@@ -100,6 +101,14 @@ object AppWindow {
     val y = Array(0)
     glfwGetFramebufferSize(window, x, y)
     y(0)
+  }
+
+  /** Returns the pixel position of the mouse inside the window area */
+  def mousePosition: Vector2 = {
+    val x = Array(0.0)
+    val y = Array(0.0)
+    glfwGetCursorPos(window, x, y)
+    Vector2(x(0), y(0))
   }
 
   def currentTime: Double = glfwGetTime

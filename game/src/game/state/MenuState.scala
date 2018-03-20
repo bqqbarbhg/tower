@@ -8,15 +8,23 @@ import platform.AppWindow
 import MenuState._
 import game.system.{ModelSystem, RenderingSystem}
 import game.system.ModelSystem.ModelRef
+import ui.{Canvas, DebugDraw, Layout, LayoutDebugger}
+import ui.Canvas._
 
 object MenuState {
 
-  val TurretModel = ModelAsset("mainmenu/tower_turret_mainmenu.fbx.s2md")
-  val TurretTexture = TextureAsset("mainmenu/tower_turret_mainmenu_ao.png.s2tx")
+  val StatueModel = ModelAsset("mainmenu/mainmenu_statue.fbx.s2md")
+  val MainFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
+
+  private val tMenuItem = TextStyle(MainFont, 44.0)
+
+  private val lMain = 0
 
   val menuAssets = new AssetBundle(
     "MenuState",
-    TurretModel, TurretTexture, SimpleMeshShader
+    StatueModel,
+    MainFont,
+    SimpleMeshShader,
   )
 
 }
@@ -24,6 +32,9 @@ object MenuState {
 class MenuState extends GameState {
 
   var turretModel: ModelRef = _
+  var startTime = 0.0
+
+  val canvas = new Canvas()
 
   override def load(): Unit = {
     menuAssets.acquire()
@@ -31,8 +42,9 @@ class MenuState extends GameState {
   }
 
   override def start(): Unit = {
-    turretModel = ModelSystem.addModel(null, TurretModel)
+    turretModel = ModelSystem.addModel(null, StatueModel)
     turretModel.useManualDraws = true
+    startTime = AppWindow.currentTime
   }
 
   override def stop(): Unit = {
@@ -42,11 +54,13 @@ class MenuState extends GameState {
   override def update(): Unit = {
     AppWindow.pollEvents()
 
+    val time = AppWindow.currentTime
+
     val renderer = Renderer.get
     renderer.beginFrame()
     renderer.setRenderTarget(RenderingSystem.MainTargetMsaa)
-    renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
     renderer.setDepthMode(true, true)
+    renderer.clear(Some(Color.rgb(0x707070)), Some(1.0))
     renderer.setBlend(Renderer.BlendNone)
 
     ModelSystem.updateMatrices()
@@ -56,18 +70,45 @@ class MenuState extends GameState {
     val shader = SimpleMeshShader.get
     shader.use()
 
-    val pos = Vector3(0.0, 5.0, -15.0)
-    val view = Matrix43.look(pos, -pos)
+    val relTime = time - startTime
+    val tt = relTime * 6.0
+    val ddx = math.sin(tt * 0.1) * 2.0 + math.sin(tt * 0.13 + 7.0) + math.sin(tt * 0.07 + 2.0) * 0.5
+    val ddy = math.sin(tt * 0.12) * 2.0 + math.sin(tt * 0.06 + 4.0) + math.sin(tt * 0.04 + 2.0) * 0.5
+    val dx = ddx * 0.1
+    val dy = ddy * 0.1
+
+    val angle = relTime * 0.02 + 0.2
+    val xx = math.sin(angle)
+    val yy = math.cos(angle)
+
+    val offset = Vector3(yy * 4.0, 0.0, xx * 4.0)
+    val pos = Vector3(xx * 12.0, 7.5, yy * -12.0)
+    val target = Vector3(dx, 3.0, dy)
+    val view = Matrix43.look(pos + offset, target - pos)
     val proj = Matrix4.perspective(renderer.currentRenderTarget.aspectRatio, math.Pi / 3.0, 0.1, 50.0)
     val viewProj = proj * view
 
-    renderer.setTexture(SimpleMeshShader.Textures.Texture, TurretTexture.get.texture)
+    val div = Layout.screen720p
+
+    div.pushLeft(1280.0 * 0.1)
+    val options = div.pushLeft(200.0)
+    options.pushTop(300.0)
+
+    val buttons = Vector("new game", "continue", "options", "exit")
+    for (button <- buttons) {
+      val pos = options.pushTop(40.0)
+      val style = tMenuItem.copy(height = pos.height, color = Color.White.copy(a = 0.5))
+      canvas.drawText(lMain, style, pos.x0, pos.y0, button)
+      options.padTop(20.0)
+    }
+
     renderer.pushUniform(SimpleMeshShader.GlobalUniform, u => {
       SimpleMeshShader.GlobalUniform.ViewProjection.set(u, viewProj)
     })
 
     for (draw <- turretModel.manualDraws) {
       for (part <- draw.mesh.parts) {
+        renderer.setTexture(SimpleMeshShader.Textures.Texture, draw.mesh.material.albedoTex.texture)
         renderer.pushUniform(SimpleMeshShader.InstanceUniform, u => {
           SimpleMeshShader.InstanceUniform.World.set(u, draw.worldTransform)
           SimpleMeshShader.InstanceUniform.UvBounds.set(u, part.uvOffsetX, part.uvOffsetY, part.uvScaleX, part.uvScaleY)
@@ -78,6 +119,13 @@ class MenuState extends GameState {
     }
 
     renderer.blitRenderTargetColor(RenderTarget.Backbuffer, RenderingSystem.MainTargetMsaa)
+    renderer.setRenderTarget(RenderTarget.Backbuffer)
+
+    renderer.setDepthMode(false, false)
+
+    canvas.render()
+
+    LayoutDebugger.render()
 
     renderer.endFrame()
 

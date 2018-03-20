@@ -239,7 +239,7 @@ class Font {
     var numQuads = 0
 
     var posX: Float = draw.position.x.toFloat
-    var posY: Float = draw.position.y.toFloat
+    var posY: Float = draw.position.y.toFloat + draw.height.toFloat * 0.7f
     val advanceScale = (scalePerPixelHeight * draw.height).toFloat
     val scaleF = draw.height.toFloat / variant.height
 

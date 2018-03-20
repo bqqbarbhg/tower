@@ -118,7 +118,6 @@ class LoadingState extends GameState {
       val outlineColor = Color.lerp(colA, colB, math.sin(time * 2.0 * math.Pi) * 0.5 + 0.5)
       val fillColor = (outlineColor * 0.5).copy(a = 0.2)
 
-
       val rotateTime = time * 0.5
       val pulseTime = time * 5.0
       val scale = 2.0
@@ -127,20 +126,33 @@ class LoadingState extends GameState {
       var dx = pulse * math.cos(rotateTime) * scale
       val dy = pulse * math.sin(rotateTime) * scale
 
-      canvas.draw(lMain, Background, 0.0, 0.0, 1280.0, 720.0)
+      val screen = Layout.screen720p
+      val loadArea = screen.copy.padAround(50.0)
+      val spinner = loadArea.copy.pushBottomLeft(100.0)
 
-      canvas.draw(lSpinner, outline, 0.0 - dx, 600.0 - dy, 200.0, 100.0, Color.rgb(0xFF0000))
-      canvas.draw(lSpinner, outline, 0.0, 600.0, 200.0, 100.0, Color.rgb(0x00FF00))
-      canvas.draw(lSpinner, outline, 0.0 + dx, 600.0 + dy, 200.0, 100.0, Color.rgb(0x0000FF))
+      val loadTexts = loadArea.copy.padTopLeft(25.0)
+      val loadTitle = loadTexts.pushTop(50.0)
+      val loadSubtitle1 = loadTexts.pushTop(30.0)
+      val loadSubtitle2 = loadTexts.pushTop(30.0)
 
-      val xx = 100.0
-      var yy = 100.0
-      yy = canvas.drawText(lMain, tLoading, xx, yy, "Loading...")
-      yy = canvas.drawText(lMain, tLoadInfo, xx, yy + 5.0, s"Assets: $numLoaded/$numAssetsBegin")
-      yy = canvas.drawText(lMain, tLoadInfo, xx, yy, s"Frame: $frameCount")
+      canvas.draw(lMain, Background, screen)
+
+      val spH = spinner.height
+      val spX = spinner.x0 - spH * 0.5
+      val spY = spinner.y0
+
+      canvas.draw(lSpinner, outline, spX - dx, spY - dy, 2.0 * spH, spH, Color.rgb(0xFF0000))
+      canvas.draw(lSpinner, outline, spX, spY, 2.0 * spH, spH, Color.rgb(0x00FF00))
+      canvas.draw(lSpinner, outline, spX + dx, spY + dy, 2.0 * spH, spH, Color.rgb(0x0000FF))
+
+      canvas.drawText(lMain, tLoading, loadTitle, "Loading")
+      canvas.drawText(lMain, tLoadInfo, loadSubtitle2, s"... assets: $numLoaded/$numAssetsBegin")
+      canvas.drawText(lMain, tLoadInfo, loadSubtitle1, s"... frame: $frameCount")
 
       canvas.render()
     }
+
+    LayoutDebugger.render()
 
     renderer.endFrame()
 
