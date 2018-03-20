@@ -281,12 +281,12 @@ object TestCableSystem extends App {
     }
 
     override object Permutations extends Shader.Permutations {
-      val SampleCount = frag("SampleCount", Array(2, 4, 8))
+      val SampleCount = frag("SampleCount", Array(2, 4, 8, 16))
     }
 
     override object Textures extends SamplerBlock {
       val Multisample = sampler2DMS("Multisample")
-      val SubsampleWeights = sampler2DArray("SubsampleWeights", Sampler.RepeatBilinearNoMip)
+      val SubsampleWeights = sampler2DArray("SubsampleWeights", Sampler.ClampBilinearNoMip)
     }
   }
 
@@ -591,8 +591,8 @@ object TestCableSystem extends App {
     var height = viewHeight
 
     if (resToggle) {
-      width = width * 3 / 4
-      height = height * 3 / 4
+      width = width * 1 / 2
+      height = height * 1 / 2
     }
 
     if (renderTarget == null || width != renderTarget.width || height != renderTarget.height) {
@@ -600,7 +600,7 @@ object TestCableSystem extends App {
 
       if (renderTarget != null) renderTarget.unload()
       if (resolveTarget != null) resolveTarget.unload()
-      renderTarget = RenderTarget.create(width, height, Some("SRGB"), Some("D24S"), false, 4)
+      renderTarget = RenderTarget.create(width, height, Some("SRGB"), Some("D24S"), false, 8)
       resolveTarget = RenderTarget.create(width, height, Some("SRGB"), None, false)
       renderTarget.setLabel("Multisample target")
 
@@ -610,7 +610,7 @@ object TestCableSystem extends App {
       val subRes = 32
 
       if (subsampleTexture != null) subsampleTexture.free()
-      subsampleTexture = TextureHandle.createArray(subRes, subRes, "RGBA", numSamples, 1, false)
+      subsampleTexture = TextureHandle.createArray(subRes, subRes, "RA16", numSamples, 1, false)
       subsampleTexture.setLabel("Subsample lookup")
 
       val sampleWeights = Array.fill(numSamples, subRes * subRes * 4)(0.0)
@@ -660,13 +660,13 @@ object TestCableSystem extends App {
         }
       }
 
-      val buf = MemoryUtil.memAlloc(subRes * subRes * 4)
+      val buf = MemoryUtil.memAlloc(subRes * subRes * 4 * 2)
       for ((weights, sampleIx) <- sampleWeights.zipWithIndex) {
         for (w <- weights) {
-          buf.put(math.min((w * 255.0).toInt, 255).toByte)
+          buf.putShort(math.min((w * 65535.0).toInt, 65535).toShort)
         }
         buf.finish()
-        subsampleTexture.setLayerData(sampleIx, subRes, subRes, "RGBA", Array(buf))
+        subsampleTexture.setLayerData(sampleIx, subRes, subRes, "RA16", Array(buf))
       }
       MemoryUtil.memFree(buf)
     }

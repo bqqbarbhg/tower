@@ -89,6 +89,7 @@ object TextureHandleGl {
     if (OptsGl.useTexStorage && GL.getCapabilities.GL_ARB_texture_storage) {
       val internalFormat = format match {
         case "RGBA" => GL_RGBA8
+        case "RA16" => GL_RGBA16
         case "RG.." => GL_RG8
         case "DXT1" => GL_COMPRESSED_RGBA_S3TC_DXT1_EXT
         case "DXT5" => GL_COMPRESSED_RGBA_S3TC_DXT5_EXT
@@ -102,6 +103,7 @@ object TextureHandleGl {
       for (level <- 0 until numMips) {
         format match {
           case "RGBA" => glTexImage3D(GL_TEXTURE_2D_ARRAY, level, GL_RGBA, w, h, numLayers, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0)
+          case "RA16" => glTexImage3D(GL_TEXTURE_2D_ARRAY, level, GL_RGBA, w, h, numLayers, 0, GL_RGBA, GL_UNSIGNED_SHORT, 0)
           case "RG.." => glTexImage3D(GL_TEXTURE_2D_ARRAY, level, GL_RG, w, h, numLayers, 0, GL_RG, GL_UNSIGNED_BYTE, 0)
           case "DXT1" => glCompressedTexImage3D(GL_TEXTURE_2D_ARRAY, level, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, w, h, numLayers, 0, 0, 0)
           case "DXT5" => glCompressedTexImage3D(GL_TEXTURE_2D_ARRAY, level, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, w, h, numLayers, 0, 0, 0)
@@ -137,6 +139,7 @@ class TextureHandleGl(val width: Int, val height: Int, val numMips: Int, val for
     for ((data, level) <- levels.zipWithIndex) {
       format match {
         case "RGBA" => glTexSubImage3D(GL_TEXTURE_2D_ARRAY, level, 0, 0, index, w, h, 1, GL_RGBA, GL_UNSIGNED_BYTE, data)
+        case "RA16" => glTexSubImage3D(GL_TEXTURE_2D_ARRAY, level, 0, 0, index, w, h, 1, GL_RGBA, GL_UNSIGNED_SHORT, data)
         case "RG.." => glTexSubImage3D(GL_TEXTURE_2D_ARRAY, level, 0, 0, index, w, h, 1, GL_RG, GL_UNSIGNED_BYTE, data)
         case "DXT1" => glCompressedTexSubImage3D(GL_TEXTURE_2D_ARRAY, level, 0, 0, index, w, h, 1, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, data)
         case "DXT5" => glCompressedTexSubImage3D(GL_TEXTURE_2D_ARRAY, level, 0, 0, index, w, h, 1, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, data)
