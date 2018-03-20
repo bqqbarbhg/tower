@@ -12,6 +12,7 @@ object ModelAsset {
 }
 
 class ModelAsset(val name: Identifier) extends LoadableAsset {
+  def debugName: String = s"Model: $name"
 
   private var modelImpl: Model = null
   private var meshes = Array[MeshAsset]()

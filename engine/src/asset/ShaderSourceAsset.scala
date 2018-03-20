@@ -14,6 +14,8 @@ object ShaderSourceAsset {
 }
 
 class ShaderSourceAsset(val name: Identifier) extends LoadableAsset {
+  def debugName: String = s"Shader source: $name"
+
   def this(name: String) = this(Identifier(name))
 
   private var sourceImpl: ShaderSource = null

@@ -15,6 +15,7 @@ object MenuState {
   val TurretTexture = TextureAsset("mainmenu/tower_turret_mainmenu_ao.png.s2tx")
 
   val menuAssets = new AssetBundle(
+    "MenuState",
     TurretModel, TurretTexture, SimpleMeshShader
   )
 

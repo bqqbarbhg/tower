@@ -10,6 +10,7 @@ object AtlasAsset {
 }
 
 class AtlasAsset(val name: Identifier) extends LoadableAsset {
+  def debugName: String = s"Atlas: $name"
 
   private var atlasImpl: Atlas = null
 

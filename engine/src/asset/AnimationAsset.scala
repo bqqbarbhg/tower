@@ -9,6 +9,7 @@ object AnimationAsset {
 }
 
 class AnimationAsset(val name: Identifier) extends LoadableAsset {
+  def debugName: String = s"Animation: $name"
 
   private var animImpl: Animation = null
 

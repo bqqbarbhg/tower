@@ -29,6 +29,8 @@ abstract class LoadableAsset {
   protected def loadAsset(): Unit
   protected def unloadAsset(): Unit
 
+  def debugName: String
+
   protected final def isAssetAndDependenciesLoaded(): Boolean = isAssetLoaded() && dependencies.forall(_.isLoaded)
 
   final def isUnloaded: Boolean = state == StateUnloaded
@@ -94,6 +96,10 @@ abstract class LoadableAsset {
   final def load(): Unit = {
     startLoading()
     if (state == StateLoading) {
+      if (!isAssetAndDependenciesLoaded()) {
+        println(s"Force load asset: $debugName")
+      }
+
       for (dep <- dependencies) {
         dep.load()
       }

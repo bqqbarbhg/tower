@@ -2,6 +2,7 @@ package game.shader
 
 import render._
 import asset._
+import gfx.Shader
 
 object SimpleMeshShader extends ShaderAsset("shader/simple_mesh") {
 

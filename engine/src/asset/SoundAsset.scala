@@ -9,6 +9,7 @@ object SoundAsset {
 }
 
 class SoundAsset(val name: Identifier) extends LoadableAsset {
+  def debugName: String = s"Sound: $name"
 
   private var soundImpl: Sound = null
 

@@ -9,6 +9,7 @@ object FontAsset {
 }
 
 class FontAsset(val name: Identifier) extends LoadableAsset {
+  def debugName: String = s"Font: $name"
 
   private var fontImpl: Font = null
 

@@ -28,7 +28,9 @@ object LoadingState {
 
   lazy val assetBundle = {
     val bundle = new AssetBundle(
+      "LoadingState",
       Font.FontShader,
+      SpriteBatch.SpriteShader,
       MainFont,
       LoadingAtlas,
     )

@@ -5,6 +5,7 @@ import core._
 import task.Task
 
 class MeshAsset(val name: Identifier) extends LoadableAsset {
+  def debugName: String = s"Mesh: $name"
 
   private var loadTask: Task[Mesh] = null
   private var meshImpl: Mesh = null

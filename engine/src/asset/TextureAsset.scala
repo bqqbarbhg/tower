@@ -10,6 +10,7 @@ object TextureAsset {
 }
 
 class TextureAsset(val name: Identifier) extends LoadableAsset {
+  def debugName: String = s"Texture: $name"
 
   private var loadTask: Task[Texture] = null
   private var texImpl: Texture = null

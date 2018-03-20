@@ -6,6 +6,7 @@ import core._
 import render._
 import util.BufferUtils._
 import Shader._
+import task.Task
 import io.content.Package
 import org.lwjgl.system.MemoryUtil
 import render.opengl.OptsGl
@@ -76,7 +77,7 @@ object Shader {
     * @param uniforms Uniform blocks passed to the renderer
     * @return The compiled shader object
     */
-  def load(name: String, vertSrc: ShaderSource, fragSrc: ShaderSource, permutations: Permutations, samplers: SamplerBlock, uniforms: UniformBlock*): Shader = {
+  def deferredLoad(name: String, vertSrc: ShaderSource, fragSrc: ShaderSource, permutations: Permutations, samplers: SamplerBlock, uniforms: UniformBlock*): Task[Shader] = {
     val perms = permutations.permutations
 
     // TODO: Generate less shaders using separable shader objects
@@ -127,31 +128,39 @@ object Shader {
     }
 
     /** Compile a permutation shader program, which consists of vertex and fragment shaders */
-    def compilePermutation(values: Seq[Int]): ShaderProgram = {
-      val vertGen = generateShaderPermutationPrelude(MaskVert, values)
-      val fragGen = generateShaderPermutationPrelude(MaskFrag, values)
+    def compilePermutation(values: Seq[Int]): Option[ShaderProgram] = {
+      try {
+        val vertGen = generateShaderPermutationPrelude(MaskVert, values)
+        val fragGen = generateShaderPermutationPrelude(MaskFrag, values)
 
-      val vertChunks = vertGen +: vertSrc.chunks
-      val fragChunks = fragGen +: fragSrc.chunks
+        val vertChunks = vertGen +: vertSrc.chunks
+        val fragChunks = fragGen +: fragSrc.chunks
 
-      val program = ShaderProgram.compile(vertChunks, fragChunks, samplers, uniforms : _*)
+        val program = ShaderProgram.compile(vertChunks, fragChunks, samplers, uniforms : _*)
 
-      val permutationDebug = (for ((value, perm) <- (values zip perms)) yield {
-        s"${perm.name}:$value"
-      }).mkString(" ")
+        val permutationDebug = (for ((value, perm) <- (values zip perms)) yield {
+          s"${perm.name}:$value"
+        }).mkString(" ")
 
-      program.setLabel(s"$name ($permutationDebug)")
+        program.setLabel(s"$name ($permutationDebug)")
 
-      program
+        Some(program)
+      } catch {
+        case e: ShaderCompileError =>
+          println(e.getMessage)
+          None
+      }
     }
 
     // Recursively generate all the permutations for the shader
-    val permMap = new mutable.HashMap[Seq[Int], ShaderProgram]()
+    val permMap = new mutable.HashMap[Seq[Int], Task[(Seq[Int], Option[ShaderProgram])]]()
     def makePerms(index: Int, values: Vector[Int]): Unit = {
       if (index == perms.length) {
         val perm = values.toArray.toSeq
-        val program = compilePermutation(values)
-        permMap(perm) = program
+        val programTask = Task.Main.add(() => {
+          (perm, compilePermutation(values))
+        })
+        permMap(perm) = programTask
       } else {
         for (value <- perms(index).values) {
           makePerms(index + 1, values :+ value)
@@ -159,19 +168,25 @@ object Shader {
       }
     }
 
-    try {
-      makePerms(0, Vector[Int]())
-      new Shader(permutations, permMap.toMap)
-    } catch {
-      case e: ShaderCompileError =>
-        for ((_, program) <- permMap) {
-          program.unload()
+    makePerms(0, Vector[Int]())
+
+    val mainTask = Task.Main.add(permMap.values.toSeq, (permResults: Seq[(Seq[Int], Option[ShaderProgram])]) => {
+      val resolvedPerms = permResults.toMap
+      if (resolvedPerms.valuesIterator.exists(_.isEmpty)) {
+        for (op <- resolvedPerms.valuesIterator; p <- op) {
+          p.unload()
         }
-        println(e.getMessage)
         new Shader(permutations, Map[Seq[Int], ShaderProgram]())
-    }
+      } else {
+        new Shader(permutations, resolvedPerms.mapValues(_.get))
+      }
+    })
 
+    mainTask
+  }
 
+  def load(name: String, vertSrc: ShaderSource, fragSrc: ShaderSource, permutations: Permutations, samplers: SamplerBlock, uniforms: UniformBlock*): Shader = {
+    deferredLoad(name, vertSrc, fragSrc, permutations, samplers, uniforms : _*).get
   }
 }
 

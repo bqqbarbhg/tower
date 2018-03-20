@@ -54,6 +54,18 @@ class TaskExecutor {
     task
   }
 
+  def add[D1, R](d1: Seq[Task[D1]], f: (Seq[D1]) => R): Task[R] = {
+    val task = new Task[R](this, d1.length, () => {
+      f(d1.map(_.result))
+    })
+
+    for (d <- d1) {
+      d.linkDependent(task)
+    }
+
+    task
+  }
+
   def isOnCurrentThread(): Boolean = TaskExecutor.executorForThisThread.get eq this
 
   def claimForThisThread(): Unit = {
