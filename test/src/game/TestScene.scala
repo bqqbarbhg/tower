@@ -392,7 +392,7 @@ object TestScene extends App {
     renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
 
     renderer.setDepthMode(true, true)
-    renderer.setBlend(false)
+    renderer.setBlend(Renderer.BlendNone)
 
 
     renderer.pushUniform(GlobalUniform, u => {
@@ -452,7 +452,7 @@ object TestScene extends App {
     }
 
     renderer.setDepthMode(false, false)
-    renderer.setBlend(true)
+    renderer.setBlend(Renderer.BlendAlpha)
 
     val fg = Color.rgb(0xffffff)
     val bg = Color.rgb(0x000000)

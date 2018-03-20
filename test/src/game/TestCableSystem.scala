@@ -566,7 +566,7 @@ object TestCableSystem extends App {
     val colorS = Color(0.0, 0.0, 1.0, 0.0)
     val colorW = Color(0.0, 0.0, 0.0, 1.0)
 
-    renderer.setBlendAdd()
+    renderer.setBlend(Renderer.BlendAddAlpha)
     spriteBatch.draw(turretSpriteN, Vector2(50.0, 50.0), Vector2(100.0, 100.0), colorN)
     spriteBatch.draw(turretSpriteE, Vector2(50.0, 50.0), Vector2(100.0, 100.0), colorE)
     spriteBatch.draw(turretSpriteS, Vector2(50.0, 50.0), Vector2(100.0, 100.0), colorS)
@@ -579,7 +579,7 @@ object TestCableSystem extends App {
     renderer.setWriteSrgb(false)
     renderer.clear(None, Some(1.0))
 
-    renderer.setBlendNone()
+    renderer.setBlend(Renderer.BlendNone)
 
     renderer.pushUniform(TestShadowShader.ShadowUniform, u => {
       TestShadowShader.ShadowUniform.ViewProjection.set(u, shadowViewProjection)
@@ -791,7 +791,7 @@ object TestCableSystem extends App {
 
     DebugDraw.render(viewProjection)
 
-    renderer.setBlend(true)
+    renderer.setBlend(Renderer.BlendAlpha)
     renderer.setDepthMode(false, false)
 
     {

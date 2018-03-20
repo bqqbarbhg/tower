@@ -88,6 +88,11 @@ class RendererGl {
     activeTarget = target
     glBindFramebuffer(GL_FRAMEBUFFER, target.fbo)
     glViewport(0, 0, target.width, target.height)
+
+    if (target.numSamples > 1)
+      glEnable(GL_MULTISAMPLE)
+    else
+      glDisable(GL_MULTISAMPLE)
   }
 
   /** Resizes and initializes the backbuffer */

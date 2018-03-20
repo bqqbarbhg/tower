@@ -60,7 +60,7 @@ object TestCanvas extends App {
 
     renderer.setRenderTarget(RenderTarget.Backbuffer)
     renderer.clear(Some(Color.rgb(0x6495ED)), None)
-    renderer.setBlend(true)
+    renderer.setBlend(Renderer.BlendAlpha)
 
     val yy = canvas.drawTextWrapped(0, style, Vector2(100.0, 100.0), Vector2(viewWidth - 200.0, 1000.0), LC.Test.long)
    canvas.drawTextWrapped(0, style, Vector2(100.0, 100.0 + yy + 20.0), Vector2(viewWidth - 200.0, 1000.0), LC.Test.hyphen)

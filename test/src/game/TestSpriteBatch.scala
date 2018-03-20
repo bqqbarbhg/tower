@@ -37,7 +37,7 @@ object TestSpriteBatch extends App {
 
     renderer.setRenderTarget(RenderTarget.Backbuffer)
     renderer.clear(Some(Color.rgb(0x6495ED)), None)
-    renderer.setBlend(true)
+    renderer.setBlend(Renderer.BlendAlpha)
 
     {
       val sd = new SpriteBatch.SpriteDraw()

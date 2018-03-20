@@ -228,7 +228,7 @@ object TestEngine extends App {
     }
 
     renderer.setDepthMode(false, false)
-    renderer.setBlend(true)
+    renderer.setBlend(Renderer.BlendAlpha)
 
     val fg = Color.rgb(0xffffff)
     val bg = Color.rgb(0x000000)
