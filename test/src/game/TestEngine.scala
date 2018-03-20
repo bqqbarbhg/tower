@@ -94,7 +94,7 @@ object TestEngine extends App {
   opts.windowName = "Engine test"
   EngineStartup.start(opts)
 
-  val bundle = new AssetBundle(SimpleShader, sausagemanAsset, uiAtlas)
+  val bundle = new AssetBundle("TestBundle", SimpleShader, sausagemanAsset, uiAtlas)
   bundle.acquire()
 
   val SampleRate = 44100

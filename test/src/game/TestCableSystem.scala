@@ -207,6 +207,7 @@ object TestCableSystem extends App {
       val BrdfFunc_D = frag("BrdfFunc_D", 1 to 2)
       val BrdfFunc_V = frag("BrdfFunc_V", 1 to 5)
       val BrdfFunc_F = frag("BrdfFunc_F", 1 to 2)
+      val PerSampleShading = both("PerSampleShading", 0 to 1)
     }
 
     uniform(ModelSystem.InstancedUniform)
@@ -291,6 +292,7 @@ object TestCableSystem extends App {
   }
 
   val bundle = new AssetBundle(
+    "TestBundle",
     asset,
     albedo, normal, roughness, metallic, ao,
     ground_albedo, ground_normal, ground_roughness, ground_metallic, ground_ao,
@@ -600,7 +602,7 @@ object TestCableSystem extends App {
 
       if (renderTarget != null) renderTarget.unload()
       if (resolveTarget != null) resolveTarget.unload()
-      renderTarget = RenderTarget.create(width, height, Some("SRGB"), Some("D24S"), false, 8)
+      renderTarget = RenderTarget.create(width, height, Some("SRGB"), Some("D24S"), false, 4)
       resolveTarget = RenderTarget.create(width, height, Some("SRGB"), None, false)
       renderTarget.setLabel("Multisample target")
 
@@ -766,6 +768,7 @@ object TestCableSystem extends App {
         p(TestModelShader.Permutations.BrdfFunc_V) = 1
         p(TestModelShader.Permutations.BrdfFunc_F) = 1
       }
+      p(TestModelShader.Permutations.PerSampleShading) = resToggle
     })
 
     for (draw <- draws) {
