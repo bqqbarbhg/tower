@@ -132,7 +132,7 @@ class LoadingState extends GameState {
 
       canvas.draw(lMain, Background, screen)
 
-      val spH = spinner.height
+      val spH = spinner.heightPx
       val spX = spinner.x0 - spH * 0.5
       val spY = spinner.y0
 

@@ -83,6 +83,25 @@ object SpriteBatch {
     var cropY0 = 0.0f
     var cropX1 = 1.0f
     var cropY1 = 1.0f
+
+    def copy: SpriteDraw = {
+      val sd = new SpriteDraw
+      sd.sprite = sprite
+      sd.color = color
+      sd.m11 = m11
+      sd.m12 = m12
+      sd.m13 = m13
+      sd.m21 = m21
+      sd.m22 = m22
+      sd.m23 = m23
+      sd.anchorX = anchorX
+      sd.anchorY = anchorY
+      sd.cropX0 = cropX0
+      sd.cropY0 = cropY0
+      sd.cropX1 = cropX1
+      sd.cropY1 = cropY1
+      sd
+    }
   }
 }
 
@@ -103,7 +122,10 @@ class SpriteBatch {
     */
   def draw(pos: SpriteDraw): Unit = {
     val pair = SpriteMap.get(pos.sprite)
-    if (!pair.valid) return
+    if (!pair.valid) {
+      println(s"Sprite not found: ${pos.sprite}")
+      return
+    }
 
     if (currentAtlasIndex != pair.atlas || numSpritesInBatch == BatchMaxSprites) {
       flush()

@@ -8,8 +8,10 @@ import platform.AppWindow
 import MenuState._
 import game.system.{ModelSystem, RenderingSystem}
 import game.system.ModelSystem.ModelRef
-import ui.{Canvas, DebugDraw, Layout, LayoutDebugger}
+import menu.OptionsMenu
+import ui._
 import ui.Canvas._
+import ui.InputSet.InputArea
 
 object MenuState {
 
@@ -27,6 +29,10 @@ object MenuState {
     SimpleMeshShader,
   )
 
+  class Button(val localeKey: String) {
+    val input = new InputArea()
+  }
+
 }
 
 class MenuState extends GameState {
@@ -35,6 +41,14 @@ class MenuState extends GameState {
   var startTime = 0.0
 
   val canvas = new Canvas()
+  val inputSet = new InputSet()
+
+  val ContinueButton = new Button("MainMenu.continue")
+  val ExitButton = new Button("MainMenu.exit")
+
+  val buttons = Array(ContinueButton, ExitButton)
+
+  val optionsMenu = new OptionsMenu()
 
   override def load(): Unit = {
     menuAssets.acquire()
@@ -49,7 +63,7 @@ class MenuState extends GameState {
 
   override def stop(): Unit = {
     menuAssets.release()
-  }
+}
 
   override def update(): Unit = {
     AppWindow.pollEvents()
@@ -66,6 +80,8 @@ class MenuState extends GameState {
     ModelSystem.updateMatrices()
     ModelSystem.collectMeshInstances()
     ModelSystem.setupUniforms()
+
+    inputSet.update()
 
     val shader = SimpleMeshShader.get
     shader.use()
@@ -90,16 +106,26 @@ class MenuState extends GameState {
 
     val div = Layout.screen720p
 
-    div.pushLeft(1280.0 * 0.1)
-    val options = div.pushLeft(200.0)
-    options.pushTop(300.0)
+    optionsMenu.update(inputSet, canvas)
 
-    val buttons = Vector("new game", "continue", "options", "exit")
-    for (button <- buttons) {
-      val pos = options.pushTop(40.0)
-      val style = tMenuItem.copy(height = pos.height, color = Color.White.copy(a = 0.5))
-      canvas.drawText(lMain, style, pos.x0, pos.y0, button)
-      options.padTop(20.0)
+    if (false) {
+      div.pushLeft(1280.0 * 0.1)
+      val options = div.pushLeft(200.0)
+      options.pushTop(300.0)
+
+      for (button <- buttons) {
+        val pos = options.pushTop(40.0)
+
+        inputSet.add(button.input, pos)
+
+        var style = tMenuItem.copy(height = pos.heightPx, color = Color.White.copy(a = 0.5))
+        if (button.input.focused) {
+          style = style.copy(color = Color.rgb(0xFF0000))
+        }
+        canvas.drawText(lMain, style, pos.x0, pos.y0, button.localeKey)
+        options.padTop(20.0)
+      }
+
     }
 
     renderer.pushUniform(SimpleMeshShader.GlobalUniform, u => {

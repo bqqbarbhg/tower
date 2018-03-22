@@ -5,6 +5,8 @@ import render._
 
 object Layout {
 
+  val Empty = new Layout(Vector2.Zero, 0.0, 0.0, 0.0, 0.0)
+
   /** Enables debug drawing of layouting */
   var debug: Boolean = false
 
@@ -27,8 +29,12 @@ class Layout(var unit: Vector2, var x0: Double, var y0: Double, var x1: Double, 
 
   def position: Vector2 = Vector2(x0, y0)
   def size: Vector2 = Vector2(x1, y1)
-  def width: Double = x1 - x0
-  def height: Double = y1 - y0
+  def widthPx: Double = x1 - x0
+  def heightPx: Double = y1 - y0
+  def widthUnits: Double = (x1 - x0) / unit.x
+  def heightUnits: Double = (y1 - y0) / unit.y
+
+  def contains(point: Vector2): Boolean = !(point.x < x0 || point.y < y0 || point.x > x1 || point.y > y1)
 
   def pushLeft(amount: Double): Layout = {
     val dx = amount * unit.x
@@ -121,6 +127,51 @@ class Layout(var unit: Vector2, var x0: Double, var y0: Double, var x1: Double, 
   def padTopLeft(amountX: Double, amountY: Double): Layout = padTop(amountX).padLeft(amountY)
   def padTopRight(amount: Double): Layout = padTopRight(amount, amount)
   def padTopRight(amountX: Double, amountY: Double): Layout = padTop(amountX).padRight(amountY)
+
+  def edgeTop    = new Layout(unit, x0, y0, x1, y0)
+  def edgeBottom = new Layout(unit, x0, y1, x1, y1)
+  def edgeLeft   = new Layout(unit, x0, y0, x0, y1)
+  def edgeRight  = new Layout(unit, x1, y0, x1, y1)
+
+  def extendLeft(amount: Double): Layout = {
+    val dx = amount * unit.x
+    val px0 = x0
+    x0 -= dx
+    Layout.debug(x0, y0, px0, y0)
+    Layout.debug(x0, y1, px0, y1)
+    Layout.debug(x0, y0, x0, y1)
+    this
+  }
+
+  def extendRight(amount: Double): Layout = {
+    val dx = amount * unit.x
+    val px1 = x1
+    x1 += dx
+    Layout.debug(px1, y0, x1, y0)
+    Layout.debug(px1, y1, x1, y1)
+    Layout.debug(x1, y0, x1, y1)
+    this
+  }
+
+  def extendTop(amount: Double): Layout = {
+    val dy = amount * unit.y
+    val py0 = y0
+    y0 -= dy
+    Layout.debug(x0, y0, x0, py0)
+    Layout.debug(x1, y0, x1, py0)
+    Layout.debug(x0, y0, x1, y0)
+    this
+  }
+
+  def extendBottom(amount: Double): Layout = {
+    val dy = amount * unit.y
+    val py1 = y1
+    y1 += dy
+    Layout.debug(x0, py1, x0, y1)
+    Layout.debug(x1, py1, x1, y1)
+    Layout.debug(x0, y1, x1, y1)
+    this
+  }
 
   override def toString: String = s"Layout(${x0.toInt}, ${y0.toInt}, ${x1.toInt}, ${y1.toInt})"
 

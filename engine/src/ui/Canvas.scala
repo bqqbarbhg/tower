@@ -59,7 +59,7 @@ class Canvas {
   }
 
   def draw(layer: Int, sprite: Identifier, layout: Layout): Unit = {
-    draw(layer, sprite, layout.x0, layout.y0, layout.width, layout.height)
+    draw(layer, sprite, layout.x0, layout.y0, layout.widthPx, layout.heightPx)
   }
 
   def draw(layer: Int, sprite: Identifier, x: Double, y: Double, w: Double, h: Double): Unit = {
@@ -74,7 +74,7 @@ class Canvas {
   }
 
   def draw(layer: Int, sprite: Identifier, layout: Layout, color: Color): Unit = {
-    draw(layer, sprite, layout.x0, layout.y0, layout.width, layout.height, color)
+    draw(layer, sprite, layout.x0, layout.y0, layout.widthPx, layout.heightPx, color)
   }
 
   def draw(layer: Int, sprite: Identifier, x: Double, y: Double, w: Double, h: Double, color: Color): Unit = {
@@ -88,11 +88,15 @@ class Canvas {
     getInternalLayer(layer).sprites += sd
   }
 
+  def draw(layer: Int, spriteDraw: SpriteDraw): Unit = {
+    getInternalLayer(layer).sprites += spriteDraw.copy
+  }
+
   def drawText(layer: Int, style: TextStyle, layout: Layout, text: String): Double =
     drawText(layer, style, layout, text, 0, text.length)
 
   def drawText(layer: Int, style: TextStyle, layout: Layout, text: String, offset: Int, length: Int): Double = {
-    val sizedStyle = style.copy(height = layout.height)
+    val sizedStyle = style.copy(height = layout.heightPx)
     drawText(layer, sizedStyle, layout.x0, layout.y0, text, offset, length)
   }
 

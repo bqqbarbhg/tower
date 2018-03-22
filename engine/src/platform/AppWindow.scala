@@ -111,5 +111,10 @@ object AppWindow {
     Vector2(x(0), y(0))
   }
 
+  /** Returns whether a mouse button is currently down */
+  def mouseButtonDown(index: Int): Boolean = {
+    glfwGetMouseButton(window, index) == GLFW_PRESS
+  }
+
   def currentTime: Double = glfwGetTime
 }
