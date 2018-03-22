@@ -61,7 +61,14 @@ object GenerateAtlas {
 
     val toPack = mutable.HashMap[Int, Extents]()
 
-    val extents = sprites.map(s => new Extents(s.bounds.w + cfg.padding, s.bounds.h + cfg.padding))
+    val extents = sprites.map(s => {
+      var width = s.bounds.w + cfg.padding
+      var height = s.bounds.h + cfg.padding
+      if (s.wrapX) width += cfg.padding * 2
+      if (s.wrapY) height += cfg.padding * 2
+
+      Extents(width, height)
+    })
     for ((extent, index) <- extents.zipWithIndex) {
       toPack(index) = extent
     }
@@ -75,7 +82,10 @@ object GenerateAtlas {
       for ((index, rect) <- packed) {
         // Remove succesfully packed elements and store the location
         toPack -= index
-        atlas.locations(index) = SpriteLocation(pageIndex, rect)
+        var rc = rect
+        if (sprites(index).wrapX) rc = rc.copy(x = rc.x + cfg.padding)
+        if (sprites(index).wrapY) rc = rc.copy(y = rc.y + cfg.padding)
+        atlas.locations(index) = SpriteLocation(pageIndex, rc)
       }
 
       pageSizes += pageSize
@@ -104,14 +114,20 @@ object GenerateAtlas {
 
       val srcRect = sprite.bounds
 
+      val wx = if (sprite.wrapX) config.padding else 0
+      val wy = if (sprite.wrapY) config.padding else 0
+
       val bx = loc.rect.x
       val by = loc.rect.y
       for {
-        y <- 0 until srcRect.h
-        x <- 0 until srcRect.w
+        yy <- (-wx) until (srcRect.h + wx)
+        xx <- (-wy) until (srcRect.w + wy)
       } {
+        val x = Math.floorMod(xx ,srcRect.w)
+        val y = Math.floorMod(yy, srcRect.h)
+
         val pixel = sprite.image.getPixel(srcRect.x + x, srcRect.y + y)
-        page.setPixel(bx + x, by + y, pixel)
+        page.setPixel(bx + xx, by + yy, pixel)
       }
     }
 

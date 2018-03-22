@@ -1,6 +1,8 @@
 package io
 
+import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.CharBuffer
+import java.nio.charset.StandardCharsets
 
 import Toml._
 
@@ -225,7 +227,7 @@ object Toml {
   }
 
   def parseFile(filename: String): SMap = {
-    val source = scala.io.Source.fromFile(filename)
+    val source = scala.io.Source.fromFile(filename, "UTF-8")
     val str = source.mkString
     source.close()
     parse(str, filename)
@@ -294,5 +296,11 @@ object Toml {
     val builder = new mutable.StringBuilder()
     formatImpl(builder, "", root, false, "")
     builder.mkString
+  }
+
+  def formatFile(map: SMap, filename: String): Unit = {
+    val writer = new OutputStreamWriter(new FileOutputStream(filename), StandardCharsets.UTF_8)
+    writer.write(format(map))
+    writer.close()
   }
 }

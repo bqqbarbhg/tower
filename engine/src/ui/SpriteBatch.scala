@@ -21,8 +21,8 @@ object SpriteBatch {
   object SpriteShader extends ShaderAsset("shader/sprite") {
 
     override object Textures extends SamplerBlock {
-      val TexArray = sampler2DArray("TexArray", Sampler.ClampBilinear)
-      val FinalTex = sampler2D("FinalTex", Sampler.ClampBilinear)
+      val TexArray = sampler2DArray("TexArray", Sampler.RepeatBilinear)
+      val FinalTex = sampler2D("FinalTex", Sampler.RepeatBilinear)
     }
 
     override object Permutations extends Shader.Permutations {

@@ -33,6 +33,8 @@ class Layout(var unit: Vector2, var x0: Double, var y0: Double, var x1: Double, 
   def heightPx: Double = y1 - y0
   def widthUnits: Double = (x1 - x0) / unit.x
   def heightUnits: Double = (y1 - y0) / unit.y
+  def widthYUnits: Double = (x1 - x0) / unit.y
+  def heightXUnits: Double = (y1 - y0) / unit.x
 
   def contains(point: Vector2): Boolean = !(point.x < x0 || point.y < y0 || point.x > x1 || point.y > y1)
 
@@ -40,6 +42,7 @@ class Layout(var unit: Vector2, var x0: Double, var y0: Double, var x1: Double, 
     val dx = amount * unit.x
     val px0 = x0
     x0 += dx
+    x1 = math.max(x1, x0)
     Layout.debug(x0, y0, x0, y1)
     new Layout(unit, px0, y0, x0, y1)
   }
@@ -48,6 +51,7 @@ class Layout(var unit: Vector2, var x0: Double, var y0: Double, var x1: Double, 
     val dx = amount * unit.x
     val px1 = x1
     x1 -= dx
+    x0 = math.min(x0, x1)
     Layout.debug(x1, y0, x1, y1)
     new Layout(unit, x1, y0, px1, y1)
   }
@@ -56,6 +60,7 @@ class Layout(var unit: Vector2, var x0: Double, var y0: Double, var x1: Double, 
     val dy = amount * unit.y
     val py0 = y0
     y0 += dy
+    y1 = math.max(y1, y0)
     Layout.debug(x0, y0, x1, y0)
     new Layout(unit, x0, py0, x1, y0)
   }
@@ -64,6 +69,7 @@ class Layout(var unit: Vector2, var x0: Double, var y0: Double, var x1: Double, 
     val dy = amount * unit.y
     val py1 = y1
     y1 -= dy
+    y0 = math.min(y0, y1)
     Layout.debug(x0, y1, x1, y1)
     new Layout(unit, x0, y1, x1, py1)
   }

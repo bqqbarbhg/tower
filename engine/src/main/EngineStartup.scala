@@ -1,5 +1,6 @@
 package main
 
+import asset.AssetLoader
 import platform.AppWindow
 import render._
 import render.opengl.{MapMode, OptsGl}
@@ -34,6 +35,10 @@ object EngineStartup {
   def start(opts: Options): Unit = {
     AppWindow.initialize(opts.initialWidth, opts.initialHeight, opts.windowName, opts.debug)
 
+    IoThread.setName("Engine IO thread")
+    IoThread.start()
+    Task.Main.claimForThisThread()
+
     val device = GraphicsDevice.get
     if (device.doesNotSupportRowMajor) {
       OptsGl.useRowMajorMatrix = false
@@ -51,17 +56,27 @@ object EngineStartup {
       OptsGl.useProfiling = true
     }
 
-    IoThread.setName("Engine IO thread")
-    IoThread.start()
-    Task.Main.claimForThisThread()
+    softStart()
+  }
 
+  private def softStart(): Unit = {
     Renderer.initialize()
   }
 
+  private def softStop(): Unit = {
+    AssetLoader.unloadEverything()
+    Renderer.shutdown()
+  }
+
   def stop(): Unit = {
+    softStop()
     AppWindow.unload()
     IoThread.interrupt()
     IoThread.join()
   }
 
+  def restart(): Unit = {
+    softStop()
+    softStart()
+  }
 }

@@ -19,7 +19,7 @@ object Canvas {
   case class Outline(size: Double, color: Color = Color.Black)
   val NoOutline = Outline(0.0, Color.TransparentBlack)
 
-  case class TextStyle(font: FontAsset, height: Double, color: Color = Color.White, outline: Outline = NoOutline) {
+  case class TextStyle(font: FontAsset, height: Double = 16.0, color: Color = Color.White, outline: Outline = NoOutline) {
 
     def measureWidth(text: String): Double = measureWidth(text, 0, text.length)
     def measureWidth(text: String, offset: Int, length: Int): Double = {
@@ -40,7 +40,7 @@ object Canvas {
   }
 
   private class InternalLayer(val index: Int) {
-    var blendMode: Renderer.BlendMode = Renderer.BlendAlpha
+    var blendMode: Renderer.BlendMode = Renderer.BlendPremultipliedAlpha
     val drawsForFont = mutable.HashMap[FontAsset, ArrayBuffer[TextDraw]]()
     val sprites = ArrayBuffer[SpriteDraw]()
   }

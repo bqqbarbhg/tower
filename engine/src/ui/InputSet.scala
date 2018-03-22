@@ -1,7 +1,7 @@
 package ui
 
 import platform.AppWindow
-import ui.InputSet.{InputArea, InputWithLayout}
+import ui.InputSet._
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -28,7 +28,9 @@ object InputSet {
 
   }
 
-  private[ui] case class InputWithLayout(input: InputArea, layout: Layout, index: Int)
+  private[ui] case class InputWithLayout(layer: Int, input: InputArea, layout: Layout, index: Int, distance: Double)
+
+  private val BlockerArea = new InputArea()
 
 }
 
@@ -42,8 +44,12 @@ class InputSet {
 
   def clicked: Boolean = didClick
 
-  def add(input: InputArea, layout: Layout, index: Int = 0): Unit = {
-    inputs += InputWithLayout(input, layout, index)
+  def add(layer: Int, input: InputArea, layout: Layout, distance: Double = 0.0, index: Int = 0): Unit = {
+    inputs += InputWithLayout(layer, input, layout.copy, index, distance)
+  }
+
+  def addBlocker(layer: Int, layout: Layout, distance: Double = 0.0): Unit = {
+    inputs += InputWithLayout(layer, BlockerArea, layout.copy, 0, distance)
   }
 
   def update(): Unit = {
@@ -60,13 +66,37 @@ class InputSet {
     }
 
     focusedInput = null
+    focusedIndex = -1
+
+    val orderedInputs = inputs.sortBy(input => {
+      val base = input.layer * -2
+      if (input.input == BlockerArea) base + 1
+      else base
+    })
 
     for (input <- inputs) {
       input.input.ownerSet = this
       input.input.updateTick = updateTick
-      if (input.layout.contains(mouse)) {
-        focusedInput = input.input
-        focusedIndex = input.index
+    }
+
+    inputs.clear()
+
+    var bestDist = Double.PositiveInfinity
+    for (input <- orderedInputs) {
+      val l = input.layout
+      var dist = 0.0
+      if (mouse.x < l.x0) dist += l.x0 - mouse.x
+      if (mouse.y < l.y0) dist += l.y0 - mouse.y
+      if (mouse.x > l.x1) dist += mouse.x - l.x1
+      if (mouse.y > l.y1) dist += mouse.y - l.y1
+      if (dist <= input.distance) {
+        if (input.input == BlockerArea) {
+          return
+        } else if (dist < bestDist) {
+          focusedInput = input.input
+          focusedIndex = input.index
+          bestDist = dist
+        }
       }
     }
   }

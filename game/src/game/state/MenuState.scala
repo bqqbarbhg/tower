@@ -48,7 +48,7 @@ class MenuState extends GameState {
 
   val buttons = Array(ContinueButton, ExitButton)
 
-  val optionsMenu = new OptionsMenu()
+  val optionsMenu = new OptionsMenu(inputSet, canvas)
 
   override def load(): Unit = {
     menuAssets.acquire()
@@ -106,7 +106,7 @@ class MenuState extends GameState {
 
     val div = Layout.screen720p
 
-    optionsMenu.update(inputSet, canvas)
+    optionsMenu.update()
 
     if (false) {
       div.pushLeft(1280.0 * 0.1)
@@ -116,7 +116,7 @@ class MenuState extends GameState {
       for (button <- buttons) {
         val pos = options.pushTop(40.0)
 
-        inputSet.add(button.input, pos)
+        inputSet.add(0, button.input, pos)
 
         var style = tMenuItem.copy(height = pos.heightPx, color = Color.White.copy(a = 0.5))
         if (button.input.focused) {

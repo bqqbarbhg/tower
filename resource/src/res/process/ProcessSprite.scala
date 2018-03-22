@@ -13,6 +13,9 @@ object ProcessSprite {
     if (config.crop) {
       CropSprite.cropSprite(sprite, config)
     }
+
+    sprite.wrapX = config.wrapX
+    sprite.wrapY = config.wrapY
   }
 
   def processSprite(image: Image, name: String, config: Config.Res.Sprite): Seq[Sprite] = {

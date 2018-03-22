@@ -6,162 +6,93 @@ import ui.Canvas.TextStyle
 import ui._
 import asset._
 import core._
+import menu.gui._
 import ui.SpriteBatch.SpriteDraw
+import game.options._
+import main.GameStartup
+
+import scala.collection.mutable.ArrayBuffer
 
 
 object OptionsMenu {
 
-  val MapModeOptions = Vector(
-    "Map",
-    "SubData",
-    "Persistent",
-    "PersistentCoherent",
-  )
-
-  class Options {
-    var uniformMapMode: String = "SubData"
-    var vertexMapMode: String = "Map"
-  }
-
   val MainFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
-  private val tLabel = TextStyle(MainFont, 24.0)
-
-  val SmallFrame = Identifier("gui/menu/frame_small.png")
-  val Highlight = Identifier("gui/menu/highlight.png")
-
-  def drawNineSlice(canvas: Canvas, layer: Int, sprite: Identifier, layout: Layout, size: Double): Unit = {
-    val sd = new SpriteDraw()
-    sd.sprite = sprite
-
-    def drawRow(): Unit = {
-      sd.m13 = (layout.x0 - size).toFloat
-      sd.m11 = size.toFloat * 3.0f
-      sd.cropX0 = 0.0f / 3.0f
-      sd.cropX1 = 1.0f / 3.0f
-      canvas.draw(layer, sd)
-
-      val width = layout.widthPx.toFloat
-      sd.m13 = layout.x0.toFloat - width * 1.0f
-      sd.m11 = width * 3.0f
-      sd.cropX0 = 1.0f / 3.0f
-      sd.cropX1 = 2.0f / 3.0f
-      canvas.draw(layer, sd)
-
-      sd.m13 = layout.x1.toFloat - size.toFloat * 2.0f
-      sd.m11 = size.toFloat * 3.0f
-      sd.cropX0 = 2.0f / 3.0f
-      sd.cropX1 = 3.0f / 3.0f
-      canvas.draw(layer, sd)
-    }
-
-    sd.m23 = (layout.y0 - size).toFloat
-    sd.m22 = size.toFloat * 3.0f
-    sd.cropY0 = 0.0f / 3.0f
-    sd.cropY1 = 1.0f / 3.0f
-    drawRow()
-
-    val height = layout.heightPx.toFloat
-    sd.m23 = layout.y0.toFloat - height * 1.0f
-    sd.m22 = height * 3.0f
-    sd.cropY0 = 1.0f / 3.0f
-    sd.cropY1 = 2.0f / 3.0f
-    drawRow()
-
-    sd.m23 = layout.y1.toFloat - size.toFloat * 2.0f
-    sd.m22 = size.toFloat * 3.0f
-    sd.cropY0 = 2.0f / 3.0f
-    sd.cropY1 = 3.0f / 3.0f
-    drawRow()
-  }
-
-  abstract class Dropdown {
-    var layout: Layout = Layout.Empty
-    var open: Boolean = false
-
-    val openInput = new InputArea()
-    val optionInput = new InputArea()
-
-    def optionNames: Seq[String]
-    def get: Int
-    def set(value: Int)
-
-    def update(inputs: InputSet, canvas: Canvas): Unit = {
-      val opts = optionNames
-      inputs.add(openInput, layout)
-
-      drawNineSlice(canvas, 0, SmallFrame, layout, 32.0)
-      if (openInput.focused)
-        canvas.draw(0, Highlight, layout)
-
-      val selected = optionNames(get)
-      canvas.drawText(0, tLabel, layout, selected)
-
-      if (open) {
-
-        val itemHeight = layout.heightUnits
-        val box = layout.copy.extendBottom(15.0).edgeBottom.extendBottom(itemHeight * opts.length)
-
-        drawNineSlice(canvas, 1, SmallFrame, box, 32.0)
-
-        for ((opt, index) <- opts.zipWithIndex) {
-          val item = box.pushTop(itemHeight)
-          inputs.add(optionInput, item, index)
-          canvas.drawText(1, tLabel, item, opt)
-
-          if (optionInput.focusIndex == index)
-            canvas.draw(1, Highlight, item)
-        }
-      }
-
-    }
-  }
+  val InfoLabel = new LabelStyle(18.0, TextStyle(MainFont, color = Color.White.copy(a = 0.6)))
+  val NormalLabel = new LabelStyle(22.0, TextStyle(MainFont))
+  val NormalDropdown = new DropdownStyle(22.0, 0.0, 0.0, 0.0,
+    idleBackgroundSprite = Identifier("gui/menu/background_idle.png"),
+    focusBackgroundSprite = Identifier("gui/menu/background_focus.png"),
+    itemBackgroundSprite = Identifier("gui/menu/background.png"),
+    focusedItemBackgroundSprite = Identifier("gui/menu/background_dropdown_select.png"),
+    iconSprite = Identifier("gui/menu/dropdown_icon.png"),
+    itemPadding = 5.0
+  )
+  val NormalCheckbox = new CheckboxStyle(22.0,
+    Identifier("gui/menu/checkbox_false.png"),
+    Identifier("gui/menu/checkbox_true.png"),
+    checkRadius = 0.0,
+    iconPadding = 5.0
+  )
+  val NormalButton = new ButtonStyle(
+    height = 22.0,
+    idleBackgroundSprite = Identifier("gui/menu/background_idle.png"),
+    focusBackgroundSprite = Identifier("gui/menu/background_focus.png"),
+    clickRadius = 0.0,
+    padding = 5.0,
+  )
 
 }
 
-class OptionsMenu {
+class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
 
-  val options = new Options()
+  val elements = ArrayBuffer[Element]()
+  var options = Options.current.copy
 
-  val uniformMap = new Dropdown() {
-    def optionNames = MapModeOptions
-    def get = MapModeOptions.indexOf(options.uniformMapMode)
-    def set(value: Int) = options.uniformMapMode = MapModeOptions(value)
+  elements += new Label(NormalLabel) {
+    override def text: String = "Uniform map mode"
   }
 
-  val vertexMap = new Dropdown() {
-    def optionNames = MapModeOptions
-    def get = MapModeOptions.indexOf(options.vertexMapMode)
-    def set(value: Int) = options.vertexMapMode = MapModeOptions(value)
+  elements += new LabelDropdown[String](NormalDropdown, NormalLabel) {
+    override def items: Seq[String] = GraphicsOptions.OpenGlOptions.MapModes
+    override def currentItem: String = options.graphics.openGl.uniformMapMode
+    override def setItem(newItem: String): Unit = options.graphics.openGl.uniformMapMode = newItem
   }
 
-  val dropdowns = Vector(uniformMap, vertexMap)
+  elements += new Padding(20.0)
 
-  def update(inputs: InputSet, canvas: Canvas): Unit = {
+  elements += new Label(NormalLabel) {
+    override def text: String = "Vertex map mode"
+  }
 
-    if (inputs.clicked) {
-      for (dropdown <- dropdowns) {
-        dropdown.open = false
-      }
+  elements += new LabelDropdown[String](NormalDropdown, NormalLabel) {
+    override def items: Seq[String] = GraphicsOptions.OpenGlOptions.MapModes
+    override def currentItem: String = options.graphics.openGl.vertexMapMode
+    override def setItem(newItem: String): Unit = options.graphics.openGl.vertexMapMode = newItem
+  }
+
+  elements += new Padding(20.0)
+
+  elements += new LabelButton(NormalButton, NormalLabel) {
+    override def text: String = "Apply"
+    override def onClick(): Unit = {
+      Options.current = options.copy
+      GameStartup.restartRequested = true
+    }
+  }
+
+  def update(): Unit = {
+
+    val parent = Layout.screen720p.padAround(50.0).pushLeft(250.0)
+
+    for (element <- elements) {
+      element.inputs = inputs
+      element.canvas = canvas
     }
 
-    for (dropdown <- dropdowns) {
-      if (dropdown.openInput.clicked) {
-        dropdown.open = true
-      }
-      val index = dropdown.optionInput.clickIndex
-      if (index >= 0) {
-        dropdown.set(index)
-      }
+    for (element <- elements) {
+      element.update(parent)
     }
 
-    val container = Layout.screen720p.padAround(50.0)
-    val buttons = container.pushLeft(200.0)
-    uniformMap.layout = buttons.pushTop(20.0)
-    buttons.padTop(30.0)
-    vertexMap.layout = buttons.pushTop(20.0)
-
-    uniformMap.update(inputs, canvas)
-    vertexMap.update(inputs, canvas)
   }
 
 }

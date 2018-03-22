@@ -281,6 +281,7 @@ class Runner(val opts: RunOptions) {
           println(s"Atlas ${atlas.name} ERROR: Failed to pack")
         }
 
+        sprites.foreach(_.unload())
         spriteImages.foreach(_.unload())
         atlas.unload()
       }

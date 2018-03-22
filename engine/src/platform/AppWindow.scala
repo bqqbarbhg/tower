@@ -71,6 +71,7 @@ object AppWindow {
   def unload(): Unit = {
     glfwDestroyWindow(window)
     glfwTerminate()
+    window = NULL
   }
 
   /** Does the application window want to close? */

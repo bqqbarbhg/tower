@@ -112,6 +112,12 @@ object Config {
       /** Aniamtion frames Y */
       var framesY: Int = 0
 
+      /** Should the sprite be tiled horizontally */
+      var wrapX: Boolean = false
+
+      /** Should the sprite be tiled vertical */
+      var wrapY: Boolean = false
+
       override def visit(v: SimpleVisitor): Unit = {
         atlas = v.field("atlas", atlas)
         crop = v.field("crop", crop)
@@ -119,6 +125,8 @@ object Config {
         animation = v.field("animation", animation)
         framesX = v.field("framesX", framesX)
         framesY = v.field("framesY", framesY)
+        wrapX = v.field("wrapX", wrapX)
+        wrapY = v.field("wrapY", wrapY)
       }
     }
 
@@ -140,6 +148,7 @@ object Config {
 
       /** How to process the page textures */
       var texture = new Texture()
+      texture.premultiplyAlpha = true
 
       override def visit(v: SimpleVisitor): Unit = {
         packingAlgorithm = v.field("packingAlgorithm", packingAlgorithm)
@@ -164,11 +173,15 @@ object Config {
       /** Should the texture data be converted from sRGB to linar in shaders */
       var readAsLinear: Boolean = false
 
+      /** Should the colors be premultiplied with alpha */
+      var premultiplyAlpha: Boolean = false
+
       override def visit(v: SimpleVisitor): Unit = {
         semantic = v.field("semantic", semantic)
         compressed = v.field("compressed", compressed)
         hasMipmaps = v.field("hasMipmaps", hasMipmaps)
         readAsLinear = v.field("readAsLinear", readAsLinear)
+        premultiplyAlpha = v.field("premultiplyAlpha", premultiplyAlpha)
       }
     }
 

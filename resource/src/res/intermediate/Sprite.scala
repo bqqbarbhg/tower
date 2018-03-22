@@ -7,6 +7,9 @@ class Sprite(val image: Image, val name: String) extends Resource {
   var imageBounds = new Rectangle(0, 0, image.width, image.height)
   var bounds = new Rectangle(0, 0, image.width, image.height)
 
+  var wrapX: Boolean = false
+  var wrapY: Boolean = false
+
   override def unload(): Unit = {}
 }
 

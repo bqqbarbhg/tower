@@ -30,6 +30,11 @@ object RendererGl {
     instance
   }
 
+  def shutdown(): Unit = {
+    instance.unload()
+    instance = null
+  }
+
   def get: RendererGl = {
     assert(instance != null)
     instance
@@ -39,6 +44,7 @@ object RendererGl {
 
   case object BlendNone extends BlendMode(false, GL_ONE, GL_ZERO)
   case object BlendAlpha extends BlendMode(true, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+  case object BlendPremultipliedAlpha extends BlendMode(true, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
   case object BlendAddAlpha extends BlendMode(true, GL_SRC_ALPHA, GL_ONE)
 
   /**
@@ -399,7 +405,8 @@ class RendererGl {
   }
 
   def unload(): Unit = {
-    uniformAllocator.unload()
+    if (uniformAllocator != null)
+      uniformAllocator.unload()
     samplerCache.unload()
     vaoCache.unload()
   }

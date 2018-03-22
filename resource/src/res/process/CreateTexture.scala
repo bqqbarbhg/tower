@@ -58,10 +58,19 @@ object CreateTexture {
   /** Generate a texture from `image` */
   def createTexture(image: Image, config: Config.Res.Texture): Texture = {
 
+    var imageToFree: Option[Image] = None
+
+    val imgData = if (config.premultiplyAlpha) {
+      val premultiplied = PremultiplyAlpha.premultiplyAlpha(image)
+      imageToFree = Some(premultiplied)
+      premultiplied
+    } else
+      image
+
     val levels = if (config.hasMipmaps) {
-      GenerateMipmaps.generateMipmaps(image)
+      GenerateMipmaps.generateMipmaps(imgData)
     } else {
-      Array(image)
+      Array(imgData)
     }
 
     val levelTextures = config.semantic match {
@@ -99,6 +108,9 @@ object CreateTexture {
       texture.levelData(index) = levelTex.levelData.head
       levelTex.levelData = Array[ByteBuffer]()
     }
+
+    for (free <- imageToFree)
+      free.unload()
 
     texture
   }

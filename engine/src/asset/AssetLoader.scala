@@ -64,6 +64,12 @@ object AssetLoader {
     }
   }
 
+  def unloadEverything(): Unit = {
+    for (asset <- assets) {
+      asset.unload()
+    }
+  }
+
   def startLoading(): ArrayBuffer[LoadableAsset] = {
     // Queue load on all referenced assets (may reference new assets)
     for (asset <- assets) {

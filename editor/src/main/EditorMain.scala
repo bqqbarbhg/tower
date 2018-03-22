@@ -1,5 +1,6 @@
 package main
 
+import asset.AssetLoader
 import core.StackAllocator
 import game.state._
 import game.system.RenderingSystem
@@ -34,17 +35,29 @@ object EditorMain extends App {
 
   Package.set(pack)
 
+  AssetLoader.preloadAtlases()
+
   val opts = new GameStartup.Options()
   opts.engine.debug = arg.flag("debug")
   opts.engine.glCompatability = true
   GameStartup.start(opts)
 
-  GameState.push(new MenuState())
+  do {
+    GameStartup.restartRequested = false
 
-  while (AppWindow.running) {
-    RenderingSystem.updateScreenSize(AppWindow.width, AppWindow.height)
-    GameState.update()
-  }
+
+    GameState.push(new MenuState())
+
+    while (AppWindow.running && !GameStartup.restartRequested) {
+      RenderingSystem.updateScreenSize(AppWindow.width, AppWindow.height)
+      GameState.update()
+    }
+
+    if (GameStartup.restartRequested) {
+      GameStartup.restart()
+    }
+
+  } while (GameStartup.restartRequested)
 
   GameStartup.stop()
 }
