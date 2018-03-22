@@ -6,7 +6,7 @@ import render._
 object Layout {
 
   /** Enables debug drawing of layouting */
-  var debug: Boolean = true
+  var debug: Boolean = false
 
   def screen720p: Layout = {
     val width = RenderTarget.Backbuffer.width.toDouble

@@ -113,11 +113,6 @@ class LoadingState extends GameState {
       val outline = TurretSpinnerOutline(frame)
 
 
-      val colA = Color.rgb(0xFFAAAA)
-      val colB = Color.rgb(0xAAAAFF)
-      val outlineColor = Color.lerp(colA, colB, math.sin(time * 2.0 * math.Pi) * 0.5 + 0.5)
-      val fillColor = (outlineColor * 0.5).copy(a = 0.2)
-
       val rotateTime = time * 0.5
       val pulseTime = time * 5.0
       val scale = 2.0
