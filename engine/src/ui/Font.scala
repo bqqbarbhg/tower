@@ -3,7 +3,7 @@ package ui
 import java.nio.{ByteBuffer, ByteOrder}
 
 import Font._
-import asset.ShaderAsset
+import asset.{DynamicAsset, ShaderAsset, Unloadable}
 import gfx._
 import core._
 import org.lwjgl.system.MemoryUtil
@@ -82,23 +82,16 @@ object Font {
   val MaxQuadsPerDraw = 4 * 1024
   val MaxQuadsPerFrame = 64 * 1024
 
-  lazy val fontIndexBuffer = IndexBuffer.createStatic(withStack {
-    val data = alloca(MaxQuadsPerDraw * 6 * 2)
-    for (i <- 0 until MaxQuadsPerDraw) {
-      val base = i * 4
-      data.putShort((base + 0).toShort)
-      data.putShort((base + 2).toShort)
-      data.putShort((base + 1).toShort)
-      data.putShort((base + 1).toShort)
-      data.putShort((base + 2).toShort)
-      data.putShort((base + 3).toShort)
-    }
-    data.position(0)
-    data
-  }).withLabel("Font IB")
 
-  lazy val fontVertexBuffer = VertexBuffer.createDynamic(FontVertexSpec, 4 * MaxQuadsPerFrame).withLabel("Font VB")
-  var fontVertexOffset = 0
+
+  val dynamic = DynamicAsset("SpriteBatch dynamic", new Unloadable {
+    val fontVertexBuffer = VertexBuffer.createDynamic(FontVertexSpec, 4 * MaxQuadsPerFrame).withLabel("Font VB")
+    var fontVertexOffset = 0
+
+    override def unload(): Unit = {
+      fontVertexBuffer.free()
+    }
+  })
 
   /** Number of batches that can be drawn with one draw-call */
   val MaxBatchCount: Int = 32
@@ -424,11 +417,14 @@ class Font {
       }
     })
 
+    val dyn = dynamic.get
+    val fontVertexBuffer = dyn.fontVertexBuffer
+
     // Write the vertices of the batches
-    if (Font.fontVertexOffset + maxQuads * 4 > fontVertexBuffer.numVertices) {
-      Font.fontVertexOffset = 0
+    if (dyn.fontVertexOffset + maxQuads * 4 > fontVertexBuffer.numVertices) {
+      dyn.fontVertexOffset = 0
     }
-    fontVertexBuffer.map(Font.fontVertexOffset, maxQuads * 4, buffer => {
+    fontVertexBuffer.map(dyn.fontVertexOffset, maxQuads * 4, buffer => {
       for (i <- offset until offset + count) {
         val draw = draws(i)
         val batch = batchIndex(i)
@@ -437,13 +433,16 @@ class Font {
       }
       drawnQuads * 4
     })
-    val vertexOffset = Font.fontVertexOffset
-    Font.fontVertexOffset += drawnQuads * 4
+    val vertexOffset = dyn.fontVertexOffset
+    dyn.fontVertexOffset += drawnQuads * 4
+
+    val sharedIb = SharedQuadIndexBuffer.get
+    val indexBuffer = sharedIb.indexBuffer
 
     // Do the actual draw
     val shader = FontShader.get
     shader.use()
-    renderer.drawElements(drawnQuads * 6, fontIndexBuffer, fontVertexBuffer, baseVertex = vertexOffset)
+    renderer.drawElements(drawnQuads * 6, indexBuffer, fontVertexBuffer, baseVertex = vertexOffset)
   }
 
   /**

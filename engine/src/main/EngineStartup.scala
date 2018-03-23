@@ -1,6 +1,7 @@
 package main
 
 import asset.AssetLoader
+import debug.ResourceTracker
 import platform.AppWindow
 import render._
 import render.opengl.{MapMode, OptsGl}
@@ -66,6 +67,18 @@ object EngineStartup {
   private def softStop(): Unit = {
     AssetLoader.unloadEverything()
     Renderer.shutdown()
+
+    val leaked = ResourceTracker.active
+    if (leaked.length > 0) {
+      println(s"Leaked ${leaked.length} resources:")
+      for (res <- leaked) {
+        println(s"-- ${res.kind} ${res.name}")
+        for (f <- res.stack) {
+          println(s"${f.getFileName}:${f.getLineNumber}: ${f.getClassName}.${f.getMethodName}")
+        }
+        println()
+      }
+    }
   }
 
   def stop(): Unit = {

@@ -9,6 +9,7 @@ import org.lwjgl.opengl.GL44._
 import core._
 import org.lwjgl.system.MemoryUtil
 import render._
+import debug.ResourceHandle
 
 object VertexBufferGl {
   var serialCounter = 0
@@ -44,6 +45,7 @@ class VertexBufferGl(val spec: VertexSpec, val numVertices: Int, val dynamic: Bo
   private var mapBuf: ByteBuffer = null
 
   val buffer: Int = glGenBuffers()
+  val debugRes = ResourceHandle("gl.vertexBuffer")
 
   // Initialize dynamic
   if (dynamic) {
@@ -209,6 +211,7 @@ class VertexBufferGl(val spec: VertexSpec, val numVertices: Int, val dynamic: Bo
     }
 
     glDeleteBuffers(buffer)
+    debugRes.free()
   }
 
   def setLabel(label: String): Unit = DebugGl.setLabel(DebugGl.BUFFER, buffer, label)

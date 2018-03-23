@@ -94,12 +94,12 @@ abstract class LoadableAsset {
     * Load the actual content of the asset.
     */
   final def load(): Unit = {
+    if (state == StateUnloaded || state == StatePreloaded) {
+      println(s"Force load asset: $debugName")
+    }
+
     startLoading()
     if (state == StateLoading) {
-      if (!isAssetAndDependenciesLoaded()) {
-        println(s"Force load asset: $debugName")
-      }
-
       for (dep <- dependencies) {
         dep.load()
       }

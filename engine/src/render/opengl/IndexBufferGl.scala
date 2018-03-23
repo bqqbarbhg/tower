@@ -1,5 +1,6 @@
 package render.opengl
 
+import debug.ResourceHandle
 import java.nio.ByteBuffer
 import org.lwjgl.opengl.GL15._
 
@@ -25,9 +26,11 @@ object IndexBufferGl {
 class IndexBufferGl(val numIndices: Int) {
   val serial: Int = IndexBufferGl.nextSerial()
   val buffer: Int = glGenBuffers()
+  val debugRes = ResourceHandle("gl.indexBuffer")
 
   def free(): Unit = {
     glDeleteBuffers(buffer)
+    debugRes.free()
   }
 
   def setLabel(label: String): Unit = DebugGl.setLabel(DebugGl.BUFFER, buffer, label)

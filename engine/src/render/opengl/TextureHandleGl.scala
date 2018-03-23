@@ -2,6 +2,7 @@ package render.opengl
 
 import java.nio.ByteBuffer
 
+import debug.ResourceHandle
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11._
 import org.lwjgl.opengl.GL12._
@@ -123,6 +124,7 @@ object TextureHandleGl {
 
 class TextureHandleGl(val width: Int, val height: Int, val numMips: Int, val format: String, val bind: Int, val hasSrgbToLinaerConversion: Boolean) {
   val texture = glGenTextures()
+  val debugRes = ResourceHandle("gl.texture")
 
   /** Upload data for one of the layers an array texture */
   def setLayerData(index: Int, width: Int, height: Int, format: String, levels: Seq[ByteBuffer]): Unit = {
@@ -154,6 +156,7 @@ class TextureHandleGl(val width: Int, val height: Int, val numMips: Int, val for
   }
 
   def free(): Unit = {
+    debugRes.free()
     glDeleteTextures(texture)
   }
 
