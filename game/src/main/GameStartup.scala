@@ -1,8 +1,10 @@
 package main
 
+import game.options.GraphicsOptions.OpenGlOptions
 import game.options.Options
 import io.SimpleSerialization.SMap
 import io.Toml
+import render.opengl.{MapMode, OptsGl}
 
 object GameStartup {
 
@@ -25,20 +27,29 @@ object GameStartup {
       val map = Toml.parseFile("options.toml")
       map.write(Options.current)
     }
+
+    val opt = Options.current
+    val glOpt = opt.graphics.openGl
+    OptsGl.uniformMap = OpenGlOptions.mapModeToEnum(glOpt.uniformMapMode, MapMode.PersistentCopy)
+    OptsGl.vertexMap = OpenGlOptions.mapModeToEnum(glOpt.uniformMapMode, MapMode.Persistent)
+
+    EngineStartup.softStart()
   }
 
   private def softStop(): Unit = {
     val map = SMap.read(Options.current)
     Toml.formatFile(map, "options.toml")
+
+    EngineStartup.softStop()
   }
 
   def stop(): Unit = {
+    softStop()
     EngineStartup.stop()
   }
 
   def restart(): Unit = {
     softStop()
-    EngineStartup.restart()
     softStart()
   }
 

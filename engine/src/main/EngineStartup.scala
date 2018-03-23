@@ -56,15 +56,13 @@ object EngineStartup {
     if (opts.profile) {
       OptsGl.useProfiling = true
     }
-
-    softStart()
   }
 
-  private def softStart(): Unit = {
+  def softStart(): Unit = {
     Renderer.initialize()
   }
 
-  private def softStop(): Unit = {
+  def softStop(): Unit = {
     AssetLoader.unloadEverything()
     Renderer.shutdown()
 
@@ -82,14 +80,8 @@ object EngineStartup {
   }
 
   def stop(): Unit = {
-    softStop()
     AppWindow.unload()
     IoThread.interrupt()
     IoThread.join()
-  }
-
-  def restart(): Unit = {
-    softStop()
-    softStart()
   }
 }

@@ -2,6 +2,7 @@ package game.options
 
 import game.options.GraphicsOptions.OpenGlOptions
 import io.{SimpleSerializable, SimpleVisitor}
+import render.opengl.MapMode
 
 object GraphicsOptions {
 
@@ -21,6 +22,20 @@ object GraphicsOptions {
 
   object OpenGlOptions {
     val MapModes = Vector("SubData", "Map", "Persistent", "PersistentCopy", "PersistentCoherent", "PersistentCopyCoherent")
+
+    def mapModeToEnum(name: String, fallback: MapMode): MapMode = {
+      name match {
+        case "SubData" => MapMode.SubData
+        case "Map" => MapMode.Map
+        case "Persistent" => MapMode.Persistent
+        case "PersistentCopy" => MapMode.PersistentCopy
+        case "PersistentCoherent" => MapMode.PersistentCoherent
+        case "PersistentCopyCoherent" => MapMode.PersistentCopyCoherent
+        case other =>
+          println(s"Map mode '$name' does not exist!")
+          fallback
+      }
+    }
   }
 
 }

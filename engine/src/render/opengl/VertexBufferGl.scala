@@ -139,7 +139,7 @@ class VertexBufferGl(val spec: VertexSpec, val numVertices: Int, val dynamic: Bo
         buf.position(0)
         buf.limit(toWrite)
         MemoryUtil.memCopy(buf, copy)
-        if (mapMode.coherent)
+        if (!mapMode.coherent)
           glFlushMappedBufferRange(GL_ARRAY_BUFFER, loc, toWrite)
         MemoryUtil.memFree(buf)
     }
