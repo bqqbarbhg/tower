@@ -62,8 +62,9 @@ class ModelAsset(val name: Identifier) extends LoadableAsset {
       val base = i * TexturesPerMaterial
       val mat = modelImpl.materials(i)
 
-      mat.albedoTex = Option(materialTextures(base + 0)).map(_.get).getOrElse(Material.missingAlbedo)
-      mat.normalTex = Option(materialTextures(base + 1)).map(_.get).getOrElse(Material.missingNormal)
+      val materialShared = Material.shared.get
+      mat.albedoTex = Option(materialTextures(base + 0)).map(_.get).getOrElse(materialShared.missingAlbedo)
+      mat.normalTex = Option(materialTextures(base + 1)).map(_.get).getOrElse(materialShared.missingNormal)
     }
 
     for (i <- 0 until modelImpl.numAnims) {

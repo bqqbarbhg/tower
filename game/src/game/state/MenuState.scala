@@ -8,6 +8,7 @@ import platform.AppWindow
 import MenuState._
 import game.system.{ModelSystem, RenderingSystem}
 import game.system.ModelSystem.ModelRef
+import gfx.Material
 import menu.OptionsMenu
 import ui._
 import ui.Canvas._
@@ -15,6 +16,7 @@ import ui.InputSet.InputArea
 
 object MenuState {
 
+  val MenuAtlas = AtlasAsset("atlas/menu.s2at")
   val StatueModel = ModelAsset("mainmenu/mainmenu_statue.fbx.s2md")
   val MainFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
 
@@ -27,6 +29,8 @@ object MenuState {
     StatueModel,
     MainFont,
     SimpleMeshShader,
+    MenuAtlas,
+    Material.shared,
   )
 
   class Button(val localeKey: String) {

@@ -82,16 +82,7 @@ object Font {
   val MaxQuadsPerDraw = 4 * 1024
   val MaxQuadsPerFrame = 64 * 1024
 
-
-
-  val dynamic = DynamicAsset("SpriteBatch dynamic", new Unloadable {
-    val fontVertexBuffer = VertexBuffer.createDynamic(FontVertexSpec, 4 * MaxQuadsPerFrame).withLabel("Font VB")
-    var fontVertexOffset = 0
-
-    override def unload(): Unit = {
-      fontVertexBuffer.free()
-    }
-  })
+  val ringBuffer = new RingVertexBufferAsset("Font", FontVertexSpec, 4 * MaxQuadsPerFrame)
 
   /** Number of batches that can be drawn with one draw-call */
   val MaxBatchCount: Int = 32
@@ -417,14 +408,11 @@ class Font {
       }
     })
 
-    val dyn = dynamic.get
-    val fontVertexBuffer = dyn.fontVertexBuffer
+    val ringVb = ringBuffer.get
+    val fontVertexBuffer = ringVb.buffer
 
-    // Write the vertices of the batches
-    if (dyn.fontVertexOffset + maxQuads * 4 > fontVertexBuffer.numVertices) {
-      dyn.fontVertexOffset = 0
-    }
-    fontVertexBuffer.map(dyn.fontVertexOffset, maxQuads * 4, buffer => {
+    val vertexOffset = ringVb.reserve(maxQuads * 4)
+    fontVertexBuffer.map(vertexOffset, maxQuads * 4, buffer => {
       for (i <- offset until offset + count) {
         val draw = draws(i)
         val batch = batchIndex(i)
@@ -433,8 +421,7 @@ class Font {
       }
       drawnQuads * 4
     })
-    val vertexOffset = dyn.fontVertexOffset
-    dyn.fontVertexOffset += drawnQuads * 4
+    ringVb.advance(drawnQuads * 4)
 
     val sharedIb = SharedQuadIndexBuffer.get
     val indexBuffer = sharedIb.indexBuffer

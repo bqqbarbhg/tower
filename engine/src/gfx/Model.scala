@@ -147,16 +147,18 @@ class Model {
     for (i <- 0 until this.numAnims) {
       this.anims(i) = Animation.load(new Identifier(this.animResource(i))).orNull
     }
+
+    val materialShared = Material.shared.get
     for (material <- this.materials) {
       if (material.albedoTexRes != Identifier.Empty)
-        material.albedoTex = Texture.load(material.albedoTexRes).getOrElse(Material.missingAlbedo)
+        material.albedoTex = Texture.load(material.albedoTexRes).getOrElse(materialShared.missingAlbedo)
       else
-        material.albedoTex = Material.missingAlbedo
+        material.albedoTex = materialShared.missingAlbedo
 
       if (material.normalTexRes != Identifier.Empty)
-        material.normalTex = Texture.load(material.normalTexRes).getOrElse(Material.missingNormal)
+        material.normalTex = Texture.load(material.normalTexRes).getOrElse(materialShared.missingNormal)
       else
-        material.normalTex = Material.missingNormal
+        material.normalTex = materialShared.missingNormal
     }
   }
 

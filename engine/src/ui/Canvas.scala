@@ -4,7 +4,8 @@ import javafx.scene.effect.BlendMode
 
 import core._
 import render._
-import asset.FontAsset
+import asset._
+import asset.{DynamicAsset, FontAsset}
 import ui.Canvas._
 import ui.Font.TextDraw
 import ui.SpriteBatch.SpriteDraw
@@ -14,7 +15,15 @@ import scala.collection.mutable.ArrayBuffer
 
 object Canvas {
 
-  lazy private val sharedSpriteBatch = new SpriteBatch()
+  private class Shared extends Unloadable{
+    val spriteBatch = new SpriteBatch()
+
+    def unload(): Unit = {
+      spriteBatch.unload()
+    }
+  }
+
+  private val shared = DynamicAsset("Canvas.Shared", new Shared)
 
   case class Outline(size: Double, color: Color = Color.Black)
   val NoOutline = Outline(0.0, Color.TransparentBlack)
@@ -146,7 +155,7 @@ class Canvas {
   def render(): Unit = {
     val renderer = Renderer.get
 
-    val sb = Canvas.sharedSpriteBatch
+    val sb = Canvas.shared.get.spriteBatch
     var sbNeedsFlush = false
 
     for (layer <- layers) {

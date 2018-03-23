@@ -1,7 +1,8 @@
 package ui
 
-import asset.ShaderAsset
+import asset._
 import core._
+import gfx.RingVertexBufferAsset
 import render.VertexSpec.{Attrib, DataFmt}
 import render._
 
@@ -22,7 +23,8 @@ object DebugDraw {
   ))
 
   val MaxLinesPerFrame = 1024*32
-  lazy val vertexBuffer = VertexBuffer.createDynamic(LineSpec, MaxLinesPerFrame * 4).withLabel("DebugDraw.vertexBuffer")
+
+  val ringBuffer = new RingVertexBufferAsset("DebugDraw", LineSpec, MaxLinesPerFrame)
 
   var bufferOffset = 0
 
@@ -56,10 +58,10 @@ object DebugDraw {
   def render(viewProjection: Matrix4): Unit = {
 
     val numVerts = lines.length * 2
-    if (bufferOffset + numVerts >= vertexBuffer.numVertices)
-      bufferOffset = 0
+    val rb = ringBuffer.get
+    val bufferOffset = rb.push(numVerts)
 
-    vertexBuffer.map(bufferOffset, numVerts, b => {
+    rb.buffer.map(bufferOffset, numVerts, b => {
 
       for (line <- lines) {
         b.putFloat(line.begin.x.toFloat)
@@ -84,19 +86,17 @@ object DebugDraw {
       LineShader.VertexUniform.ViewProjection.set(u, viewProjection)
     })
 
-    renderer.drawLines(numVerts, vertexBuffer, baseVertex = bufferOffset)
-
-    bufferOffset += numVerts
+    renderer.drawLines(numVerts, rb.buffer, baseVertex = bufferOffset)
 
     lines.clear()
   }
 
   def render2D(): Unit = {
     val numVerts = lines2D.length * 2
-    if (bufferOffset + numVerts >= vertexBuffer.numVertices)
-      bufferOffset = 0
+    val rb = ringBuffer.get
+    val bufferOffset = rb.push(numVerts)
 
-    vertexBuffer.map(bufferOffset, numVerts, b => {
+    rb.buffer.map(bufferOffset, numVerts, b => {
 
       for (line <- lines2D) {
         b.putFloat(line.begin.x.toFloat)
@@ -126,9 +126,7 @@ object DebugDraw {
       LineShader.VertexUniform.ViewProjection.set(u, viewProjection)
     })
 
-    renderer.drawLines(numVerts, vertexBuffer, baseVertex = bufferOffset)
-
-    bufferOffset += numVerts
+    renderer.drawLines(numVerts, rb.buffer, baseVertex = bufferOffset)
 
     lines2D.clear()
   }

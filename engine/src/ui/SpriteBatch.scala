@@ -36,22 +36,6 @@ object SpriteBatch {
     }
   }
 
-  // @Todo: Merge with fontIndexBuffer somehow
-  lazy val spriteIndexBuffer = IndexBuffer.createStatic(withStack {
-    val data = alloca(BatchMaxSprites * 6 * 2)
-    for (i <- 0 until BatchMaxSprites) {
-      val base = i * 4
-      data.putShort((base + 0).toShort)
-      data.putShort((base + 2).toShort)
-      data.putShort((base + 1).toShort)
-      data.putShort((base + 1).toShort)
-      data.putShort((base + 2).toShort)
-      data.putShort((base + 3).toShort)
-    }
-    data.position(0)
-    data
-  }).withLabel("Sprite IB")
-
   val SpriteSpec = VertexSpec(Vector(
     Attrib(2, DataFmt.F32, Identifier("Position")),
     Attrib(2, DataFmt.F32, Identifier("TexCoord")),
@@ -271,7 +255,8 @@ class SpriteBatch {
       p(SpriteShader.Permutations.UseArray) = useArray
     })
 
-    renderer.drawElements(numSpritesInBatch * 6, spriteIndexBuffer, vertexBuffer, baseVertex = vertexOffset)
+    val indexBuffer = SharedQuadIndexBuffer.get.indexBuffer
+    renderer.drawElements(numSpritesInBatch * 6, indexBuffer, vertexBuffer, baseVertex = vertexOffset)
 
     vertexOffset += numSpritesInBatch * 4
     if ((vertexOffset + BatchMaxSprites) * 4 > vertexBuffer.numVertices) {
