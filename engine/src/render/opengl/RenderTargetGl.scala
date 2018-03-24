@@ -28,6 +28,8 @@ class RenderTargetGl(val width: Int, val height: Int, val colorFormat: Array[Str
     0
   }
 
+  val debugRes = debug.ResourceHandle("gl.renderTarget")
+
   val clampedSamples = if (numSamples > 1) math.min(numSamples, MaxSamples) else 0
 
   val colorHandles = for ((format, index) <- colorFormat.zipWithIndex) yield {
@@ -98,8 +100,10 @@ class RenderTargetGl(val width: Int, val height: Int, val colorFormat: Array[Str
   def unload(): Unit = {
     depthRenderbuffer.map(o => glDeleteRenderbuffers(o))
     depthTexture.map(o => glDeleteTextures(o))
-    glDeleteTextures(colorHandles)
+    if (colorHandles.nonEmpty)
+      glDeleteTextures(colorHandles)
     if (fbo != 0) glDeleteFramebuffers(fbo)
+    debugRes.free()
   }
 
   def setLabel(label: String): Unit = {

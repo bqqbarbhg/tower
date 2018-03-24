@@ -52,8 +52,10 @@ abstract class DropdownBase(val style: DropdownStyle) extends Element {
         inputs.add(0, inputOpen, fullRect, style.openRadius)
 
       val bg = if (inputOpen.focused) style.focusBackgroundSprite else style.idleBackgroundSprite
-      canvas.draw(0, bg, fullRect)
-      canvas.draw(0, style.iconSprite, icon)
+      val color = if (enabled) Color.White else Color.White * 0.5
+      
+      canvas.draw(0, bg, fullRect, color)
+      canvas.draw(0, style.iconSprite, icon, color)
 
       if (isOpen) {
         val box = padded.edgeBottom
@@ -96,7 +98,14 @@ abstract class LabelDropdown[T](style: DropdownStyle, val labelStyle: LabelStyle
 
   def drawItem(parent: Layout, layer: Int, item: T): Layout = {
     val rect = parent.pushTop(labelStyle.height)
-    canvas.drawText(layer, labelStyle.textStyle, rect, itemToText(item))
+    val textStyle = if (enabled) {
+      labelStyle.textStyle
+    } else {
+      val col = labelStyle.textStyle.color
+      val faded = col * 0.5
+      labelStyle.textStyle.copy(color = faded)
+    }
+    canvas.drawText(layer, textStyle, rect, itemToText(item))
     rect
   }
 }

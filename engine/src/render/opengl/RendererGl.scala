@@ -110,6 +110,8 @@ class RendererGl {
 
   /** Needs to be called every frame */
   def beginFrame(): Unit = {
+    frameIndex += 1
+
     vaoCache.advanceFrame()
     samplerCache.advanceFrame()
     if (uniformAllocator != null)
@@ -409,6 +411,8 @@ class RendererGl {
       uniformAllocator.unload()
     samplerCache.unload()
     vaoCache.unload()
+    RenderTarget.Backbuffer.unload()
+    RenderTarget.Backbuffer = null
   }
 }
 

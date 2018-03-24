@@ -239,10 +239,10 @@ class SpriteBatch {
       val targetW = target.width.toFloat
       val targetH = target.height.toFloat
 
-      val texScaleX = 1.0f / currentAtlas.lastTexture.get.width.toFloat
-      val texScaleY = 1.0f / currentAtlas.lastTexture.get.height.toFloat
-      val texScaleZ = if (useArray) 1.0f / currentAtlas.textureArray.get.width.toFloat else 1.0f
-      val texScaleW = if (useArray) 1.0f / currentAtlas.textureArray.get.height.toFloat else 1.0f
+      val texScaleX = 1.0f / currentAtlas.lastTexture.get.originalWidth.toFloat
+      val texScaleY = 1.0f / currentAtlas.lastTexture.get.originalHeight.toFloat
+      val texScaleZ = if (useArray) 1.0f / currentAtlas.textureArray.get.originalWidth.toFloat else 1.0f
+      val texScaleW = if (useArray) 1.0f / currentAtlas.textureArray.get.originalHeight.toFloat else 1.0f
       val screenX = 2.0f / targetW
       val screenY = -2.0f / targetH
 

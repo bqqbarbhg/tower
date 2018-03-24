@@ -33,12 +33,22 @@ object EngineStartup {
     }
   }
 
+  var launchOptions: Options = null
+
   def start(opts: Options): Unit = {
-    AppWindow.initialize(opts.initialWidth, opts.initialHeight, opts.windowName, opts.debug)
+    AppWindow.initialize()
 
     IoThread.setName("Engine IO thread")
     IoThread.start()
     Task.Main.claimForThisThread()
+
+    launchOptions = opts
+  }
+
+  def softStart(windowStyle: AppWindow.WindowStyle): Unit = {
+    val opts = launchOptions
+
+    AppWindow.recreateWindow(windowStyle, opts.windowName, opts.debug)
 
     val device = GraphicsDevice.get
     if (device.doesNotSupportRowMajor) {
@@ -56,9 +66,9 @@ object EngineStartup {
     if (opts.profile) {
       OptsGl.useProfiling = true
     }
-  }
 
-  def softStart(): Unit = {
+    AppWindow.setSwapInterval(OptsGl.swapInterval)
+
     Renderer.initialize()
   }
 
@@ -80,6 +90,7 @@ object EngineStartup {
   }
 
   def stop(): Unit = {
+    AppWindow.destroyWindow()
     AppWindow.unload()
     IoThread.interrupt()
     IoThread.join()

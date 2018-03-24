@@ -28,7 +28,14 @@ object Canvas {
   case class Outline(size: Double, color: Color = Color.Black)
   val NoOutline = Outline(0.0, Color.TransparentBlack)
 
-  case class TextStyle(font: FontAsset, height: Double = 16.0, color: Color = Color.White, outline: Outline = NoOutline) {
+  case class Align(val x: Double, val y: Double)
+  val AlignTopLeft = Align(0.0, 0.0)
+  val AlignCenter = Align(0.5, 0.5)
+  val AlignTopRight = Align(1.0, 0.0)
+
+  case class TextStyle(font: FontAsset, height: Double = 16.0, color: Color = Color.White, outline: Outline = NoOutline, align: Align = AlignTopLeft) {
+
+    def scaled(amount: Double): TextStyle = this.copy(height = height * amount)
 
     def measureWidth(text: String): Double = measureWidth(text, 0, text.length)
     def measureWidth(text: String, offset: Int, length: Int): Double = {
@@ -71,6 +78,10 @@ class Canvas {
     draw(layer, sprite, layout.x0, layout.y0, layout.widthPx, layout.heightPx)
   }
 
+  def draw(layer: Int, sprite: Identifier, pos: Vector2, size: Vector2): Unit = {
+    draw(layer, sprite, pos.x, pos.y, size.x, size.y)
+  }
+
   def draw(layer: Int, sprite: Identifier, x: Double, y: Double, w: Double, h: Double): Unit = {
     val sd = new SpriteDraw()
     sd.sprite = sprite
@@ -84,6 +95,10 @@ class Canvas {
 
   def draw(layer: Int, sprite: Identifier, layout: Layout, color: Color): Unit = {
     draw(layer, sprite, layout.x0, layout.y0, layout.widthPx, layout.heightPx, color)
+  }
+
+  def draw(layer: Int, sprite: Identifier, pos: Vector2, size: Vector2, color: Color): Unit = {
+    draw(layer, sprite, pos.x, pos.y, size.x, size.y, color)
   }
 
   def draw(layer: Int, sprite: Identifier, x: Double, y: Double, w: Double, h: Double, color: Color): Unit = {
@@ -105,8 +120,8 @@ class Canvas {
     drawText(layer, style, layout, text, 0, text.length)
 
   def drawText(layer: Int, style: TextStyle, layout: Layout, text: String, offset: Int, length: Int): Double = {
-    val sizedStyle = style.copy(height = layout.heightPx)
-    drawText(layer, sizedStyle, layout.x0, layout.y0, text, offset, length)
+    val sizedStyle = style.scaled(layout.unit.y)
+    drawText(layer, sizedStyle, Vector2(layout.x0, layout.y0), Vector2(layout.widthPx, layout.heightPx), text, offset, length)
   }
 
   def drawText(layer: Int, style: TextStyle, x: Double, y: Double, text: String): Double =
@@ -119,12 +134,34 @@ class Canvas {
     drawText(layer, style, position, text, 0, text.length)
 
   def drawText(layer: Int, style: TextStyle, position: Vector2, text: String, offset: Int, length: Int): Double = {
+    drawText(layer, style, position, Vector2.Zero, text, offset, length)
+  }
+
+  def drawText(layer: Int, style: TextStyle, position: Vector2, size: Vector2, text: String): Double = {
+    drawText(layer, style, position, size, text, 0, text.length)
+  }
+
+  def drawText(layer: Int, style: TextStyle, position: Vector2, size: Vector2, text: String, offset: Int, length: Int): Double = {
     val il = getInternalLayer(layer)
 
+    var pos = position
+
+    if (style.align.x != 0.0 && size.x > 0.0) {
+      val width = style.measureWidth(text, offset, length)
+      val dx = (size.x - width) * style.align.x
+      pos = pos.copy(x = pos.x + dx)
+    }
+
+    if (style.align.y != 0.0 && size.y > 0.0) {
+      val height = style.height
+      val dy = (size.y - height) * style.align.y
+      pos = pos.copy(y = pos.y + dy)
+    }
+
     val draws = il.drawsForFont.getOrElseUpdate(style.font, ArrayBuffer[TextDraw]())
-    draws += TextDraw(text, offset, length, position, style.height, style.color, 0.0, 1)
+    draws += TextDraw(text, offset, length, pos, style.height, style.color, 0.0, 1)
     if (style.outline.size > 0.0) {
-      draws += TextDraw(text, offset, length, position, style.height, style.outline.color, style.outline.size, 0)
+      draws += TextDraw(text, offset, length, pos, style.height, style.outline.color, style.outline.size, 0)
     }
 
     position.y + style.height
@@ -139,9 +176,10 @@ class Canvas {
     val lines = WordWrap.wrapText(style.font.get, style.height, bounds.x, text, offset, length,
       hyphenateThreshold = Some(100.0))
 
+    val endY = bounds.y - position.y
     var y = position.y
     for (line <- lines) {
-      if (y + style.height > bounds.y) return y
+      if (y + style.height > endY) return y
 
       y = drawText(layer, style, Vector2(position.x, y), line)
     }

@@ -85,6 +85,7 @@ object GenerateAtlas {
         var rc = rect
         if (sprites(index).wrapX) rc = rc.copy(x = rc.x + cfg.padding)
         if (sprites(index).wrapY) rc = rc.copy(y = rc.y + cfg.padding)
+        rc = rc.copy(w = rc.w - cfg.padding, h = rc.h - cfg.padding)
         atlas.locations(index) = SpriteLocation(pageIndex, rc)
       }
 

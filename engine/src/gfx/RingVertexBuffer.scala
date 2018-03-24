@@ -25,6 +25,7 @@ class RingVertexBuffer(name: String, spec: VertexSpec, capacity: Int) extends Un
       if (frame - 4 < lastWrapFrame) {
         println(s"WARNING: Ring vertex buffer wrapped in under 4 frames: $name")
       }
+      lastWrapFrame = frame
       offset = 0
     }
 

@@ -7,6 +7,7 @@ import ui.Layout
 case class CheckboxStyle(iconSize: Double,
                          uncheckedSprite: Identifier,
                          checkedSprite: Identifier,
+                         focusBackgroundSprite: Identifier,
                          checkRadius: Double,
                          iconPadding: Double,
                         )
@@ -26,6 +27,7 @@ abstract class Checkbox(val style: CheckboxStyle) extends Element {
 
     if (visible) {
       val rect = parent.pushTop(style.iconSize)
+      val fullRect = rect.copy
 
       if (enabled)
         inputs.add(0, input, rect, style.checkRadius)
@@ -35,6 +37,11 @@ abstract class Checkbox(val style: CheckboxStyle) extends Element {
       val sprite = if (isChecked) style.checkedSprite else style.uncheckedSprite
 
       val color = if (enabled) Color.White else Color.White * 0.5
+
+      if (input.focused) {
+        val bg = style.focusBackgroundSprite
+        canvas.draw(0, bg, fullRect)
+      }
 
       canvas.draw(0, sprite, icon, color)
       drawContent(rect.copy)

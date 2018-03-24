@@ -91,6 +91,8 @@ object Texture {
       texture.texture.setLayerData(0, width, height, format, levels)
       texture.width = width
       texture.height = height
+      texture.originalWidth = width
+      texture.originalHeight = height
       texture.format = format
       texture.numLevels = numLevels
 
@@ -149,6 +151,8 @@ class Texture {
 
   var width: Int = 0
   var height: Int = 0
+  var originalWidth: Int = 0
+  var originalHeight: Int = 0
   var numLevels: Int = 0
   var format: String = ""
   var texture: TextureHandle = null
@@ -167,11 +171,24 @@ class Texture {
     format = buffer.getMagic()
     flags = buffer.getInt()
 
-    val readAsLinear = (flags & 0x01) != 0
+    originalWidth = width
+    originalHeight = height
 
-    val levels = Seq.fill(numLevels) {
+    val readAsLinear = (flags & 0x01) != 0
+    val noDownscale = (flags & 0x02) != 0
+
+    var levels = Seq.fill(numLevels) {
       val size = buffer.getInt()
       buffer.getBuffer(size)
+    }
+
+    if (!noDownscale) {
+      val maxSize = OptsGfx.maxTextureSize
+      while (levels.size > 1 && (width > maxSize || height > maxSize) && (width >= 16 && height >= 16)) {
+        width /= 2
+        height /= 2
+        levels = levels.drop(1)
+      }
     }
 
     texture = TextureHandle.createStatic(width, height, format, levels, readAsLinear)

@@ -39,8 +39,12 @@ class InputSet {
   private[ui] val inputs = ArrayBuffer[InputWithLayout]()
   private[ui] var focusedInput: InputArea = null
   private[ui] var focusedIndex: Int = -1
+  private[ui] var focusedAreaLayout: Layout = null
   private[ui] var didClick: Boolean = false
   private[ui] var prevDown: Boolean = false
+
+  def focused: Option[(InputArea, Int)] = if (focusedInput != null) Some((focusedInput, focusedIndex)) else None
+  def focusedArea: Option[Layout] = Option(focusedAreaLayout)
 
   def clicked: Boolean = didClick
 
@@ -67,6 +71,7 @@ class InputSet {
 
     focusedInput = null
     focusedIndex = -1
+    focusedAreaLayout = null
 
     val orderedInputs = inputs.sortBy(input => {
       val base = input.layer * -2
@@ -95,6 +100,7 @@ class InputSet {
         } else if (dist < bestDist) {
           focusedInput = input.input
           focusedIndex = input.index
+          focusedAreaLayout = input.layout
           bestDist = dist
         }
       }

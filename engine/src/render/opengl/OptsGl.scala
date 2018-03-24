@@ -144,5 +144,7 @@ object OptsGl {
   var useDebug = false
   /** Use OpenGL profiling timers */
   var useProfiling = false
+  /** How many vertical syncs to wait between swaps (0 for no vsync) */
+  var swapInterval: Int = 1
 }
 

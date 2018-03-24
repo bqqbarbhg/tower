@@ -45,7 +45,6 @@ object EditorMain extends App {
   do {
     GameStartup.restartRequested = false
 
-
     GameState.push(new MenuState())
 
     while (AppWindow.running && !GameStartup.restartRequested) {

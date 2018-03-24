@@ -2,8 +2,11 @@ package main
 
 import game.options.GraphicsOptions.OpenGlOptions
 import game.options.Options
+import game.system.RenderingSystem
+import gfx.OptsGfx
 import io.SimpleSerialization.SMap
 import io.Toml
+import platform.AppWindow.WindowStyle
 import render.opengl.{MapMode, OptsGl}
 
 object GameStartup {
@@ -29,16 +32,39 @@ object GameStartup {
     }
 
     val opt = Options.current
+    val gOpt = opt.graphics.quality
     val glOpt = opt.graphics.openGl
     OptsGl.uniformMap = OpenGlOptions.mapModeToEnum(glOpt.uniformMapMode, MapMode.PersistentCopy)
     OptsGl.vertexMap = OpenGlOptions.mapModeToEnum(glOpt.uniformMapMode, MapMode.Persistent)
+    OptsGl.useUniformBlocks = glOpt.useUniformBuffers
+    OptsGl.useVaoCache = glOpt.useVaoCache
+    OptsGl.useTexStorage = glOpt.useImmutableTextureStorage
+    OptsGl.useRowMajorMatrix = glOpt.useRowMajorMatrices
+    OptsGfx.maxTextureSize = gOpt.maxTextureSize
 
-    EngineStartup.softStart()
+    var swapInterval = 0
+    if (gOpt.verticalSync) swapInterval = 1
+    if (gOpt.halfFramerate) swapInterval = 2
+    OptsGl.swapInterval = swapInterval
+
+    val (fullscreen, borderless) = opt.windowMode match {
+      case "Window" => (false, false)
+      case "Fullscreen" => (true, true)
+      case "Borderless" => (true, true)
+    }
+
+    val (resX, resY) = if (fullscreen) (0, 0) else (opt.windowSizeX, opt.windowSizeY)
+
+    val windowStyle = new WindowStyle(resX, resY, fullscreen, borderless, opt.monitor)
+
+    EngineStartup.softStart(windowStyle)
   }
 
   private def softStop(): Unit = {
     val map = SMap.read(Options.current)
     Toml.formatFile(map, "options.toml")
+
+    RenderingSystem.unload()
 
     EngineStartup.softStop()
   }
