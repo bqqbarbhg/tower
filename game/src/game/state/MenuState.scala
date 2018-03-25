@@ -6,10 +6,11 @@ import asset._
 import game.shader._
 import platform.AppWindow
 import MenuState._
+import game.lighting.Tonemapper
 import game.system.{ModelSystem, RenderingSystem}
 import game.system.ModelSystem.ModelRef
 import gfx.Material
-import menu.OptionsMenu
+import menu.{DebugMenu, OptionsMenu}
 import ui._
 import ui.Canvas._
 import ui.InputSet.InputArea
@@ -53,6 +54,7 @@ class MenuState extends GameState {
   val buttons = Array(ContinueButton, ExitButton)
 
   val optionsMenu = new OptionsMenu(inputSet, canvas)
+  val debugMenu = new DebugMenu(inputSet, canvas, Tonemapper)
 
   override def load(): Unit = {
     menuAssets.acquire()
@@ -110,7 +112,8 @@ class MenuState extends GameState {
 
     val div = Layout.screen720p
 
-    optionsMenu.update()
+    // optionsMenu.update()
+    debugMenu.update(div.copy.padAround(100.0).pushLeft(200.0))
 
     if (false) {
       div.pushLeft(1280.0 * 0.1)
