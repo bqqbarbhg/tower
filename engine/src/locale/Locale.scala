@@ -1,6 +1,6 @@
 package locale
 
-import collection.mutable.ArrayBuffer
+import collection.mutable.{ArrayBuffer, HashMap}
 import java.nio.ByteBuffer
 
 import core._
@@ -12,8 +12,12 @@ object Locale {
 
   var instance: Locale = null
 
-  def getSimple(index: Int): String = instance.getSimple(index)
-  def getExpression(index: Int, args: Array[String]): String = instance.getExpression(index, args)
+  def getSimple(key: String): String = instance.getSimple(key)
+  def getSimpleOption(key: String): Option[String] = instance.getSimpleOption(key)
+  def getExpression(key: String, args: Map[String, String]): String = instance.getExpression(key, args)
+  def getExpression(key: String, args: (String, String)*): String = instance.getExpression(key, args.toMap)
+  def getExpressionOption(key: String, args: Map[String, String]): Option[String] = instance.getExpressionOption(key, args)
+  def getExpressionOption(key: String, args: (String, String)*): Option[String] = instance.getExpressionOption(key, args.toMap)
 
   def load(info: LocaleInfo): Unit = load(info.file)
   def load(filename: Identifier): Unit = {
@@ -32,27 +36,37 @@ object Locale {
 
 class Locale(val filename: Identifier) {
 
-  private var simple = Array[String]()
+  private val argNameList = new ArrayBuffer[String]()
+  private val argNameOrder = new HashMap[String, Int]()
+
+  private var simple = HashMap[String, String]()
 
   private var expressionStringPool = Array[String]()
   private var expressionData = Array[Int]()
-  private var expressionBeginEnd = Array[Int]()
+  private var expressionBeginEnd = HashMap[String, (Int, Int)]()
 
-  def getSimple(index: Int): String = simple(index)
+  def getSimple(key: String): String = simple.get(key).getOrElse(s"<$key>")
+  def getSimpleOption(key: String): Option[String] = simple.get(key)
 
-  def getExpression(index: Int, args: Array[String]): String = {
-    val builder = new StringBuilder()
-    var ix = expressionBeginEnd(index * 2 + 0)
-    var end = expressionBeginEnd(index * 2 + 1)
-    while (ix < end) {
-      val part = expressionData(ix)
-      if (part >= 0)
-        builder ++= expressionStringPool(part)
-      else
-        builder ++= args(-part - 1)
-      ix += 1
+  def getExpression(key: String, args: Map[String, String]): String = getExpressionOption(key, args).getOrElse(s"<$key>")
+  def getExpressionOption(key: String, args: Map[String, String]): Option[String] = {
+    val maybeExp = for ((begin, end) <- expressionBeginEnd.get(key)) yield {
+      var ix = begin
+      val builder = new StringBuilder()
+      while (ix < end) {
+        val part = expressionData(ix)
+        if (part >= 0) {
+          builder ++= expressionStringPool(part)
+        } else {
+          val index = -part - 1
+          builder ++= args.getOrElse(argNameList(index), s"<{${argNameList(index)}}>")
+        }
+        ix += 1
+      }
+      builder.result
     }
-    builder.mkString
+
+    maybeExp.orElse(getSimpleOption(key))
   }
 
   def load(buffer: ByteBuffer): Unit = {
@@ -70,16 +84,12 @@ class Locale(val filename: Identifier) {
     val numExpr = buffer.getInt()
     val numPool = buffer.getInt()
 
-    simple = Array.fill(LocaleGetter.simpleLocales.size)("")
-    expressionBeginEnd = new Array[Int](2 * LocaleGetter.simpleLocales.size)
     expressionStringPool = new Array[String](numPool)
 
     for (i <- 0 until numSimple) {
       val key = buffer.getString()
       val value = buffer.getString()
-      for (index <- LocaleGetter.simpleLocales.get(key)) {
-        simple(index) = value
-      }
+      simple(key) = value
     }
 
     val exprData = new ArrayBuffer[Int]()
@@ -90,25 +100,26 @@ class Locale(val filename: Identifier) {
       val argNames = Array.fill(numArgs)(buffer.getString())
       val parts = Array.fill(numParts)(buffer.getInt())
 
-      for (index <- LocaleGetter.expressionLocales.get(key)) {
-        val refNames = LocaleGetter.expressionArgNames(index)
-        val base = exprData.length
-        expressionBeginEnd(index * 2 + 0) = base
+      val base = exprData.length
+      val begin = base
 
-        for (part <- parts) {
-          if (part >= 0) {
-            exprData += part
-          } else {
-            val name = argNames(-part - 1)
-            val argIx = refNames.indexOf(name)
-            if (argIx >= 0) {
-              exprData += -argIx - 1
-            }
+      for (part <- parts) {
+        if (part >= 0) {
+          exprData += part
+        } else {
+          val name = argNames(-part - 1)
+          val argIx = argNameOrder.getOrElseUpdate(name, {
+            argNameList += name
+            argNameOrder.size
+          })
+          if (argIx >= 0) {
+            exprData += -argIx - 1
           }
         }
-
-        expressionBeginEnd(index * 2 + 1) = exprData.length
       }
+
+      val end = exprData.length
+      expressionBeginEnd(key) = (begin, end)
     }
     expressionData = exprData.toArray
 

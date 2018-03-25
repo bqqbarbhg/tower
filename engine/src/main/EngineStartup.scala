@@ -2,6 +2,7 @@ package main
 
 import asset.AssetLoader
 import debug.ResourceTracker
+import locale.LocaleInfo
 import platform.AppWindow
 import render._
 import render.opengl.{MapMode, OptsGl}
@@ -41,6 +42,8 @@ object EngineStartup {
     IoThread.setName("Engine IO thread")
     IoThread.start()
     Task.Main.claimForThisThread()
+
+    LocaleInfo.load()
 
     launchOptions = opts
   }

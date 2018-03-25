@@ -7,6 +7,7 @@ import io.content.Package
 
 object LocaleInfo {
   var locales: Seq[LocaleInfo] = Seq[LocaleInfo]()
+  var defaultLocale: LocaleInfo = null
 
   def load(): Unit = withStack {
     val pack = Package.get
@@ -22,6 +23,9 @@ object LocaleInfo {
       stream.close()
       info
     }
+
+    val idEn = Identifier("en")
+    defaultLocale = locales.find(_.code == idEn).getOrElse(locales.head)
   }
 
 }

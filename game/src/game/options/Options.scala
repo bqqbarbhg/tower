@@ -19,6 +19,7 @@ class Options extends SimpleSerializable {
   var monitor: Int = 0
   var windowSizeX: Int = 1280
   var windowSizeY: Int = 720
+  var language: String = "en"
 
   var graphics = new GraphicsOptions()
 
@@ -34,6 +35,7 @@ class Options extends SimpleSerializable {
     monitor = v.field("monitor", monitor)
     windowSizeX = v.field("windowSizeX", windowSizeX)
     windowSizeY = v.field("windowSizeY", windowSizeY)
+    language = v.field("language", language)
     graphics = v.field("graphics", graphics)
   }
 }

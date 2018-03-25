@@ -239,10 +239,10 @@ object AppWindow {
         }
 
         (xOff, yOff) match {
-          case (-1, -1) => "Top left"
-          case ( 1, -1) => "Top right"
-          case (-1,  1) => "Bottom left"
-          case ( 1,  1) => "Bottom right"
+          case (-1, -1) => "TopLeft"
+          case ( 1, -1) => "TopRight"
+          case (-1,  1) => "BottomLeft"
+          case ( 1,  1) => "BottomRight"
           case (-1,  0) => "Left"
           case ( 1,  0) => "Right"
           case ( 0, -1) => "Top"

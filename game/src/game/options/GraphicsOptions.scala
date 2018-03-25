@@ -10,12 +10,17 @@ object GraphicsOptions {
   class QualityOptions extends SimpleSerializable {
 
     var maxTextureSize: Int = 2048
+    var shaderQuality: Int = 3
+    var antialias: Int = 4
     var verticalSync: Boolean = true
     var halfFramerate: Boolean = false
+    var highBitdepth: Boolean = true
     var preset: String = ""
 
     override def visit(v: SimpleVisitor): Unit = {
       maxTextureSize = v.field("maxTextureSize", maxTextureSize)
+      shaderQuality = v.field("shaderQuality", shaderQuality)
+      antialias = v.field("antialias", antialias)
       verticalSync = v.field("verticalSync", verticalSync)
       halfFramerate = v.field("halfFramerate", halfFramerate)
       preset = v.field("preset", preset)
@@ -28,22 +33,31 @@ object GraphicsOptions {
 
       "Minimal" -> Some(() => new QualityOptions() {
         maxTextureSize = 256
+        antialias = 1
+        shaderQuality = 0
         halfFramerate = true
+        highBitdepth = false
         preset = "Minimal"
       }),
 
       "Low" -> Some(() => new QualityOptions() {
         maxTextureSize = 512
+        antialias = 2
+        shaderQuality = 1
         preset = "Low"
       }),
 
       "Medium" -> Some(() => new QualityOptions() {
         maxTextureSize = 1024
+        antialias = 4
+        shaderQuality = 3
         preset = "Medium"
       }),
 
       "High" -> Some(() => new QualityOptions() {
         maxTextureSize = 2048
+        antialias = 8
+        shaderQuality = 3
         preset = "High"
       }),
 

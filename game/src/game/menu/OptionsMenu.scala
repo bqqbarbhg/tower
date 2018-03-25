@@ -10,8 +10,11 @@ import game.options.GraphicsOptions.OpenGlOptions
 import menu.gui._
 import ui.SpriteBatch.SpriteDraw
 import game.options._
+import locale.LocaleInfo
 import main.GameStartup
 import platform.AppWindow
+import locale.Locale
+import locale.LocaleString._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -106,16 +109,23 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
     canvas.draw(4, BgSprite, bgPos.x, bgPos.y, bgSize.x, bgSize.y, color)
   }
 
+  abstract class SimpleCheckbox(val localeKey: String) extends LabelCheckbox(NormalCheckbox, NormalLabel) {
+    override val text: String = lc"menu.options.$localeKey.title"
+    private val desc = lc"menu.options.$localeKey.desc"
+
+    addTooltip(input, desc)
+  }
+
   val glElements = {
     val elements = ArrayBuffer[Element]()
     elements += new Label(TitleLabel) {
-      override def text: String = "OpenGL compatability"
+      override val text: String = lc"menu.options.graphics.gl.title"
     }
 
     elements += new Padding(10.0)
 
     elements += new Label(InfoLabel) {
-      override def text: String = "Preset"
+      override val text: String = lc"menu.options.preset"
     }
 
     elements += new LabelDropdown[String](NormalDropdown, NormalLabel) {
@@ -133,14 +143,13 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
         }
       }
 
-      addTooltipOption(inputOpen, if (!isOpen) Some("Control the way the application interfaces with OpenGL.") else None)
+      override def itemToText(item: String): String = if (item == "Custom") lc"menu.options.custom"
+      else lc"menu.options.graphics.gl.preset.$item.title"
+
+      addTooltipOption(inputOpen, if (!isOpen) Some(lc"menu.options.graphics.gl.desc") else None)
       addTooltipIndexed(inputSelect, index => {
-        GraphicsOptions.OpenGlOptions.Presets.map(_._1).toSeq(index) match {
-          case "Ancient" => Some(s"Compatible with OpenGL 2 hardware with a few ubiquitous extensions. Has significant performance penalty.")
-          case "Compatible" => Some(s"Compatible with standard OpenGL 3 hardware.")
-          case "Modern" => Some(s"Uses up to OpenGL 4 features if detected as available.")
-          case _ => None
-        }
+        val item = GraphicsOptions.OpenGlOptions.Presets.map(_._1).toSeq(index)
+        Locale.getSimpleOption(s"menu.options.graphics.gl.preset.$item.desc")
       })
     }
 
@@ -149,21 +158,14 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
     }
 
     def mapModeTooltip(index: Int): Option[String] = {
-      GraphicsOptions.OpenGlOptions.MapModes(index) match {
-        case "SubData" => Some("Use the old-style glBufferSubData(). The most compatible option but especially bad for vertex buffers.")
-        case "Map" => Some("Use the old-style glMapBufferRange(). Very compatible, but doesn't have the best performance especially for uniform buffers.")
-        case "Persistent" => Some("Modern persistent buffer mapping. Writes directly data to the buffer. Should be compatible with most modern video cards. Intended for vertex buffer mappings.")
-        case "PersistentCopy" => Some("Like Persistent, but copies the data from a temporary buffer. Intended for uniform buffer mappings.")
-        case "PersistentCoherent" => Some("Coherent version of Persistent. Theoretically the fastest for vertex buffers, but may cause issues with some drivers.")
-        case "PersistentCopyCoherent" => Some("Coherent version of PersistentCopy. Theoretically the fastest for uniforms, but may cause issues with some drivers.")
-        case _ => None
-      }
+      val name = GraphicsOptions.OpenGlOptions.MapModes(index)
+      Locale.getSimpleOption(s"menu.options.graphcis.gl.mapMode.$name")
     }
 
     elements += new Padding(20.0)
 
     elements += new Label(InfoLabel) with GlOption {
-      override def text: String = "Uniform map mode"
+      override val text: String = lc"menu.options.graphics.gl.uniformMapMode.title"
     }
 
     elements += new LabelDropdown[String](NormalDropdown, NormalLabel) with GlOption {
@@ -171,14 +173,14 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
       override def currentItem: String = options.graphics.openGl.uniformMapMode
       override def setItem(newItem: String): Unit = options.graphics.openGl.uniformMapMode = newItem
 
-      addTooltipOption(inputOpen, if (!isOpen) Some("Defines how uniform buffer memory is mapped to the application.") else None)
+      addTooltipOption(inputOpen, if (!isOpen) Some(lc"menu.options.graphics.gl.uniformMapMode.desc") else None)
       addTooltipIndexed(inputSelect, mapModeTooltip)
     }
 
     elements += new Padding(10.0)
 
     elements += new Label(InfoLabel) with GlOption {
-      override def text: String = "Vertex map mode"
+      override val text: String = lc"menu.options.graphics.gl.vertexMapMode.title"
     }
 
     elements += new LabelDropdown[String](NormalDropdown, NormalLabel) with GlOption {
@@ -186,42 +188,30 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
       override def currentItem: String = options.graphics.openGl.vertexMapMode
       override def setItem(newItem: String): Unit = options.graphics.openGl.vertexMapMode = newItem
 
-      addTooltipOption(inputOpen, if (!isOpen) Some("Defines how vertex buffer memory is mapped to the application.") else None)
+      addTooltipOption(inputOpen, if (!isOpen) Some(lc"menu.options.graphics.gl.vertexMapMode.desc") else None)
       addTooltipIndexed(inputSelect, mapModeTooltip)
     }
 
     elements += new Padding(10.0)
 
-    elements += new LabelCheckbox(NormalCheckbox, NormalLabel) with GlOption {
-      def text: String = "Uniform buffers"
+    elements += new SimpleCheckbox("graphics.gl.uniformBuffers") with GlOption {
       def isChecked: Boolean = options.graphics.openGl.useUniformBuffers
       def setChecked(checked: Boolean): Unit =  options.graphics.openGl.useUniformBuffers = checked
-
-      addTooltip(input, "Use uniform buffer objects to transfer data to the shaders. Disabling this may have a significant performance penalty.")
     }
 
-    elements += new LabelCheckbox(NormalCheckbox, NormalLabel) with GlOption {
-      def text: String = "Vertex array cache"
+    elements += new SimpleCheckbox("graphics.gl.useVaoCache") with GlOption {
       def isChecked: Boolean = options.graphics.openGl.useVaoCache
       def setChecked(checked: Boolean): Unit =  options.graphics.openGl.useVaoCache = checked
-
-      addTooltip(input, "If enabled vertex array state is re-used for multiple draws and frames. Otherwise it's recreated for each draw. Which one is faster depends on driver.")
     }
 
-    elements += new LabelCheckbox(NormalCheckbox, NormalLabel) with GlOption {
-      def text: String = "Row-major matrices"
+    elements += new SimpleCheckbox("graphics.gl.useRowMajorMatrices") with GlOption {
       def isChecked: Boolean = options.graphics.openGl.useRowMajorMatrices
       def setChecked(checked: Boolean): Unit =  options.graphics.openGl.useRowMajorMatrices = checked
-
-      addTooltip(input, "Lay matrices out as row-major in memory, which packs them more nicely. Has some compatability issues with specific drivers.")
     }
 
-    elements += new LabelCheckbox(NormalCheckbox, NormalLabel) with GlOption {
-      def text: String = "Immutable texture storage"
+    elements += new SimpleCheckbox("graphics.gl.useImmutableTextureStorage") with GlOption {
       def isChecked: Boolean = options.graphics.openGl.useImmutableTextureStorage
       def setChecked(checked: Boolean): Unit =  options.graphics.openGl.useImmutableTextureStorage = checked
-
-      addTooltip(input, "Use modern immutable storage for allocating texture data.")
     }
 
     elements += new Padding(30.0)
@@ -240,7 +230,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
     val elements = ArrayBuffer[Element]()
 
     elements += new Label(TitleLabel) {
-      override def text: String = "Quality"
+      override def text: String = lc"menu.options.graphics.ql.title"
     }
 
     elements += new Padding(10.0)
@@ -263,17 +253,16 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
           case None => options.graphics.quality.preset = ""
         }
       }
+      override def itemToText(item: String): String = if (item == "Custom") lc"menu.options.custom"
+      else lc"menu.options.graphics.ql.preset.$item.title"
 
-      addTooltipOption(inputOpen, if (!isOpen) Some("Rendering quality level, higher levels are more intensive for the system.") else None)
+      addTooltipOption(inputOpen, if (!isOpen) Some(lc"menu.options.graphics.ql.desc") else None)
       addTooltipIndexed(inputSelect, index => {
         GraphicsOptions.QualityOptions.Presets.map(_._1).toSeq(index) match {
           case "Minimal" =>
             val fps = monitorHz / 2
-            Some(s"Least computationally intensive setup with significant graphical downgrades. Should only be used if absolutely necessary. Framerate limited to ${fps}fps on this screen.")
-          case "Low" => Some(s"Low resolution textures and rendering. Drastically simplified shading model.")
-          case "Medium" => Some(s"Render at native resolution with the correct shading model, but with slightly lighter textures.")
-          case "High" => Some(s"The recommended settings for high-quality rendering.")
-          case _ => None
+            Locale.getExpressionOption("menu.options.graphics.ql.preset.Minimal.desc", "fps" -> fps.toString)
+          case other => Locale.getSimpleOption(s"menu.options.graphics.ql.preset.$other.desc")
         }
       })
     }
@@ -286,40 +275,97 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
 
 
     elements += new LabelCheckbox(NormalCheckbox, NormalLabel) with QualityOption {
-      def text: String = "Vertical sync"
+      val text: String = lc"menu.options.graphics.ql.vsync.title"
       def isChecked: Boolean = options.graphics.quality.verticalSync
-      def setChecked(checked: Boolean): Unit =  options.graphics.quality.verticalSync= checked
+      def setChecked(checked: Boolean): Unit =  options.graphics.quality.verticalSync = checked
 
-      addTooltip(input, {
+      addTooltipOption(input, {
         val fps = monitorHz
-        s"Synchronize framerate with the monitor. Tries to lock to ${fps}fps on this screen."
+        Locale.getExpressionOption("menu.options.graphics.ql.vsync.desc", "fps" -> fps.toString)
       })
     }
 
     elements += new LabelCheckbox(NormalCheckbox, NormalLabel) with QualityOption {
-      def text: String = "Half framerate"
+      val text: String = lc"menu.options.graphics.ql.halfFps.title"
       def isChecked: Boolean = options.graphics.quality.halfFramerate
       def setChecked(checked: Boolean): Unit =  options.graphics.quality.halfFramerate = checked
 
-      addTooltip(input, {
+      addTooltipOption(input, {
         val fps = monitorHz / 2
-        s"Synchronizes the framerate with the monitor like vertical sync, but renders only every other frame. Tries to lock to ${fps}fps on this screen."
+        Locale.getExpressionOption("menu.options.graphics.ql.halfFps.desc", "fps" -> fps.toString)
       })
+    }
+
+    elements += new LabelCheckbox(NormalCheckbox, NormalLabel) with QualityOption {
+      val text: String = lc"menu.options.graphics.ql.highBitdepth.title"
+      def isChecked: Boolean = options.graphics.quality.highBitdepth
+      def setChecked(checked: Boolean): Unit =  options.graphics.quality.highBitdepth = checked
+
+      addTooltipOption(input, Locale.getSimpleOption("menu.options.graphics.ql.highBitdepth.desc"))
     }
 
     elements += new Padding(10.0)
 
     elements += new Label(InfoLabel) with QualityOption {
-      override def text: String = "Texture resolution"
+      val text: String = lc"menu.options.graphics.ql.textureSize.title"
     }
 
     elements += new LabelDropdown[Int](NormalDropdown, NormalLabel) with QualityOption {
       override val items: Seq[Int] = Array(256, 512, 1024, 2048)
       override def currentItem: Int = options.graphics.quality.maxTextureSize
       override def setItem(newItem: Int): Unit = options.graphics.quality.maxTextureSize = newItem
-      override def itemToText(item: Int): String = s"${item} x ${item}"
+      override def itemToText(item: Int): String = item match {
+        case 256 => lc"menu.options.generic.Minimal"
+        case 512 => lc"menu.options.generic.Low"
+        case 1024 => lc"menu.options.generic.Medium"
+        case 2048 => lc"menu.options.generic.High"
+        case other => other.toString
+      }
 
-      addTooltipOption(inputOpen, if (!isOpen) Some("Maximum resolution that is supported for textures. Lower sizes work better with video cards that have less memory.") else None)
+      addTooltipOption(inputOpen, if (!isOpen) Some(lc"menu.options.graphics.ql.textureSize.desc") else None)
+    }
+
+    elements += new Padding(10.0)
+
+    elements += new Label(InfoLabel) with QualityOption {
+      val text: String = lc"menu.options.graphics.ql.shadingQuality.title"
+    }
+
+    elements += new LabelDropdown[Int](NormalDropdown, NormalLabel) with QualityOption {
+      override val items: Seq[Int] = Array(0, 1, 2, 3)
+      override def currentItem: Int = options.graphics.quality.shaderQuality
+      override def setItem(newItem: Int): Unit = options.graphics.quality.shaderQuality = newItem
+      override def itemToText(item: Int): String = item match {
+        case 0 => lc"menu.options.generic.Minimal"
+        case 1 => lc"menu.options.generic.Low"
+        case 2 => lc"menu.options.generic.Medium"
+        case 3 => lc"menu.options.generic.High"
+        case other => other.toString
+      }
+
+      addTooltipOption(inputOpen, if (!isOpen) Some(lc"menu.options.graphics.ql.shadingQuality.desc") else None)
+    }
+
+    elements += new Padding(10.0)
+
+    elements += new Label(InfoLabel) with QualityOption {
+      val text: String = lc"menu.options.graphics.ql.antialias.title"
+    }
+
+    elements += new LabelDropdown[Int](NormalDropdown, NormalLabel) with QualityOption {
+      override val items: Seq[Int] = Array(1, 2, 4, 8, 16)
+      override def currentItem: Int = options.graphics.quality.antialias
+      override def setItem(newItem: Int): Unit = options.graphics.quality.antialias = newItem
+      override def itemToText(item: Int): String = item match {
+        case 1  => lc"menu.options.graphics.ql.antialias.None.title"
+        case 2  => lc"menu.options.graphics.ql.antialias.Msaa2.title"
+        case 4  => lc"menu.options.graphics.ql.antialias.Msaa4.title"
+        case 8  => lc"menu.options.graphics.ql.antialias.Msaa8.title"
+        case 16 => lc"menu.options.graphics.ql.antialias.Msaa16.title"
+        case other => other.toString
+      }
+
+      addTooltipOption(inputOpen, if (!isOpen) Some(lc"menu.options.graphics.ql.antialias.desc") else None)
     }
 
     elements
@@ -329,40 +375,40 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
     val elements = ArrayBuffer[Element]()
     val monitors = AppWindow.listMonitors
 
+    elements += new Label(TitleLabel) {
+      override def text: String = lc"menu.options.common.display"
+    }
+
+    elements += new Padding(10.0)
+
     elements += new Label(InfoLabel) {
-      override def text: String = "Window mode"
+      override def text: String = lc"menu.options.common.windowMode.title"
     }
 
     elements += new LabelDropdown[String](NormalDropdown, NormalLabel) {
       override val items: Seq[String] = Options.WindowModes
       override def currentItem: String = options.windowMode
       override def setItem(newItem: String): Unit = options.windowMode = newItem
-      override def itemToText(item: String): String = item match {
-        case "Window" => "Windowed"
-        case "Fullscreen" => "Fullscreen"
-        case "Borderless" => "Borderless"
-      }
+      override def itemToText(item: String): String = lc"menu.options.common.windowMode.$item.name"
 
-      addTooltipOption(inputOpen, if (!isOpen) Some("What kind of window to use for the game") else None)
+      addTooltipOption(inputOpen, if (!isOpen) Some(lc"menu.options.common.windowMode.desc") else None)
 
       addTooltipIndexed(inputSelect, index => {
-        Options.WindowModes(index) match {
-          case "Window" => Some("Display the game inside a standard window in the desktop.")
-          case "Fullscreen" => Some("Exclusive full-screen display: smoothest rendering but may have troubles with switching to other windows.")
-          case "Borderless" => Some("Full-screen window with no border: may be more laggy than real fullscreen, but switching windows should work better.")
-          case _ => None
-        }
+        val item = Options.WindowModes(index)
+        Locale.getSimpleOption(s"menu.options.common.windowMode.$item.desc")
       })
     }
 
     elements += new Padding(10.0)
 
     elements += new Label(InfoLabel) {
-      override def text: String = "Monitor"
+      override def text: String = lc"menu.options.common.monitor.title"
     }
 
-    val monitorNames = "Primary" +: monitors.zipWithIndex.map({ case (m, i) =>
-      s"${i + 1}: ${m.align}"
+    val primary = lc"menu.options.common.monitor.primary"
+    val monitorNames = primary +: monitors.zipWithIndex.map({ case (m, i) =>
+      val align = lc"menu.options.common.monitor.align.${m.align}"
+      s"${i + 1}: $align"
     })
 
     elements += new LabelDropdown[Int](NormalDropdown, NormalLabel) {
@@ -371,7 +417,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
       override def setItem(newItem: Int): Unit = options.monitor = newItem
       override def itemToText(item: Int): String = monitorNames(item)
 
-      addTooltipOption(inputOpen, if (!isOpen) Some("Which monitor to display the game on") else None)
+      addTooltipOption(inputOpen, if (!isOpen) Some(lc"menu.options.common.monitor.desc") else None)
 
       addCustomTooltip(inputSelect, (pos, unit, index) => {
         val size = unit *@ Vector2(200.0, 200.0)
@@ -413,6 +459,30 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
       })
     }
 
+    elements += new Padding(30.0)
+
+    elements += new Label(TitleLabel) {
+      override val text: String = lc"menu.options.common.language"
+    }
+
+    elements += new Padding(10.0)
+
+    elements += new Label(InfoLabel) {
+      override val text: String = lc"menu.options.common.textLanguage.title"
+    }
+
+    elements += new LabelDropdown[LocaleInfo](NormalDropdown, NormalLabel) {
+      override val items: Seq[LocaleInfo] = LocaleInfo.locales
+      override def currentItem: LocaleInfo = {
+        val langId = Identifier(options.language)
+        LocaleInfo.locales.find(_.code == langId).getOrElse(LocaleInfo.defaultLocale)
+      }
+      override def setItem(newItem: LocaleInfo): Unit = options.language = newItem.code.toString
+      override def itemToText(item: LocaleInfo): String = item.language
+
+      addTooltipOption(inputOpen, if (!isOpen) Some(lc"menu.options.common.textLanguage.desc") else None)
+    }
+
   }
 
   val applyButton = new LabelButton(NormalButton, ButtonLabel) {
@@ -433,14 +503,13 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
 
   val allElements = commonElements ++ glElements ++ qualityElements ++ separateElements
 
-
   abstract class Tab {
     def name: String = ""
     def update(parent: Layout): Unit
   }
 
   object TabCommon extends Tab {
-    override def name = "Common"
+    override val name = lc"menu.options.common.tabName"
 
     override def update(parent: Layout): Unit = {
       val commonParent = parent.pushLeft(200.0)
@@ -452,7 +521,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
   }
 
   object TabRendering extends Tab {
-    override def name = "Graphics"
+    override val name = lc"menu.options.graphics.tabName"
 
     override def update(parent: Layout): Unit = {
       val qualityParent = parent.pushLeft(200.0)

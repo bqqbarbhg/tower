@@ -41,12 +41,16 @@ class RenderTargetGl(val width: Int, val height: Int, val colorFormat: Array[Str
     if (numSamples > 1) {
       format match {
         case "RGBA" => glTexImage2DMultisample(binding, clampedSamples, GL_RGBA8, width, height, true)
-        case "SRGB" => glTexImage2DMultisample(binding, clampedSamples, GL_SRGB8, width, height, true)
+        case "SRGA" => glTexImage2DMultisample(binding, clampedSamples, GL_SRGB8, width, height, true)
+        case "Rf10" => glTexImage2DMultisample(binding, clampedSamples, GL_R11F_G11F_B10F, width, height, true)
+        case "Rf16" => glTexImage2DMultisample(binding, clampedSamples, GL_RGB16F, width, height, true)
       }
     } else {
       format match {
         case "RGBA" => glTexImage2D(binding, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0)
-        case "SRGB" => glTexImage2D(binding, 0, GL_SRGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0)
+        case "SRGA" => glTexImage2D(binding, 0, GL_SRGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0)
+        case "Rf10" => glTexImage2D(binding, 0, GL_R11F_G11F_B10F, width, height, 0, GL_RGB, GL_FLOAT, 0)
+        case "Rf16" => glTexImage2D(binding, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, 0)
       }
 
       glTexParameteri(binding, GL_TEXTURE_MIN_FILTER, GL_LINEAR)

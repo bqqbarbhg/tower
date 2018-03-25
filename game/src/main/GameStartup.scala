@@ -1,11 +1,13 @@
 package main
 
+import core.Identifier
 import game.options.GraphicsOptions.OpenGlOptions
 import game.options.Options
 import game.system.RenderingSystem
 import gfx.OptsGfx
 import io.SimpleSerialization.SMap
 import io.Toml
+import locale.{Locale, LocaleInfo}
 import platform.AppWindow.WindowStyle
 import render.opengl.{MapMode, OptsGl}
 
@@ -54,6 +56,11 @@ object GameStartup {
     }
 
     val (resX, resY) = if (fullscreen) (0, 0) else (opt.windowSizeX, opt.windowSizeY)
+
+    val lcCode = Identifier(opt.language)
+    val locale = LocaleInfo.locales.find(_.code == lcCode).getOrElse(LocaleInfo.defaultLocale)
+
+    Locale.load(locale)
 
     val windowStyle = new WindowStyle(resX, resY, fullscreen, borderless, opt.monitor)
 
