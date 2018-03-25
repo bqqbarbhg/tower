@@ -5,7 +5,7 @@ import io.property._
 object TonemapperProps {
   private val arr = MacroPropertySet.make[Tonemapper.type]()
   var Props = new PropertySet(arr) {
-    enum("knee", Vector(0.0, 1.0, 2.0, 3.0))
+    enum("toeLength", Vector(0.0, 1.0, 2.0, 3.0))
   }
 }
 

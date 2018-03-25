@@ -13,7 +13,7 @@ object MacroPropertySet {
     val exprs = new ArrayBuffer[c.Tree]()
 
     val typeTag = implicitly[c.WeakTypeTag[T]]
-    for (mem <- typeTag.tpe.members) {
+    for (mem <- typeTag.tpe.members.toSeq.reverse) {
       if (mem.isTerm) {
         val term = mem.asTerm
         if (term.isVar) {
