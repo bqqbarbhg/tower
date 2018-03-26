@@ -33,8 +33,8 @@ object MacroPropertySet {
 
               exprs += q"""
                 new $propType($name.trim) {
-                  override def get(self: AnyRef): $realType = self.asInstanceOf[$typeTag].$get
-                  override def set(self: AnyRef, value: $realType): Unit = self.asInstanceOf[$typeTag].$set(value)
+                  override def get(self: PropertyContainer): $realType = self.asInstanceOf[$typeTag].$get
+                  override def set(self: PropertyContainer, value: $realType): Unit = self.asInstanceOf[$typeTag].$set(value)
                 }
               """
 

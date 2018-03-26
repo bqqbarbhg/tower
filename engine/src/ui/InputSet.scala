@@ -1,5 +1,6 @@
 package ui
 
+import core._
 import platform.AppWindow
 import ui.InputSet._
 
@@ -19,6 +20,12 @@ object InputSet {
     }
     def focused: Boolean = focusIndex >= 0
 
+    def dragIndex: Int = {
+      if (!exists || !(ownerSet.draggedInput eq this)) return -1
+      ownerSet.draggedIndex
+    }
+    def dragged: Boolean = dragIndex >= 0
+
     def clickIndex: Int = {
       val index = focusIndex
       if (index < 0 || !ownerSet.didClick) return -1
@@ -37,14 +44,25 @@ object InputSet {
 class InputSet {
   private[ui] var updateTick: Int = 0
   private[ui] val inputs = ArrayBuffer[InputWithLayout]()
+
   private[ui] var focusedInput: InputArea = null
   private[ui] var focusedIndex: Int = -1
   private[ui] var focusedAreaLayout: Layout = null
+
+  private[ui] var draggedInput: InputArea = null
+  private[ui] var draggedIndex: Int = -1
+  private[ui] var draggedAreaLayout: Layout = null
+
   private[ui] var didClick: Boolean = false
   private[ui] var prevDown: Boolean = false
 
   def focused: Option[(InputArea, Int)] = if (focusedInput != null) Some((focusedInput, focusedIndex)) else None
   def focusedArea: Option[Layout] = Option(focusedAreaLayout)
+
+  def dragged: Option[(InputArea, Int)] = if (draggedInput != null) Some((draggedInput, draggedIndex)) else None
+  def draggedArea: Option[Layout] = Option(draggedAreaLayout)
+
+  def dragPosition: Vector2 = AppWindow.mousePosition
 
   def clicked: Boolean = didClick
 
@@ -61,12 +79,18 @@ class InputSet {
 
     val mouse = AppWindow.mousePosition
 
-    if (AppWindow.mouseButtonDown(0)) {
+    val mouseDown = AppWindow.mouseButtonDown(0)
+    val prevPrevDown = prevDown
+    if (mouseDown) {
       didClick = !prevDown
       prevDown = true
     } else {
       didClick = false
       prevDown = false
+
+      draggedInput = null
+      draggedIndex = -1
+      draggedAreaLayout = null
     }
 
     focusedInput = null
@@ -86,24 +110,35 @@ class InputSet {
 
     inputs.clear()
 
-    var bestDist = Double.PositiveInfinity
-    for (input <- orderedInputs) {
-      val l = input.layout
-      var dist = 0.0
-      if (mouse.x < l.x0) dist += l.x0 - mouse.x
-      if (mouse.y < l.y0) dist += l.y0 - mouse.y
-      if (mouse.x > l.x1) dist += mouse.x - l.x1
-      if (mouse.y > l.y1) dist += mouse.y - l.y1
-      if (dist <= input.distance) {
-        if (input.input == BlockerArea) {
-          return
-        } else if (dist < bestDist) {
-          focusedInput = input.input
-          focusedIndex = input.index
-          focusedAreaLayout = input.layout
-          bestDist = dist
+    def findFocused(): Unit = {
+      var bestDist = Double.PositiveInfinity
+      for (input <- orderedInputs) {
+        val l = input.layout
+        var dist = 0.0
+        if (mouse.x < l.x0) dist += l.x0 - mouse.x
+        if (mouse.y < l.y0) dist += l.y0 - mouse.y
+        if (mouse.x > l.x1) dist += mouse.x - l.x1
+        if (mouse.y > l.y1) dist += mouse.y - l.y1
+        if (dist <= input.distance) {
+          if (input.input == BlockerArea) {
+            return
+          } else if (dist < bestDist) {
+            focusedInput = input.input
+            focusedIndex = input.index
+            focusedAreaLayout = input.layout
+            bestDist = dist
+          }
         }
       }
+    }
+
+    if (!(mouseDown && prevPrevDown))
+      findFocused()
+
+    if (didClick) {
+      draggedInput = focusedInput
+      draggedIndex = focusedIndex
+      draggedAreaLayout = focusedAreaLayout
     }
   }
 

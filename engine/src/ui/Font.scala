@@ -437,19 +437,24 @@ class Font {
     *
     * @param char Character to measure
     * @param height Height of the font in pixels
-    * @param previousChar Character leading to this one, used for kerning.
-    *                     Specify 0 for no kerning.
+    * @param nextChar Character after this character. Specify 0 for no kerning.
     */
-  def getAdvance(char: Char, height: Double, previousChar: Char = 0): Float = {
+  def getAdvance(char: Char, height: Double, nextChar: Char = 0): Float = {
     val index = findCharsetIndexFromCodepoint(char)
     if (index < 0) return 0.0f
     val D = this.data
     val A = charInfoBase + index * CharInfo.size
     val kernCount = CharInfo.KernCount.get(D, A)
     val advance = CharInfo.Advance.get(D, A)
-    val kerning = if (previousChar != 0 && kernCount > 0) {
-      val kernOffset = CharInfo.KernOffset.get(D, A)
-      findKerning(kernOffset, kernCount, previousChar.toInt)
+    val kerning = if (nextChar != 0 && kernCount > 0) {
+      val index2 = findCharsetIndexFromCodepoint(nextChar)
+      if (index2 >= 0) {
+        val A2 = charInfoBase + index2 * CharInfo.size
+        val kernOffset = CharInfo.KernOffset.get(D, A2)
+        findKerning(kernOffset, kernCount, char.toInt)
+      } else {
+        0.0f
+      }
     } else {
       0.0f
     }

@@ -28,7 +28,7 @@ object Layout {
 class Layout(var unit: Vector2, var x0: Double, var y0: Double, var x1: Double, var y1: Double) {
 
   def position: Vector2 = Vector2(x0, y0)
-  def size: Vector2 = Vector2(x1, y1)
+  def size: Vector2 = Vector2(x1 - x0, y1 - y0)
   def widthPx: Double = x1 - x0
   def heightPx: Double = y1 - y0
   def widthUnits: Double = (x1 - x0) / unit.x

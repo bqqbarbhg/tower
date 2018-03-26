@@ -14,6 +14,7 @@ import menu.{DebugMenu, OptionsMenu}
 import ui._
 import ui.Canvas._
 import ui.InputSet.InputArea
+import io.property._
 
 object MenuState {
 
@@ -38,6 +39,16 @@ object MenuState {
     val input = new InputArea()
   }
 
+  object Tweak extends PropertyContainer {
+    private val arr = MacroPropertySet.make[Tweak.type]()
+    override val propertySet: PropertySet = new PropertySet("MenuState.Tweak", arr) {
+      range("cameraFov", 30.0, 90.0)
+    }
+
+    var cameraFov: DoubleProp.Type = 45.0
+    var testText: StringProp.Type = "Hello world!"
+  }
+
 }
 
 class MenuState extends GameState {
@@ -54,7 +65,7 @@ class MenuState extends GameState {
   val buttons = Array(ContinueButton, ExitButton)
 
   val optionsMenu = new OptionsMenu(inputSet, canvas)
-  val debugMenu = new DebugMenu(inputSet, canvas, Tonemapper)
+  val debugMenu = new DebugMenu(inputSet, canvas, Tweak)
 
   override def load(): Unit = {
     menuAssets.acquire()
@@ -107,7 +118,8 @@ class MenuState extends GameState {
     val pos = Vector3(xx * 12.0, 7.5, yy * -12.0)
     val target = Vector3(dx, 3.0, dy)
     val view = Matrix43.look(pos + offset, target - pos)
-    val proj = Matrix4.perspective(renderer.currentRenderTarget.aspectRatio, math.Pi / 3.0, 0.1, 50.0)
+    val fov = math.toRadians(Tweak.cameraFov)
+    val proj = Matrix4.perspective(renderer.currentRenderTarget.aspectRatio, fov, 0.1, 50.0)
     val viewProj = proj * view
 
     val div = Layout.screen720p

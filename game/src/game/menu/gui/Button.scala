@@ -31,7 +31,7 @@ abstract class Button(val style: ButtonStyle) extends Element {
       if (enabled)
         inputs.add(0, input, rect, style.clickRadius)
 
-      val bg = if (input.focused) style.focusBackgroundSprite else style.idleBackgroundSprite
+      val bg = if (input.focused || input.dragged) style.focusBackgroundSprite else style.idleBackgroundSprite
       canvas.draw(0, bg, rect)
 
       drawContent(rect.copy.padLeft(style.padding))

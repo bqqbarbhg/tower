@@ -3,6 +3,8 @@ package platform
 import core._
 import input.device.Keyboard
 import org.lwjgl.glfw.GLFW._
+import org.lwjgl.glfw.GLFWKeyCallbackI
+import org.lwjgl.glfw.GLFWCharCallbackI
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11._
 import org.lwjgl.system.MemoryUtil.NULL
@@ -10,6 +12,8 @@ import org.lwjgl.opengl.KHRDebug._
 import org.lwjgl.opengl.GLDebugMessageCallbackI
 import org.lwjgl.system.MemoryUtil
 import render.opengl.OptsGl
+
+import scala.collection.mutable.ArrayBuffer
 
 object AppWindow {
 
@@ -31,6 +35,43 @@ object AppWindow {
         throw new RuntimeException(s"OpenGL error: $message")
       } else if (msgType != GL_DEBUG_TYPE_OTHER) {
         println(s"GL: $message")
+      }
+    }
+  }
+
+  /**
+    * GLFW callbacks may be called outside the `glfwPolLEvents()` function.
+    * This is terrifying as we don't even necessary know which thread will call
+    * them. So buffer the key events in this way:
+    * - GLFW callbacks always write to `glfwCallbackQueue`
+    * - Application reads from `readQueue`
+    * - Once a frame, after `glfwPollEvents()` GLFW queue is copied to the read queue (synchronized)
+    *
+    * This results in no extra latency in normally posted key events (in the
+    * event polling function) as the queue is copied on the same frame the events
+    * are received. Events posted from questionable sources will be safely buffered
+    * until the next frame.
+    */
+  private class KeyboardEventQueue {
+    val keyEvents = new ArrayBuffer[KeyEvent]()
+    val charEvents = new ArrayBuffer[CharEvent]()
+  }
+
+  private val glfwCallbackQueue = new KeyboardEventQueue()
+  private val readQueue = new KeyboardEventQueue()
+
+  private val keyCallback = new GLFWKeyCallbackI {
+    override def invoke(window: Long, key: Int, scancode: Int, action: Int, mods: Int): Unit = {
+      glfwCallbackQueue.synchronized {
+        glfwCallbackQueue.keyEvents += KeyEvent(key, action, mods)
+      }
+    }
+  }
+
+  private val charCallback = new GLFWCharCallbackI {
+    override def invoke(window: Long, codepoint: Int): Unit = {
+      glfwCallbackQueue.synchronized {
+        glfwCallbackQueue.charEvents += new CharEvent(codepoint)
       }
     }
   }
@@ -116,13 +157,42 @@ object AppWindow {
       glfwShowWindow(window)
     }
 
-    glfwSetKeyCallback(window, keyboard.keyCallback)
+    glfwSetKeyCallback(window, keyCallback)
+    glfwSetCharCallback(window, charCallback)
 
     if (debug && GL.getCapabilities.GL_KHR_debug) {
       OptsGl.useDebug = true
       glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS)
       glDebugMessageCallback(DebugListener, 0)
     }
+  }
+
+  /** Key events for the current frame */
+  def keyEvents: Seq[KeyEvent] = readQueue.keyEvents
+
+  /** Character events for the current frame */
+  def charEvents: Seq[CharEvent] = readQueue.charEvents
+
+  /** Is a key currently pressed down */
+  def keyDown(key: Int): Boolean = glfwGetKey(window, key) == GLFW_PRESS
+
+  /** Is any control key down */
+  def modifierControlDown: Boolean = keyDown(GLFW_KEY_LEFT_CONTROL) || keyDown(GLFW_KEY_RIGHT_CONTROL)
+
+  /** Is any shift key down */
+  def modifierShiftDown: Boolean = keyDown(GLFW_KEY_LEFT_SHIFT) || keyDown(GLFW_KEY_RIGHT_SHIFT)
+
+  /** Is any alt key down */
+  def modifierAltDown: Boolean = keyDown(GLFW_KEY_LEFT_ALT) || keyDown(GLFW_KEY_RIGHT_ALT)
+
+  /** Set text to system clipboard */
+  def setClipboard(text: String): Unit = {
+    glfwSetClipboardString(window, text)
+  }
+
+  /** Get text from system clipboard */
+  def getClipboard: String = {
+    glfwGetClipboardString(window)
   }
 
   /** Destroy the window */
@@ -283,7 +353,15 @@ object AppWindow {
   /** Update input etc */
   def pollEvents(): Unit = {
     glfwPollEvents()
-    keyboard.update()
+
+    glfwCallbackQueue.synchronized {
+      readQueue.keyEvents.clear()
+      readQueue.charEvents.clear()
+      readQueue.keyEvents ++= glfwCallbackQueue.keyEvents
+      readQueue.charEvents ++= glfwCallbackQueue.charEvents
+      glfwCallbackQueue.keyEvents.clear()
+      glfwCallbackQueue.charEvents.clear()
+    }
   }
 
   /** Present the rendered frame */

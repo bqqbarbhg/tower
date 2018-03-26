@@ -38,7 +38,7 @@ abstract class Checkbox(val style: CheckboxStyle) extends Element {
 
       val color = if (enabled) Color.White else Color.White * 0.5
 
-      if (input.focused) {
+      if (input.focused || input.dragged) {
         val bg = style.focusBackgroundSprite
         canvas.draw(0, bg, fullRect)
       }

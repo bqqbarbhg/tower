@@ -74,8 +74,8 @@ object WordWrap {
     def findBestBreak(begin: Int, end: Int, totalWidth: Double): Int = {
 
       /** Get advance of character `ch` at position `ix` */
-      def getAdvance(ix: Int, ch: Char): Double = if (ix > begin)
-        font.getAdvance(ch, height, text(ix - 1))
+      def getAdvance(ix: Int, ch: Char): Double = if (ix < end - 1)
+        font.getAdvance(ch, height, text(ix + 1))
       else
         font.getAdvance(ch, height)
 

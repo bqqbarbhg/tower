@@ -51,9 +51,9 @@ abstract class DropdownBase(val style: DropdownStyle) extends Element {
       if (enabled)
         inputs.add(0, inputOpen, fullRect, style.openRadius)
 
-      val bg = if (inputOpen.focused) style.focusBackgroundSprite else style.idleBackgroundSprite
+      val bg = if (inputOpen.focused || inputOpen.dragged) style.focusBackgroundSprite else style.idleBackgroundSprite
       val color = if (enabled) Color.White else Color.White * 0.5
-      
+
       canvas.draw(0, bg, fullRect, color)
       canvas.draw(0, style.iconSprite, icon, color)
 

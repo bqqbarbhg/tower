@@ -37,18 +37,28 @@ object Canvas {
 
     def scaled(amount: Double): TextStyle = this.copy(height = height * amount)
 
-    def measureWidth(text: String): Double = measureWidth(text, 0, text.length)
-    def measureWidth(text: String, offset: Int, length: Int): Double = {
+    def measureWidth(text: String): Double = measureWidth(text, 0, text.length, '\0')
+    def measureWidth(text: String, nextChar: Char): Double = measureWidth(text, 0, text.length, nextChar)
+    def measureWidth(text: String, offset: Int, length: Int): Double = measureWidth(text, offset, length, '\0')
+    def measureWidth(text: String, offset: Int, length: Int, nextChar: Char): Double = {
+      if (length == 0) return 0.0
+
       val actualFont = font.get
       var ix = offset
       val end = offset + length
       var pos = 0.0
-      var prevChar = '\0'
-      while (ix < end) {
-        val ch = text(ix)
-        pos += actualFont.getAdvance(ch, height, prevChar)
-        prevChar = ch
+      if (ix < end - 1) {
+        var prevChar = text(ix)
         ix += 1
+        while (ix < end) {
+          val ch = text(ix)
+          pos += actualFont.getAdvance(prevChar, height, ch)
+          prevChar = ch
+          ix += 1
+        }
+        pos += actualFont.getAdvance(prevChar, height, nextChar)
+      } else if (ix < end) {
+        pos = actualFont.getAdvance(text(ix), height, nextChar)
       }
       pos
     }
