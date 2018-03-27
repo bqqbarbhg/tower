@@ -31,6 +31,13 @@ object StackAllocator {
     setForCurrentThread(allocator)
   }
 
+  /** Create a stack-allocator for the current thread if one doesn't exist already */
+  def createCurrentThreadIfNecessary(maxSize: Int): Unit = {
+    if (threadLocal.get == null) {
+      createCurrentThread(maxSize)
+    }
+  }
+
 }
 
 /**

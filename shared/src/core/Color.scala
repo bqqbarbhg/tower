@@ -130,6 +130,21 @@ case class Color(r: Double, g: Double, b: Double, a: Double = 1.0) {
     }
   }
 
+  /** Compress to 8-bit sRGB with linear alpha channel.
+    * Packed in one integer. */
+  def toLinearInt8: Int = {
+    val ir = clamp(r * 255.0 + 0.5, 0.0, 255.0).toInt
+    val ig = clamp(g * 255.0 + 0.5, 0.0, 255.0).toInt
+    val ib = clamp(b * 255.0 + 0.5, 0.0, 255.0).toInt
+    val ia = clamp(a * 255.0, 0.0, 255.0).toInt
+
+    if (littleEndian) {
+      ir | ig << 8 | ib << 16 | ia << 24
+    } else {
+      ia | ib << 8 | ig << 16 | ir << 24
+    }
+  }
+
   /** Compress to 8-bit linear color */
   def toLinear8: (Int, Int, Int, Int) = (
     clamp(r * 255.0 + 0.5, 0.0, 255.0).toInt,

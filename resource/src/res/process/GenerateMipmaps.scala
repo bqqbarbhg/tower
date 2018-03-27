@@ -25,19 +25,24 @@ object GenerateMipmaps {
 
       val mip = source.createCompatible(width, height)
 
-      for {
-        y <- 0 until height
-        x <- 0 until width
-      } {
-        val bx = x * 2
-        val by = y * 2
-        val s0 = prev.getPixelClamp(bx + 0, by + 0)
-        val s1 = prev.getPixelClamp(bx + 1, by + 0)
-        val s2 = prev.getPixelClamp(bx + 0, by + 1)
-        val s3 = prev.getPixelClamp(bx + 1, by + 1)
+      var y = 0
+      while (y < height) {
+        var x = 0
 
-        val sum = (s0 + s1 + s2 + s3) / 4.0
-        mip.setPixel(x, y, sum)
+        while (x < width) {
+          val bx = x * 2
+          val by = y * 2
+          val s0 = prev.getPixelClamp(bx + 0, by + 0)
+          val s1 = prev.getPixelClamp(bx + 1, by + 0)
+          val s2 = prev.getPixelClamp(bx + 0, by + 1)
+          val s3 = prev.getPixelClamp(bx + 1, by + 1)
+
+          val sum = (s0 + s1 + s2 + s3) / 4.0
+          mip.setPixel(x, y, sum)
+
+          x += 1
+        }
+        y += 1
       }
 
       mips += mip

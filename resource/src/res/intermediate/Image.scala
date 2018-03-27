@@ -82,6 +82,21 @@ object Image {
       data.put(base + 3, a.toByte)
     }
 
+    override def getPixelSrgbInt(x: Int, y: Int): Int = {
+      val base = (y * width + x) * 4
+      data.getInt(base)
+    }
+
+    override def hasAlpha: Boolean = {
+      var ix = 0
+      val length = width * height * 4
+      while (ix < length) {
+        if ((data.get(ix + 3).toInt & 0xFF) != 0xFF) return true
+        ix += 4
+      }
+      false
+    }
+
     def unload(): Unit = {
       MemoryUtil.memFree(data)
     }
@@ -138,6 +153,16 @@ abstract class Image(val width: Int, val height: Int, val srgb: Boolean) extends
 
   def getPixel(x: Int, y: Int): Color
   def setPixel(x: Int, y: Int, color: Color): Unit
+
+  def getPixelSrgbInt(x: Int, y: Int): Int = {
+    val pixel = getPixel(x, y)
+    if (srgb) pixel.toSrgbInt8 else pixel.toLinearInt8
+  }
+
+  def hasAlpha: Boolean = (for {
+    y <- 0 until height
+    x <- 0 until width
+  } yield getPixel(x, y)).forall(_.a < 1.0)
 
   /** Like `getPixel()` but clamped to image area */
   def getPixelClamp(x: Int, y: Int): Color = {

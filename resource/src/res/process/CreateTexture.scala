@@ -18,17 +18,16 @@ object CreateTexture {
     val tex = new Texture(image.width, image.height, Texture.Format.Rgba)
 
     val data = MemoryUtil.memAlloc(image.width * image.height * 4)
-    for {
-      y <- 0 until image.height
-      x <- 0 until image.width
-    } {
-      val pixel = image.getPixel(x, y)
-      val (r, g, b, a) = if (image.srgb) pixel.toSrgb8 else pixel.toLinear8
-      val base = (y * image.width + x) * 4
-      data.put(base + 0, r.toByte)
-      data.put(base + 1, g.toByte)
-      data.put(base + 2, b.toByte)
-      data.put(base + 3, a.toByte)
+    var y = 0
+    while (y < image.height) {
+      var x = 0
+      while (x < image.width) {
+        val pixel = image.getPixel(x, y)
+        val base = (y * image.width + x) * 4
+        data.putInt(base, image.getPixelSrgbInt(x, y))
+        x += 1
+      }
+      y += 1
     }
 
     tex.levelData = Array(data)
@@ -118,10 +117,7 @@ object CreateTexture {
 
     val levelTextures = config.semantic match {
       case "color" =>
-        val hasAlpha = levels.exists(level => (for {
-          y <- 0 until level.height
-          x <- 0 until level.width
-        } yield level.getPixel(x, y)).forall(_.a < 1.0))
+        val hasAlpha = levels.headOption.exists(_.hasAlpha)
 
         if (config.compressed) {
           levels.map(level => CompressDxt.compressDxt(level, hasAlpha))

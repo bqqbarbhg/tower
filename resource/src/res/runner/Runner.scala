@@ -2,6 +2,7 @@ package res.runner
 
 import java.io.File
 import java.nio.file.Paths
+import java.util.concurrent.{Executor, ExecutorService, Executors, LinkedBlockingQueue}
 
 import io.UncheckedUtil
 import org.lwjgl.BufferUtils
@@ -15,10 +16,10 @@ import res.importer._
 import res.intermediate._
 import res.output._
 import res.process._
+import res.runner.Runner._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
-
 
 object Runner {
 
@@ -31,17 +32,21 @@ object Runner {
     }
     merged
   }
+
+  protected case class TaskResult(name: String, duration: Double)
 }
 
 /**
   * The main resource processing runner.
   */
 class Runner(val opts: RunOptions) {
-  print(s"Listing all files in '${opts.assetRoot}'...")
+  if (opts.verbose)
+    print(s"Listing all files in '${opts.assetRoot}'...")
   Console.flush()
   val assetRoot = new File(opts.assetRoot).getCanonicalFile
   val sourceFiles = io.PathUtil.listFilesRecursive(assetRoot).sortBy(_.getAbsolutePath).toVector
-  println(s" ${sourceFiles.length} found")
+  if (opts.verbose)
+    println(s" ${sourceFiles.length} found")
 
   val absoluteAssetPath = assetRoot.getAbsolutePath
   def assetRelative(file: File): String = {
@@ -170,12 +175,61 @@ class Runner(val opts: RunOptions) {
     false
   }
 
+  def numThreads: Int = if (opts.numThreads > 0)
+    opts.numThreads
+  else
+    Runtime.getRuntime.availableProcessors
+
+  protected var taskExecutor: ExecutorService = null
+  protected var numTasks: Int = 0
+  protected val resultQueue = new LinkedBlockingQueue[TaskResult]()
+
+  class TaskToRun(name: String, task: () => Unit) extends Runnable {
+    override def run(): Unit = {
+      StackAllocator.createCurrentThreadIfNecessary(16*1024*1024)
+      val startTime = System.nanoTime()
+
+      task()
+
+      val endTime = System.nanoTime()
+      val duration = (endTime - startTime).toDouble * 1e-9
+      resultQueue.offer(TaskResult(name, duration))
+    }
+  }
+
+  protected def addTask(name: String)(task: => Unit): Unit = {
+    numTasks += 1
+    taskExecutor.submit(new TaskToRun(name, () => task))
+  }
+
+  protected def addAssetTask(asset: AssetFile)(task: => Unit): Unit = {
+    val name = assetRelative(asset.file)
+    addTask(name)(task)
+  }
+
+  protected def finishTasks(): Unit = {
+    val numStart = numTasks
+
+    println(s"Processing tasks: $numStart ($numThreads threads)")
+
+    while (numTasks > 0) {
+      val result = resultQueue.take()
+      numTasks -= 1
+
+      val numDone = numStart - numTasks
+      val prefix = s"($numDone/$numStart)"
+      println(f"$prefix%s ${result.name}%s: ${result.duration}%.2fs")
+    }
+  }
+
   def run(): Unit = {
+    taskExecutor = Executors.newFixedThreadPool(numThreads)
 
     // Load configurations
     {
       val tomlFiles = sourceFiles.filter(_.getName().endsWith(".ac.toml"))
-      println(s"Parsing config .ac.toml files... ${tomlFiles.length} found")
+      if (opts.verbose)
+        println(s"Parsing config .ac.toml files... ${tomlFiles.length} found")
       for (tomlFile <- tomlFiles) {
         if (opts.debug) println(s"> ${assetRelative(tomlFile)}")
         try {
@@ -193,7 +247,8 @@ class Runner(val opts: RunOptions) {
     // Resolve assets
     {
       val assetFiles = sourceFiles.filterNot(_.getName().endsWith(".ac.toml"))
-      println(s"Resolving assets... ${assetFiles.length} found")
+      if (opts.verbose)
+        println(s"Resolving assets... ${assetFiles.length} found")
       for (assetFile <- assetFiles) {
         val configs = getConfigs(assetFile)
         for (config <- configs) {
@@ -220,7 +275,8 @@ class Runner(val opts: RunOptions) {
 
     // Find the assets that have changed
     {
-      println(s"Determining assets to process... ${allAssets.length} found")
+      if (opts.verbose)
+        println(s"Determining assets to process... ${allAssets.length} found")
       for (dirtyAsset <- allAssets.filter(isAssetDirty)) {
         dirtyAsset.hasChanged = true
         dirtyAssets += dirtyAsset
@@ -245,8 +301,9 @@ class Runner(val opts: RunOptions) {
     // Process atlases
     {
       val dirtyAtlases = atlases.values.filter(_.hasChanged)
-      println(s"Processing atlases... ${dirtyAtlases.size} found")
-      for (atlas <- dirtyAtlases) {
+      if (opts.verbose)
+        println(s"Processing atlases... ${dirtyAtlases.size} found")
+      for (atlas <- dirtyAtlases) addTask(s"Atlas: ${atlas.name}") {
         if (opts.verbose) println(s"> ${atlas.name} (${atlas.spriteAssets.length} sprites)")
         val spriteAssets = atlas.spriteAssets.flatMap(_.importAsset())
         val spriteImages = spriteAssets.map(_.asInstanceOf[Image])
@@ -290,8 +347,9 @@ class Runner(val opts: RunOptions) {
     // Process textures
     {
       val dirtyTextures = dirtyAssets.filter(_.config.res.image.ttype == "texture")
-      println(s"Processing textures... ${dirtyTextures.size} found")
-      for (asset <- dirtyTextures) {
+      if (opts.verbose)
+        println(s"Processing textures... ${dirtyTextures.size} found")
+      for (asset <- dirtyTextures) addAssetTask(asset) {
         val resources = asset.importAsset()
         assert(resources.size == 1)
         val image = resources.head.asInstanceOf[Image]
@@ -308,8 +366,9 @@ class Runner(val opts: RunOptions) {
     // Process colorgrades
     {
       val dirtyTextures = dirtyAssets.filter(_.config.res.image.ttype == "colorgrade")
-      println(s"Processing textures... ${dirtyTextures.size} found")
-      for (asset <- dirtyTextures) {
+      if (opts.verbose)
+        println(s"Processing textures... ${dirtyTextures.size} found")
+      for (asset <- dirtyTextures) addAssetTask(asset) {
         val resources = asset.importAsset()
         assert(resources.size == 1)
         val image = resources.head.asInstanceOf[Image]
@@ -327,8 +386,9 @@ class Runner(val opts: RunOptions) {
     // Process PCM sounds
     {
       val dirtyPcms = dirtyAssets.filter(_.fileType == ImportFilePcm)
-      println(s"Processing PCM sounds... ${dirtyPcms.size} found")
-      for (asset <- dirtyPcms) {
+      if (opts.verbose)
+        println(s"Processing PCM sounds... ${dirtyPcms.size} found")
+      for (asset <- dirtyPcms) addAssetTask(asset) {
         val resources = asset.importAsset()
         assert(resources.size == 1)
         val pcm = resources.head.asInstanceOf[PcmSound]
@@ -345,8 +405,9 @@ class Runner(val opts: RunOptions) {
     // Process audio sounds
     {
       val dirtySounds = dirtyAssets.filter(_.fileType == ImportFileAudio)
-      println(s"Processing compressed sounds... ${dirtySounds.size} found")
-      for (asset <- dirtySounds) {
+      if (opts.verbose)
+        println(s"Processing compressed sounds... ${dirtySounds.size} found")
+      for (asset <- dirtySounds) addAssetTask(asset) {
         val resources = asset.importAsset()
         assert(resources.size == 1)
         val sound = resources.head.asInstanceOf[Sound]
@@ -365,8 +426,9 @@ class Runner(val opts: RunOptions) {
         cfg.charSet.nonEmpty && cfg.variant.nonEmpty
       }
       val dirtyFonts = dirtyAssets.filter(validFont)
-      println(s"Processing fonts... ${dirtyFonts.size} found")
-      for (asset <- dirtyFonts) {
+      if (opts.verbose)
+        println(s"Processing fonts... ${dirtyFonts.size} found")
+      for (asset <- dirtyFonts) addAssetTask(asset) {
         val relPath = assetRelative(asset.file)
         val resources = asset.importAsset()
         assert(resources.size == 1)
@@ -403,8 +465,9 @@ class Runner(val opts: RunOptions) {
     {
       val textureAssets = allAssets.filter(_.config.res.image.ttype == "texture").map(_.file.getCanonicalFile.getAbsolutePath).toSet
       val dirtyModels = dirtyAssets.filter(_.fileType == ImportFileModel)
-      println(s"Processing models... ${dirtyModels.size} found")
-      for (asset <- dirtyModels) {
+      if (opts.verbose)
+        println(s"Processing models... ${dirtyModels.size} found")
+      for (asset <- dirtyModels) addAssetTask(asset) {
         val relPath = assetRelative(asset.file)
         val resources = asset.importAsset()
         val meshes = resources.collect({ case a: Mesh => a }).toSeq
@@ -468,9 +531,10 @@ class Runner(val opts: RunOptions) {
     // Process shaders
     {
       val dirtyShaders = dirtyAssets.filter(_.fileType == ImportFileShader)
-      println(s"Processing shaders... ${dirtyShaders.size} found")
+      if (opts.verbose)
+        println(s"Processing shaders... ${dirtyShaders.size} found")
 
-      for (asset <- dirtyShaders) {
+      for (asset <- dirtyShaders) addAssetTask(asset) {
         val relPath = assetRelative(asset.file)
         val resources = asset.importAsset()
         assert(resources.size == 1)
@@ -487,9 +551,10 @@ class Runner(val opts: RunOptions) {
     // Process locales
     {
       val dirtyLocales = dirtyAssets.filter(_.fileType == ImportFileLocale)
-      println(s"Processing locales... ${dirtyLocales.size} found")
+      if (opts.verbose)
+        println(s"Processing locales... ${dirtyLocales.size} found")
 
-      for (asset <- dirtyLocales) {
+      for (asset <- dirtyLocales) addAssetTask(asset) {
         val relPath = assetRelative(asset.file)
         val resources = asset.importAsset()
         assert(resources.size == 1)
@@ -506,10 +571,14 @@ class Runner(val opts: RunOptions) {
       }
     }
 
+    // Wait for the processing to end
+    finishTasks()
+
     // Update the asset cache
     {
       val updated = allAssets.filter(_.hasChanged)
-      println(s"Updating asset cache... ${updated.length} found")
+      if (opts.verbose)
+        println(s"Updating asset cache... ${updated.length} found")
       for (asset <- updated) {
         val cache = new AssetCacheFile()
         cache.configFormatHash = configFormatHash
@@ -528,6 +597,8 @@ class Runner(val opts: RunOptions) {
         }
       }
     }
+
+    taskExecutor.shutdown()
   }
 
 }
