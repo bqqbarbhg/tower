@@ -25,6 +25,7 @@ object OptionsMenu {
   val MainFont = FontAsset("font/catamaran/Catamaran-SemiBold.ttf.s2ft")
   val TitleFont = FontAsset("font/catamaran/Catamaran-Bold.ttf.s2ft")
   val TooltipFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
+  val TextBoxFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
 
   val TitleLabel = new LabelStyle(26.0, TextStyle(TitleFont, 26.0))
   val NormalLabel = new LabelStyle(22.0, TextStyle(MainFont, 22.0))
@@ -61,6 +62,26 @@ object OptionsMenu {
     padding = 0.0,
   )
 
+  val SliderTextBox = new TextBoxStyle(22.0,
+    textStyle = TextStyle(TextBoxFont, 18.0),
+    selectedTextStyle = TextStyle(TextBoxFont, 18.0, color = Color.rgb(0x222222)),
+    idleBackgroundSprite = Identifier("gui/menu/background_idle.png"),
+    selectSprite = Identifier("gui/menu/background_white.png"),
+    paddingLeft = 3.0,
+    yOffset = 3.0,
+    selectPad = 4.0,
+    caretWidth = 2.0,
+    doubleClickIntervalSeconds = 0.2,
+    selectAllOnFirstClick = true,
+  )
+
+  val DoubleSlider = new SliderStyle(22.0, 60.0, 5.0,
+    rectSprite = Identifier("gui/menu/background_white.png"),
+    stringFormat = v => f"$v%.2f",
+    lineWidth = 2.0,
+    markWidth = 4.0,
+  )
+
   val ColMonitorSelectedBg = Color.rgb(0xDDDDDD)
   val ColMonitorSelectedText = Color.rgb(0x888888)
   val ColMonitorOtherBg = Color.rgb(0x444444)
@@ -76,19 +97,25 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
 
   var options = Options.current.copy
 
-  val tooltips = new mutable.HashMap[InputArea, Int => Option[String]]()
+  case class Tooltip(textFunc: Int => Option[String], overrideLayout: Option[() => Layout] = None)
+
+  val tooltips = new mutable.HashMap[InputArea, Tooltip]()
   val customTooltips = new mutable.HashMap[InputArea, (Vector2, Vector2, Int) => Unit]()
 
   def addTooltip(area: InputArea, tooltip: => String): Unit = {
-    tooltips(area) = _ => Some(tooltip)
+    tooltips(area) = Tooltip(_ => Some(tooltip))
   }
 
   def addTooltipOption(area: InputArea, tooltip: => Option[String]): Unit = {
-    tooltips(area) = _ => tooltip
+    tooltips(area) = Tooltip(_ => tooltip)
   }
 
   def addTooltipIndexed(area: InputArea, tooltip: Int => Option[String]): Unit = {
-    tooltips(area) = tooltip
+    tooltips(area) = Tooltip(tooltip)
+  }
+
+  def addTooltipToLayout(area: InputArea, layout: => Layout, tooltip: => String): Unit = {
+    tooltips(area) = Tooltip(_ => Some(tooltip), Some(() => layout))
   }
 
   def addCustomTooltip(area: InputArea, tooltipFunc: (Vector2, Vector2, Int) => Unit): Unit = {
@@ -368,6 +395,26 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
       addTooltipOption(inputOpen, if (!isOpen) Some(lc"menu.options.graphics.ql.antialias.desc") else None)
     }
 
+    elements += new Padding(10.0)
+
+    elements += new Label(InfoLabel) with QualityOption {
+      val text: String = lc"menu.options.graphics.ql.resolution.title"
+    }
+
+    elements += new Slider(DoubleSlider, SliderTextBox) {
+      override def minValue: Double = 0.2
+      override def maxValue: Double = 1.0
+
+      override def setValue(newValue: Double): Unit = options.graphics.quality.resolutionFactor = newValue
+      override def currentValue: Double = options.graphics.quality.resolutionFactor
+
+      override def clamped: Boolean = true
+      override def step: Option[Double] = Some(0.1)
+
+      addTooltipToLayout(sliderInput, lastLayout, lc"menu.options.graphics.ql.resolution.desc")
+      addTooltipToLayout(textBox.input, lastLayout, lc"menu.options.graphics.ql.resolution.desc")
+    }
+
     elements
   }
 
@@ -545,13 +592,13 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
 
   def update(): Unit = {
     val parent = Layout.screen720p.padAround(50.0)
+
     val unit = parent.unit
 
     for (element <- allElements) {
       element.inputs = inputs
       element.canvas = canvas
     }
-
 
     val top = parent.pushTop(35.0)
     val bottom = parent.pushBottom(50.0)
@@ -596,14 +643,15 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
       focusedArea <- inputs.focusedArea
     } {
       for {
-        maybeTooltip <- tooltips.get(focusedInput._1)
-        tooltip <- maybeTooltip(focusedInput._2)
+        tooltip <- tooltips.get(focusedInput._1)
+        text <- tooltip.textFunc(focusedInput._2)
       } {
-        val pos = Vector2(focusedArea.x1, focusedArea.y0) + unit *@ Vector2(15.0, 5.0)
+        val layout = tooltip.overrideLayout.map(_()).getOrElse(focusedArea)
+        val pos = Vector2(layout.x1, layout.y0) + unit *@ Vector2(15.0, 5.0)
         val width = unit.x * 200.0
-        val bounds = Vector2(width, unit.y * 1000.0)
+        val bounds = Vector2(width, unit.y * 40000.0)
         val style = TooltipTextStyle.scaled(unit.y)
-        val endY = canvas.drawTextWrapped(5, style, pos, bounds, tooltip)
+        val endY = canvas.drawTextWrapped(5, style, pos, bounds, text)
         val bgSize = Vector2(width, endY - pos.y)
         drawTooltipBox(unit, pos, bgSize)
       }

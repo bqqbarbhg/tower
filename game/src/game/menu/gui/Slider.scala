@@ -13,22 +13,32 @@ abstract class Slider(val style: SliderStyle, val textBoxStyle: TextBoxStyle) ex
   def minValue: Double
   def maxValue: Double
   def currentValue: Double
+  def clamped: Boolean = false
   def setValue(newValue: Double): Unit
   def step: Option[Double]
 
   val sliderInput = new InputArea()
+  var lastLayout: Layout = Layout.Empty
+
+  private def setValueImpl(v: Double): Unit = {
+    if (clamped)
+      setValue(clamp(v, minValue, maxValue))
+    else
+      setValue(v)
+  }
 
   val textBox = new TextBox(textBoxStyle) {
     override def currentText: String = Slider.this.style.stringFormat(currentValue)
     override def setText(newValue: String): Unit = {
       for (v <- Try(newValue.toDouble).toOption) {
-        setValue(v)
+        setValueImpl(v)
       }
     }
   }
 
   def update(parent: Layout): Unit = {
     val fullRect = parent.pushTop(style.height)
+    lastLayout = fullRect.copy
     val rect = fullRect.copy
     val label = rect.pushRight(style.labelWidth).padLeft(style.labelPad)
     val base = rect.position
@@ -45,7 +55,7 @@ abstract class Slider(val style: SliderStyle, val textBoxStyle: TextBoxStyle) ex
       val pos = inputs.dragPosition
       val relX = clamp((pos.x - base.x) / sliderWidth, 0.0, 1.0)
       val value = min * (1.0 - relX) + max * relX
-      setValue(value)
+      setValueImpl(value)
     }
 
     if (visible) {

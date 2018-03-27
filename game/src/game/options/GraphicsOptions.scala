@@ -12,6 +12,7 @@ object GraphicsOptions {
     var maxTextureSize: Int = 2048
     var shaderQuality: Int = 3
     var antialias: Int = 4
+    var resolutionFactor: Double = 1.0
     var verticalSync: Boolean = true
     var halfFramerate: Boolean = false
     var highBitdepth: Boolean = true
@@ -21,6 +22,7 @@ object GraphicsOptions {
       maxTextureSize = v.field("maxTextureSize", maxTextureSize)
       shaderQuality = v.field("shaderQuality", shaderQuality)
       antialias = v.field("antialias", antialias)
+      resolutionFactor = v.field("resolutionFactor", resolutionFactor)
       verticalSync = v.field("verticalSync", verticalSync)
       halfFramerate = v.field("halfFramerate", halfFramerate)
       preset = v.field("preset", preset)

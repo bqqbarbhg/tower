@@ -128,8 +128,8 @@ class MenuState extends GameState {
 
     val div = Layout.screen720p
 
-    // optionsMenu.update()
-    debugMenu.update(div.copy.padAround(100.0).pushLeft(200.0))
+    optionsMenu.update()
+    // debugMenu.update(div.copy.padAround(100.0).pushLeft(200.0))
 
     if (false) {
       div.pushLeft(1280.0 * 0.1)
