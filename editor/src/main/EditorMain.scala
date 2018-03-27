@@ -1,11 +1,13 @@
 package main
 
+import render._
+import core._
 import asset.AssetLoader
-import core.StackAllocator
 import game.state._
 import game.system.{ModelSystem, RenderingSystem}
 import platform.AppWindow
 import io.content._
+import util.BufferUtils._
 
 object EditorMain extends App {
 
@@ -46,6 +48,71 @@ object EditorMain extends App {
   opts.engine.glCompatability = true
   GameStartup.start(opts)
 
+  def dumpColorLookup(): Unit = {
+    val exposure = 4.0
+
+    val renderer = Renderer.get
+    val readTarget = renderer.currentRenderTarget
+    val w = readTarget.width
+    val h = readTarget.height
+
+    val writeTarget = RenderTarget.create(w, h, Some(TexFormat.Rgbf32), None, false)
+    renderer.blitRenderTargetColor(writeTarget, readTarget)
+
+    val floatPixels = Memory.alloc(w * h * 3 * 4)
+    writeTarget.readColorPixels(0, floatPixels, TexFormat.Rgbf32)
+
+    def putPixel(x: Int, y: Int, color: Color): Unit = {
+      val base = ((h - y - 1) * w + x) * 3*4
+      floatPixels.putFloat(base + 0, color.r.toFloat)
+      floatPixels.putFloat(base + 4, color.g.toFloat)
+      floatPixels.putFloat(base + 8, color.b.toFloat)
+    }
+
+    val LookupSize = 32
+
+    def mapChannel(i: Int): Double = {
+      val x = i.toDouble / (LookupSize - 1).toDouble
+      x * x * exposure
+    }
+
+    for {
+      r <- 0 until LookupSize
+      g <- 0 until LookupSize
+      b <- 0 until LookupSize
+    } {
+      val cr = mapChannel(r)
+      val cg = mapChannel(g)
+      val cb = mapChannel(b)
+      putPixel(r + b * LookupSize, g, Color(cr, cg, cb))
+    }
+
+    val fixedPixels = Memory.alloc(w * h * 3 * 2)
+    var y = 0
+    while (y < h) {
+      var src = (h - y - 1) * w * 3 * 4
+      val srcEnd = src + w * 3 * 4
+      while (src < srcEnd) {
+        val f = floatPixels.getFloat(src)
+        val i = clamp((f / exposure * 65535.0 + 0.5).toInt, 0, 0xFFFF)
+        fixedPixels.putShort(i.toShort)
+        src += 4
+      }
+      y += 1
+    }
+
+    fixedPixels.finish()
+    val tiffBuffer = Memory.alloc(fixedPixels.capacity * 4)
+    io.format.Tiff.writeLinearTiffRgb16(tiffBuffer, fixedPixels, w, h)
+
+    tiffBuffer.finish()
+    tiffBuffer.writeToFile("temp/screenshot_16.tiff")
+    Memory.free(tiffBuffer)
+    Memory.free(floatPixels)
+    Memory.free(fixedPixels)
+    writeTarget.unload()
+  }
+
   do {
     GameStartup.restartRequested = false
 
@@ -63,6 +130,9 @@ object EditorMain extends App {
         processResources()
         AssetLoader.reloadEverything()
         ModelSystem.assetsLoaded()
+      }
+      if (AppWindow.keyEvents.exists(e => e.down == true && e.control && e.key == 'L')) {
+        dumpColorLookup()
       }
     }
 
