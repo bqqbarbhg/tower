@@ -1,12 +1,12 @@
 package game.state
 
 import core._
+import util.BufferUtils._
 import render._
 import asset._
 import game.shader._
 import platform.AppWindow
 import MenuState._
-import game.lighting.Tonemapper
 import game.system.{ModelSystem, RenderingSystem}
 import game.system.ModelSystem.ModelRef
 import gfx.Material
@@ -15,12 +15,14 @@ import ui._
 import ui.Canvas._
 import ui.InputSet.InputArea
 import io.property._
+import org.lwjgl.system.MemoryUtil
 
 object MenuState {
 
   val MenuAtlas = AtlasAsset("atlas/menu.s2at")
   val StatueModel = ModelAsset("mainmenu/mainmenu_statue.fbx.s2md")
   val MainFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
+  val MainColorgrade = TextureAsset("colorgrade/mainmenu.png.s2tx")
 
   private val tMenuItem = TextStyle(MainFont, 44.0)
 
@@ -31,8 +33,10 @@ object MenuState {
     StatueModel,
     MainFont,
     SimpleMeshShader,
+    PostprocessShader,
     MenuAtlas,
     Material.shared,
+    MainColorgrade,
   )
 
   class Button(val localeKey: String) {
@@ -163,10 +167,87 @@ class MenuState extends GameState {
       }
     }
 
-    renderer.blitRenderTargetColor(RenderTarget.Backbuffer, RenderingSystem.MainTargetMsaa)
-    renderer.setRenderTarget(RenderTarget.Backbuffer)
+    if (AppWindow.keyEvents.exists(e => e.down && e.key == 'H')) {
+      val exposure = 4.0
+
+      val readTarget = renderer.currentRenderTarget
+      val w = readTarget.width
+      val h = readTarget.height
+
+      val writeTarget = RenderTarget.create(w, h, Some(TexFormat.Rgbf32), None, false)
+      renderer.blitRenderTargetColor(writeTarget, readTarget)
+
+      val floatPixels = MemoryUtil.memAlloc(w * h * 3 * 4)
+      writeTarget.readColorPixels(0, floatPixels, TexFormat.Rgbf32)
+
+      def putPixel(x: Int, y: Int, color: Color): Unit = {
+        val base = ((h - y - 1) * w + x) * 3*4
+        floatPixels.putFloat(base + 0, color.r.toFloat)
+        floatPixels.putFloat(base + 4, color.g.toFloat)
+        floatPixels.putFloat(base + 8, color.b.toFloat)
+      }
+
+      val LookupSize = 32
+
+      def mapChannel(i: Int): Double = {
+        val x = i.toDouble / (LookupSize - 1).toDouble
+        x * x * exposure
+      }
+
+      for {
+        r <- 0 until LookupSize
+        g <- 0 until LookupSize
+        b <- 0 until LookupSize
+      } {
+        val cr = mapChannel(r)
+        val cg = mapChannel(g)
+        val cb = mapChannel(b)
+        putPixel(r + b * LookupSize, g, Color(cr, cg, cb))
+      }
+
+      val fixedPixels = MemoryUtil.memAlloc(w * h * 3 * 2)
+      var y = 0
+      while (y < h) {
+        var src = (h - y - 1) * w * 3 * 4
+        val srcEnd = src + w * 3 * 4
+        while (src < srcEnd) {
+          val f = floatPixels.getFloat(src)
+          val i = clamp((f / exposure * 65535.0 + 0.5).toInt, 0, 0xFFFF)
+          fixedPixels.putShort(i.toShort)
+          src += 4
+        }
+        y += 1
+      }
+
+      fixedPixels.finish()
+      val tiffBuffer = MemoryUtil.memAlloc(fixedPixels.capacity * 4)
+      io.format.Tiff.writeLinearTiffRgb16(tiffBuffer, fixedPixels, w, h)
+
+      tiffBuffer.finish()
+      tiffBuffer.writeToFile("temp/screenshot_16.tiff")
+
+      MemoryUtil.memFree(tiffBuffer)
+      MemoryUtil.memFree(floatPixels)
+      MemoryUtil.memFree(fixedPixels)
+      writeTarget.unload()
+    }
 
     renderer.setDepthMode(false, false)
+    renderer.setCull(false)
+    renderer.setBlend(Renderer.BlendNone)
+    renderer.setRenderTarget(RenderTarget.Backbuffer)
+    renderer.clear(Some(Color.Black), None)
+
+    PostprocessShader.get.use()
+
+    if (RenderingSystem.msaa > 1)
+      renderer.setTextureTargetColor(PostprocessShader.Textures.BackbufferMsaa, RenderingSystem.MainTargetMsaa, 0)
+    else
+      renderer.setTextureTargetColor(PostprocessShader.Textures.Backbuffer, RenderingSystem.MainTargetMsaa, 0)
+
+    renderer.setTexture(PostprocessShader.Textures.ColorLookup, MainColorgrade.get.texture)
+
+    renderer.drawQuad()
 
     canvas.render()
 

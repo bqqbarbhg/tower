@@ -301,6 +301,26 @@ class Runner(val opts: RunOptions) {
         val filename = Paths.get(opts.dataRoot, relPath + ".s2tx").toFile
         TextureFile.save(writer, filename, texture)
         texture.unload()
+        image.unload()
+      }
+    }
+
+    // Process colorgrades
+    {
+      val dirtyTextures = dirtyAssets.filter(_.config.res.image.ttype == "colorgrade")
+      println(s"Processing textures... ${dirtyTextures.size} found")
+      for (asset <- dirtyTextures) {
+        val resources = asset.importAsset()
+        assert(resources.size == 1)
+        val image = resources.head.asInstanceOf[Image]
+
+        val colorTex = ProcessColorgrade.processColorgrade(image, asset.config.res.colorgrade)
+        val relPath = assetRelative(asset.file)
+        val filename = Paths.get(opts.dataRoot, relPath + ".s2tx").toFile
+        TextureFile.save(writer, filename, colorTex)
+
+        colorTex.unload()
+        image.unload()
       }
     }
 

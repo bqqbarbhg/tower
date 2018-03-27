@@ -81,15 +81,19 @@ object Config {
   object Res {
 
     class Image extends SimpleSerializable {
-      /** How should this image be processed (texture or sprite) */
+      /** How should this image be processed (texture, sprite, or colorgrade) */
       var ttype: String = ""
 
       /** Is the image sRGB data */
       var srgb: Boolean = true
 
+      /** Image bit-depth */
+      var colorDepth: Int = 8
+
       override def visit(v: SimpleVisitor): Unit = {
         ttype = v.field("type", ttype)
         srgb = v.field("srgb", srgb)
+        colorDepth = v.field("colorDepth", colorDepth)
       }
     }
 
@@ -176,12 +180,16 @@ object Config {
       /** Should the colors be premultiplied with alpha */
       var premultiplyAlpha: Boolean = false
 
+      /** Bits per pixel of the texture */
+      var colorDepth: Int = 8
+
       override def visit(v: SimpleVisitor): Unit = {
         semantic = v.field("semantic", semantic)
         compressed = v.field("compressed", compressed)
         hasMipmaps = v.field("hasMipmaps", hasMipmaps)
         readAsLinear = v.field("readAsLinear", readAsLinear)
         premultiplyAlpha = v.field("premultiplyAlpha", premultiplyAlpha)
+        colorDepth = v.field("colorDepth", colorDepth)
       }
     }
 
@@ -402,6 +410,24 @@ object Config {
       }
     }
 
+    class Colorgrade extends SimpleSerializable {
+
+      /** Resolution of the color lookup table */
+      var resolution: Int = 0
+
+      /** Texture options */
+      var texture = new Texture()
+      texture.compressed = false
+      texture.hasMipmaps = false
+      texture.colorDepth = 16
+
+      override def visit(v: SimpleVisitor): Unit = {
+        resolution = v.field("resolution", resolution)
+        texture = v.field("texture", texture)
+      }
+
+    }
+
   }
 
   /** Resource type specific settings */
@@ -416,6 +442,7 @@ object Config {
     var sound = new Res.Sound()
     var font = new Res.Font()
     var shader = new Res.Shader()
+    var colorgrade = new Res.Colorgrade()
 
     override def visit(v: SimpleVisitor): Unit = {
       texture = v.field("texture", texture)
@@ -428,6 +455,7 @@ object Config {
       sound = v.field("sound", sound)
       font = v.field("font", font)
       shader = v.field("shader", shader)
+      colorgrade = v.field("colorgrade", colorgrade)
     }
   }
 

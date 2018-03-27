@@ -1,5 +1,7 @@
 package render.opengl
 
+import java.nio.ByteBuffer
+
 import org.lwjgl.opengl.GL11._
 import org.lwjgl.opengl.GL21._
 import org.lwjgl.opengl.GL30._
@@ -44,13 +46,15 @@ class RenderTargetGl(val width: Int, val height: Int, val colorFormat: Array[Str
         case "SRGA" => glTexImage2DMultisample(binding, clampedSamples, GL_SRGB8, width, height, true)
         case "Rf10" => glTexImage2DMultisample(binding, clampedSamples, GL_R11F_G11F_B10F, width, height, true)
         case "Rf16" => glTexImage2DMultisample(binding, clampedSamples, GL_RGB16F, width, height, true)
+        case "Rf32" => glTexImage2DMultisample(binding, clampedSamples, GL_RGB32F, width, height, true)
       }
     } else {
       format match {
         case "RGBA" => glTexImage2D(binding, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0)
         case "SRGA" => glTexImage2D(binding, 0, GL_SRGB, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0)
         case "Rf10" => glTexImage2D(binding, 0, GL_R11F_G11F_B10F, width, height, 0, GL_RGB, GL_FLOAT, 0)
-        case "Rf16" => glTexImage2D(binding, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, 0)
+        case "Rf16" => glTexImage2D(binding, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_HALF_FLOAT, 0)
+        case "Rf32" => glTexImage2D(binding, 0, GL_RGB32F, width, height, 0, GL_RGB, GL_FLOAT, 0)
       }
 
       glTexParameteri(binding, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
@@ -99,6 +103,16 @@ class RenderTargetGl(val width: Int, val height: Int, val colorFormat: Array[Str
 
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, binding, tex, 0)
     tex
+  }
+
+  def readColorPixels(index: Int, buffer: ByteBuffer, format: String): Unit = {
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo)
+    glReadBuffer(GL_COLOR_ATTACHMENT0 + index)
+
+    format match {
+      case "Rf32" => glReadPixels(0, 0, width, height, GL_RGB, GL_FLOAT, buffer)
+    }
   }
 
   def unload(): Unit = {

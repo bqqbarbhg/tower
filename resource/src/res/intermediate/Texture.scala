@@ -13,6 +13,8 @@ object Texture {
     val Dxt5 = "DXT5"
     val Bc4 = "BC4."
     val Bc5 = "BC5."
+    val Rgba16 = "Ri16"
+    val Rgb16 = "Rb16"
   }
 
 }

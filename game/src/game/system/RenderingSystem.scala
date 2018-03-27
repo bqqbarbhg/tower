@@ -6,6 +6,7 @@ import render._
 object RenderingSystem {
 
   var renderingEnabled: Boolean = true
+  var msaa: Int = 0
 
   var screenWidth: Int = -1
   var screenHeight: Int = -1
@@ -28,7 +29,7 @@ object RenderingSystem {
   def createTargets(width: Int, height: Int): Unit = {
 
     val qOpt = Options.current.graphics.quality
-    val msaa = Vector(1, 2, 4, 8, 16).find(_ == qOpt.antialias).getOrElse(1)
+    msaa = Vector(1, 2, 4, 8, 16).find(_ == qOpt.antialias).getOrElse(1)
     val format = if (qOpt.highBitdepth) TexFormat.Rgbf16 else TexFormat.Rgbf10
 
     MainTargetMsaa = RenderTarget.create(width, height, Some(format), Some(TexFormat.D24S8), false, msaa)

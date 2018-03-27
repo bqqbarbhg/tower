@@ -52,11 +52,16 @@ object RendererGl {
     * Note that it may have a limited lifetime depending on how it was obtained!
     */
   type UniformRef = AnyRef
+
+  val QuadSpec = {
+    import VertexSpec._
+    VertexSpec(Vector(
+      Attrib(2, DataFmt.F32, Identifier("Position")),
+    ))
+  }
 }
 
 class RendererGl {
-
-
   val vaoCache = new VaoCache()
   val samplerCache = new SamplerCache()
   val uniformAllocator = if (OptsGl.useUniformBlocks) new UniformAllocator(16*1024*1024) else null
@@ -76,6 +81,18 @@ class RendererGl {
 
   val frameTimeHistory = Array.fill(32)(0.0)
   var frameTimeHistoryIndex = 0
+
+  val quadVertexBuffer = withStack {
+    val data = alloca(QuadSpec.sizeInBytes * 12)
+    data.putFloat(+1.0f); data.putFloat(-1.0f)
+    data.putFloat(-1.0f); data.putFloat(+1.0f)
+    data.putFloat(-1.0f); data.putFloat(-1.0f)
+    data.putFloat(+1.0f); data.putFloat(-1.0f)
+    data.putFloat(+1.0f); data.putFloat(+1.0f)
+    data.putFloat(-1.0f); data.putFloat(+1.0f)
+    data.finish()
+    VertexBuffer.createStatic(QuadSpec, data).withLabel("Quad VB")
+  }
 
   private var prevBlendMode: BlendMode = BlendNone
 
@@ -397,6 +414,15 @@ class RendererGl {
     }
   }
 
+  def drawTriangles(num: Int, vb0: VertexBufferGl, vb1: VertexBufferGl = null, baseVertex: Int = 0): Unit = {
+    if (activeShader != null) {
+      applyState()
+      vaoCache.bindVertexBuffers(activeShader, vb0, vb1, null)
+      glDrawArrays(GL_TRIANGLES, baseVertex, num)
+      glBindVertexArray(0)
+    }
+  }
+
   def drawLines(num: Int, vb0: VertexBufferGl, vb1: VertexBufferGl = null, baseVertex: Int = 0): Unit = {
     if (activeShader != null) {
       applyState()
@@ -406,11 +432,16 @@ class RendererGl {
     }
   }
 
+  def drawQuad(): Unit = {
+    drawTriangles(6, quadVertexBuffer)
+  }
+
   def unload(): Unit = {
     if (uniformAllocator != null)
       uniformAllocator.unload()
     samplerCache.unload()
     vaoCache.unload()
+    quadVertexBuffer.free()
     RenderTarget.Backbuffer.unload()
     RenderTarget.Backbuffer = null
   }

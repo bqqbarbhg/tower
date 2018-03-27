@@ -31,11 +31,18 @@ object ImportFileImage extends ImportFileType {
 
   def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
     dst.image = src.image
-    if (src.image.ttype == "sprite") {
+    val tt = src.image.ttype
+    if (tt == "sprite") {
       dst.atlas = src.atlas
       dst.sprite = src.sprite
-    } else if (src.image.ttype == "texture") {
+    } else if (tt == "texture") {
       dst.texture = src.texture
+    } else if (tt == "colorgrade") {
+      dst.colorgrade = src.colorgrade
+    } else if (tt == "") {
+      throw new RuntimeException(s"Image has no texture type")
+    } else {
+      throw new RuntimeException(s"Unknown image type: $tt")
     }
   }
 }

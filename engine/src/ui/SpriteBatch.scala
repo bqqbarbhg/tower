@@ -155,7 +155,7 @@ class SpriteBatch {
     vertX1 -= pos.anchorX
     vertY1 -= pos.anchorY
 
-    val colorInt = pos.color.toSrgbInt32
+    val colorInt = pos.color.toSrgbInt8
 
     val xx0 = vertX0*pos.m11 + pos.m13
     val xx1 = vertX1*pos.m11 + pos.m13

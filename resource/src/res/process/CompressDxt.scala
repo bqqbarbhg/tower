@@ -39,7 +39,7 @@ object CompressDxt {
         val yy = math.min(y * 4 + dy, image.height - 1)
 
         val pixel = image.getPixel(xx, yy)
-        val (r, g, b, a) = if (image.srgb) pixel.toSrgb32 else pixel.toLinear32
+        val (r, g, b, a) = if (image.srgb) pixel.toSrgb8 else pixel.toLinear8
         val base = (dy * 4 + dx) * 4
         src.put(base + 0, r.toByte)
         src.put(base + 1, g.toByte)
@@ -85,7 +85,7 @@ object CompressDxt {
         val yy = math.min(y * 4 + dy, image.height - 1)
 
         val pixel = image.getPixel(xx, yy)
-        val (r, g, b, a) = if (image.srgb) pixel.toSrgb32 else pixel.toLinear32
+        val (r, g, b, a) = if (image.srgb) pixel.toSrgb8 else pixel.toLinear8
         val base = (dy * 4 + dx) * numChannels
         src.put(base + 0, r.toByte)
         if (numChannels == 2)

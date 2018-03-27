@@ -19,6 +19,7 @@ class ShaderAsset(val name: Identifier) extends LoadableAsset {
 
   def Textures: SamplerBlock = NoSamplers
   def Permutations: Permutations = NoPermutations
+  def Defines: Defines = NoDefines
   var uniforms: ArrayBuffer[UniformBlock] = ArrayBuffer[UniformBlock]()
 
   def uniform(block: UniformBlock): Unit = uniforms += block
@@ -38,7 +39,7 @@ class ShaderAsset(val name: Identifier) extends LoadableAsset {
   override def isAssetLoaded() = loadTask.isCompleted
 
   override def startLoadingAsset(): Unit = {
-    loadTask = Shader.deferredLoad(name.toString, vertSource.get, fragSource.get, Permutations, Textures, uniforms : _*)
+    loadTask = Shader.deferredLoad(name.toString, vertSource.get, fragSource.get, Permutations, Defines, Textures, uniforms : _*)
   }
 
   override def loadAsset(): Unit = {

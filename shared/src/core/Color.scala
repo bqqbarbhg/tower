@@ -23,8 +23,21 @@ object Color {
     math.pow((srgb + 0.055) / 1.055, 2.4)
   }
 
+  /** Decompress an sRGB color with linear alpha channel */
+  def fromSrgb(r: Double, g: Double, b: Double, a: Double = 1.0): Color = {
+    val lr = srgbToLinear(r)
+    val lg = srgbToLinear(g)
+    val lb = srgbToLinear(b)
+    Color(lr, lg, lb, a)
+  }
+
+  /** Decompress an 8-bit linear color */
+  def fromLinear(r: Double, g: Double, b: Double, a: Double = 1.0): Color = {
+    Color(r, g, b, a)
+  }
+
   /** Decompress an 8-bit sRGB color with linear alpha channel */
-  def fromSrgb(r: Int, g: Int, b: Int, a: Int = 255): Color = {
+  def fromSrgb8(r: Int, g: Int, b: Int, a: Int = 255): Color = {
     val lr = srgbToLinear(r.toDouble / 255.0)
     val lg = srgbToLinear(g.toDouble / 255.0)
     val lb = srgbToLinear(b.toDouble / 255.0)
@@ -33,7 +46,7 @@ object Color {
   }
 
   /** Decompress an 8-bit linear color */
-  def fromLinear(r: Int, g: Int, b: Int, a: Int = 255): Color = {
+  def fromLinear8(r: Int, g: Int, b: Int, a: Int = 255): Color = {
     val lr = r.toDouble / 255.0
     val lg = g.toDouble / 255.0
     val lb = b.toDouble / 255.0
@@ -46,7 +59,7 @@ object Color {
     val r = (hexRgb >>> 16) & 0xFF
     val g = (hexRgb >>>  8) & 0xFF
     val b = (hexRgb >>>  0) & 0xFF
-    Color.fromSrgb(r, g, b)
+    Color.fromSrgb8(r, g, b)
   }
 
   /** Color from big-endian 24-bit RGB sRGB encoded color with external linear alpha, useful with hex constants. */
@@ -54,7 +67,7 @@ object Color {
     val r = (hexRgb >>> 16) & 0xFF
     val g = (hexRgb >>>  8) & 0xFF
     val b = (hexRgb >>>  0) & 0xFF
-    Color.fromSrgb(r, g, b).copy(a = alpha)
+    Color.fromSrgb8(r, g, b).copy(a = alpha)
   }
 
   /** Color from big-endian 32-bit ARGB sRGB encoded color, useful with hex constants. */
@@ -63,7 +76,7 @@ object Color {
     val r = (hexArgb >>> 16) & 0xFF
     val g = (hexArgb >>>  8) & 0xFF
     val b = (hexArgb >>>  0) & 0xFF
-    Color.fromSrgb(r, g, b, a)
+    Color.fromSrgb8(r, g, b, a)
   }
 
   val littleEndian: Boolean = ByteOrder.nativeOrder == ByteOrder.LITTLE_ENDIAN
@@ -81,21 +94,30 @@ object Color {
 case class Color(r: Double, g: Double, b: Double, a: Double = 1.0) {
 
   /** Compress to 8-bit sRGB with linear alpha channel */
-  def toSrgb32: (Int, Int, Int, Int) = {
+  def toSrgb8: (Int, Int, Int, Int) = {
     val rgb = (
     clamp(linearToSrgb(r) * 255.0 + 0.5, 0.0, 255.0).toInt,
     clamp(linearToSrgb(g) * 255.0 + 0.5, 0.0, 255.0).toInt,
     clamp(linearToSrgb(b) * 255.0 + 0.5, 0.0, 255.0).toInt,
     clamp(a * 255.0, 0.0, 255.0).toInt)
 
-    assert(rgb._4 < 256)
+    rgb
+  }
+
+  /** Compress to 16-bit sRGB with linear alpha channel */
+  def toSrgb16: (Int, Int, Int, Int) = {
+    val rgb = (
+      clamp(linearToSrgb(r) * 65535.0 + 0.5, 0.0, 65535.0).toInt,
+      clamp(linearToSrgb(g) * 65535.0 + 0.5, 0.0, 65535.0).toInt,
+      clamp(linearToSrgb(b) * 65535.0 + 0.5, 0.0, 65535.0).toInt,
+      clamp(a * 65535.0, 0.0, 65535.0).toInt)
 
     rgb
   }
 
   /** Compress to 8-bit sRGB with linear alpha channel.
     * Packed in one integer. */
-  def toSrgbInt32: Int = {
+  def toSrgbInt8: Int = {
     val ir = clamp(linearToSrgb(r) * 255.0 + 0.5, 0.0, 255.0).toInt
     val ig = clamp(linearToSrgb(g) * 255.0 + 0.5, 0.0, 255.0).toInt
     val ib = clamp(linearToSrgb(b) * 255.0 + 0.5, 0.0, 255.0).toInt
@@ -109,11 +131,18 @@ case class Color(r: Double, g: Double, b: Double, a: Double = 1.0) {
   }
 
   /** Compress to 8-bit linear color */
-  def toLinear32: (Int, Int, Int, Int) = (
+  def toLinear8: (Int, Int, Int, Int) = (
     clamp(r * 255.0 + 0.5, 0.0, 255.0).toInt,
     clamp(g * 255.0 + 0.5, 0.0, 255.0).toInt,
     clamp(b * 255.0 + 0.5, 0.0, 255.0).toInt,
     clamp(a * 255.0 + 0.5, 0.0, 255.0).toInt)
+
+  /** Compress to 16-bit linear color */
+  def toLinear16: (Int, Int, Int, Int) = (
+    clamp(r * 65535.0 + 0.5, 0.0, 65535.0).toInt,
+    clamp(g * 65535.0 + 0.5, 0.0, 65535.0).toInt,
+    clamp(b * 65535.0 + 0.5, 0.0, 65535.0).toInt,
+    clamp(a * 65535.0 + 0.5, 0.0, 65535.0).toInt)
 
   /** Returns whether this color and `rhs` are within an epsilon of each other */
   def roughlyEqual(rhs: Color, epsilon: Double = 0.001): Boolean = (

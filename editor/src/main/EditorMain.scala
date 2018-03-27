@@ -3,7 +3,7 @@ package main
 import asset.AssetLoader
 import core.StackAllocator
 import game.state._
-import game.system.RenderingSystem
+import game.system.{ModelSystem, RenderingSystem}
 import platform.AppWindow
 import io.content._
 
@@ -17,13 +17,17 @@ object EditorMain extends App {
     multiArgumentFlags = Vector("process"),
     aliases = Map("P" -> "process"))
 
-  val process = arg.multiKeywords("process")
-  if (process.nonEmpty) {
-    import res.runner.{RunOptions, Runner}
-    val opts = RunOptions.createFromFiles(process)
-    val runner = new Runner(opts)
-    runner.run()
+  def processResources(): Unit = {
+    val process = arg.multiKeywords("process")
+    if (process.nonEmpty) {
+      import res.runner.{RunOptions, Runner}
+      val opts = RunOptions.createFromFiles(process)
+      val runner = new Runner(opts)
+      runner.run()
+    }
   }
+
+  processResources()
 
   val pack = new MultiPackage()
   JarPackage.create("data") match {
@@ -50,6 +54,16 @@ object EditorMain extends App {
     while (AppWindow.running && !GameStartup.restartRequested) {
       RenderingSystem.updateScreenSize(AppWindow.width, AppWindow.height)
       GameState.update()
+
+      if (AppWindow.keyEvents.exists(e => e.down == true && e.control && e.key == 'F')) {
+        processResources()
+        GameStartup.restartRequested = true
+      }
+      if (AppWindow.keyEvents.exists(e => e.down == true && e.control && e.key == 'R')) {
+        processResources()
+        AssetLoader.reloadEverything()
+        ModelSystem.assetsLoaded()
+      }
     }
 
     if (GameStartup.restartRequested) {

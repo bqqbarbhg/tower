@@ -34,6 +34,15 @@ object Shader {
     */
   case class Permutation(mask: Int, name: String, values: Set[Int], index: Int)
 
+  /**
+    * A static define used in the shader.
+    *
+    * @param mask Shader types to use the define for (eg. MaskVert, MaskFrag)
+    * @param name Name of the '#define' to set
+    * @param value Value of the define
+    */
+  case class Define(mask: Int, name: String, value: () => Int)
+
   /** A collection of shader permutations */
   class Permutations {
     var permutations = new ArrayBuffer[Permutation]()
@@ -46,12 +55,26 @@ object Shader {
       perm
     }
 
-    def vert(name: String, values: Iterable[Int]) = push(MaskVert, name, values)
-    def frag(name: String, values: Iterable[Int]) = push(MaskFrag, name, values)
-    def both(name: String, values: Iterable[Int]) = push(MaskVert | MaskFrag, name, values)
+    def vert(name: String, values: Iterable[Int]): Permutation = push(MaskVert, name, values)
+    def frag(name: String, values: Iterable[Int]): Permutation = push(MaskFrag, name, values)
+    def both(name: String, values: Iterable[Int]): Permutation = push(MaskVert | MaskFrag, name, values)
+  }
+
+  /** A collection of shader defines */
+  class Defines {
+    var defines = new ArrayBuffer[Define]()
+
+    private def push(mask: Int, name: String, value: => Int): Unit = {
+      defines += new Define(mask, name, () => value)
+    }
+
+    def vert(name: String, value: => Int): Unit = push(MaskVert, name, value)
+    def frag(name: String, value: => Int): Unit = push(MaskFrag, name, value)
+    def both(name: String, value: => Int): Unit = push(MaskVert | MaskFrag, name, value)
   }
 
   object NoPermutations extends Permutations
+  object NoDefines extends Defines
 
   /** Simple wrapper class for setting permutation values */
   class PermutationSetter(val values: Array[Int]) extends AnyVal {
@@ -77,7 +100,7 @@ object Shader {
     * @param uniforms Uniform blocks passed to the renderer
     * @return The compiled shader object
     */
-  def deferredLoad(name: String, vertSrc: ShaderSource, fragSrc: ShaderSource, permutations: Permutations, samplers: SamplerBlock, uniforms: UniformBlock*): Task[Shader] = {
+  def deferredLoad(name: String, vertSrc: ShaderSource, fragSrc: ShaderSource, permutations: Permutations, defines: Defines, samplers: SamplerBlock, uniforms: UniformBlock*): Task[Shader] = {
     val perms = permutations.permutations
 
     // TODO: Generate less shaders using separable shader objects
@@ -121,6 +144,14 @@ object Shader {
       for ((perm, value) <- (perms zip values)) {
         if ((perm.mask & mask) != 0) {
           builder ++= s"#define ${perm.name} $value\n"
+        }
+      }
+
+      // Static defines
+      for (define <- defines.defines) {
+        if ((define.mask & mask) != 0) {
+          val value = define.value()
+          builder ++= s"#define ${define.name} $value\n"
         }
       }
 
@@ -185,8 +216,8 @@ object Shader {
     mainTask
   }
 
-  def load(name: String, vertSrc: ShaderSource, fragSrc: ShaderSource, permutations: Permutations, samplers: SamplerBlock, uniforms: UniformBlock*): Shader = {
-    deferredLoad(name, vertSrc, fragSrc, permutations, samplers, uniforms : _*).get
+  def load(name: String, vertSrc: ShaderSource, fragSrc: ShaderSource, permutations: Permutations, defines: Defines, samplers: SamplerBlock, uniforms: UniformBlock*): Shader = {
+    deferredLoad(name, vertSrc, fragSrc, permutations, defines, samplers, uniforms : _*).get
   }
 }
 

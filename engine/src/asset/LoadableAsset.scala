@@ -95,7 +95,7 @@ abstract class LoadableAsset {
     */
   final def load(): Unit = {
     if (state == StateUnloaded || state == StatePreloaded) {
-      println(s"Force load asset: $debugName")
+      // println(s"Force load asset: $debugName")
     }
 
     startLoading()

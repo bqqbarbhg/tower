@@ -67,12 +67,12 @@ object DebugDraw {
         b.putFloat(line.begin.x.toFloat)
         b.putFloat(line.begin.y.toFloat)
         b.putFloat(line.begin.z.toFloat)
-        b.putInt(line.beginColor.toSrgbInt32)
+        b.putInt(line.beginColor.toSrgbInt8)
 
         b.putFloat(line.end.x.toFloat)
         b.putFloat(line.end.y.toFloat)
         b.putFloat(line.end.z.toFloat)
-        b.putInt(line.endColor.toSrgbInt32)
+        b.putInt(line.endColor.toSrgbInt8)
       }
 
       numVerts
@@ -102,12 +102,12 @@ object DebugDraw {
         b.putFloat(line.begin.x.toFloat)
         b.putFloat(line.begin.y.toFloat)
         b.putFloat(0.5f)
-        b.putInt(line.beginColor.toSrgbInt32)
+        b.putInt(line.beginColor.toSrgbInt8)
 
         b.putFloat(line.end.x.toFloat)
         b.putFloat(line.end.y.toFloat)
         b.putFloat(0.5f)
-        b.putInt(line.endColor.toSrgbInt32)
+        b.putInt(line.endColor.toSrgbInt8)
       }
 
       numVerts

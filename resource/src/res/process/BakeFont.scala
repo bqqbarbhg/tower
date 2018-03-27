@@ -128,7 +128,7 @@ object BakeFont {
     }
 
     // Blit the image
-    val image = Image.create32(width, height, srgb = false)
+    val image = Image.createInt8(width, height, srgb = false)
     for ((bitmap, rect) <- (bitmaps zip rects)) {
       for {
         y <- 0 until bitmap.height

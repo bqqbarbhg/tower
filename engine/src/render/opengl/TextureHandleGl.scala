@@ -54,6 +54,8 @@ object TextureHandleGl {
           case "DXT5" => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, w, h, 0, data)
           case "BC4." => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RED_RGTC1, w, h, 0, data)
           case "BC5." => glCompressedTexImage2D(GL_TEXTURE_2D, level, GL_COMPRESSED_RG_RGTC2, w, h, 0, data)
+          case "Ri16" => glTexImage2D(GL_TEXTURE_2D, level, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_SHORT, data)
+          case "Rb16" => glTexImage2D(GL_TEXTURE_2D, level, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_SHORT, data)
         }
       }
 

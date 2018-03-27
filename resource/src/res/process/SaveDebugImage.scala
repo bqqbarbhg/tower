@@ -19,9 +19,9 @@ object SaveDebugImage {
       x <- 0 until image.width
     } {
       val (r, g, b, a) = if (image.srgb) {
-        image.getPixel(x, y).toSrgb32
+        image.getPixel(x, y).toSrgb8
       } else {
-        image.getPixel(x, y).toLinear32
+        image.getPixel(x, y).toLinear8
       }
       val base = (y * image.width + x) * 4
       buffer.put(base + 0, r.toByte)
@@ -43,9 +43,9 @@ object SaveDebugImage {
       x <- 0 until image.width
     } {
       val (r, g, b, a) = if (image.srgb) {
-        image.getPixel(x, y).toSrgb32
+        image.getPixel(x, y).toSrgb8
       } else {
-        image.getPixel(x, y).toLinear32
+        image.getPixel(x, y).toLinear8
       }
       val base = y * image.width + x
       val comp = channel match {
