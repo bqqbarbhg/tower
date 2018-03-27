@@ -121,6 +121,7 @@ class RendererGl {
   /** Resizes and initializes the backbuffer */
   def resizeBackbuffer(width: Int, height: Int): Unit = {
     if (RenderTargetGl.Backbuffer == null || RenderTargetGl.Backbuffer.width != width || RenderTarget.Backbuffer.height != height) {
+      if (RenderTargetGl.Backbuffer != null) RenderTargetGl.Backbuffer.unload()
       RenderTargetGl.Backbuffer = new RenderTargetGl(width, height, Array[String](), None, false, 1)
     }
   }

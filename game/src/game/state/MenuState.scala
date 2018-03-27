@@ -22,7 +22,7 @@ object MenuState {
   val MenuAtlas = AtlasAsset("atlas/menu.s2at")
   val StatueModel = ModelAsset("mainmenu/mainmenu_statue.fbx.s2md")
   val MainFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
-  val MainColorgrade = TextureAsset("colorgrade/mainmenu.png.s2tx")
+  val MainColorgrade = TextureAsset("colorgrade/mainmenu_alt.png.s2tx")
 
   private val tMenuItem = TextStyle(MainFont, 44.0)
 

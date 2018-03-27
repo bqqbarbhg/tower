@@ -18,6 +18,8 @@ object RenderingSystem {
     if (width == 0 || height == 0) {
       renderingEnabled = false
     } else {
+      unloadTargets()
+
       renderingEnabled = true
       screenWidth = width
       screenHeight = height
@@ -26,8 +28,13 @@ object RenderingSystem {
     }
   }
 
-  def createTargets(width: Int, height: Int): Unit = {
+  def unloadTargets(): Unit = {
+    if (MainTargetMsaa != null)
+      MainTargetMsaa.unload()
+    MainTargetMsaa = null
+  }
 
+  def createTargets(width: Int, height: Int): Unit = {
     val qOpt = Options.current.graphics.quality
     msaa = Vector(1, 2, 4, 8, 16).find(_ == qOpt.antialias).getOrElse(1)
     val format = if (qOpt.highBitdepth) TexFormat.Rgbf16 else TexFormat.Rgbf10
@@ -36,10 +43,9 @@ object RenderingSystem {
   }
 
   def unload(): Unit = {
+    unloadTargets()
     screenWidth = -1
     screenHeight = -1
-    MainTargetMsaa.unload()
-    MainTargetMsaa = null
   }
 
 }
