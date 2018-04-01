@@ -91,6 +91,7 @@ class MenuState extends GameState {
     turretModel.useManualDraws = true
     startTime = AppWindow.currentTime
     music = AudioSystem.play(MenuMusic, AudioChannel.Music)
+    music.instance.setFullLoop()
   }
 
   override def stop(): Unit = {
