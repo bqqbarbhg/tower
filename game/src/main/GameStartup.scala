@@ -16,6 +16,7 @@ import task.Task
 object GameStartup {
 
   var restartRequested: Boolean = false
+  var exitRequested: Boolean = false
   var iconTask: Task[IconImage] = null
 
   class Options {

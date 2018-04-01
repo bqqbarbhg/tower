@@ -120,7 +120,7 @@ object EditorMain extends App {
 
     GameState.push(new MenuState())
 
-    while (AppWindow.running && !GameStartup.restartRequested) {
+    while (AppWindow.running && !GameStartup.restartRequested && !GameStartup.exitRequested) {
       RenderingSystem.updateScreenSize(AppWindow.width, AppWindow.height)
       GameState.update()
 

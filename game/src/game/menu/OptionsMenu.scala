@@ -108,6 +108,7 @@ object OptionsMenu {
 class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
 
   var options = Options.current.copy
+  var wantsToClose: Boolean = false
 
   case class Tooltip(textFunc: Int => Option[String], overrideLayout: Option[() => Layout] = None)
 
@@ -638,6 +639,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
   val cancelButton = new LabelButton(NormalButton, ButtonLabel) {
     override def text: String = "Cancel"
     override def onClick(): Unit = {
+      wantsToClose = true
     }
   }
 

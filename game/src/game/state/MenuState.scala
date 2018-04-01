@@ -17,12 +17,14 @@ import ui.InputSet.InputArea
 import io.property._
 import org.lwjgl.system.MemoryUtil
 import game.system._
+import locale.LocaleString._
+import main.GameStartup
 
 object MenuState {
 
   val MenuAtlas = AtlasAsset("atlas/menu.s2at")
   val StatueModel = ModelAsset("mainmenu/mainmenu_statue.fbx.s2md")
-  val MainFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
+  val MainFont = FontAsset("font/catamaran/Catamaran-SemiBold.ttf.s2ft")
   val MainColorgrade = TextureAsset("colorgrade/mainmenu.png.s2tx")
 
   val MenuMusic = SoundAsset("audio/music/mainmenu.ogg.s2au")
@@ -44,6 +46,7 @@ object MenuState {
   )
 
   class Button(val localeKey: String) {
+    val text = lc"menu.mainmenu.button.$localeKey"
     val input = new InputArea()
   }
 
@@ -67,13 +70,14 @@ class MenuState extends GameState {
   val canvas = new Canvas()
   val inputSet = new InputSet()
 
-  val ContinueButton = new Button("MainMenu.continue")
-  val ExitButton = new Button("MainMenu.exit")
+  val ContinueButton = new Button("continue")
+  val NewGameButton = new Button("newGame")
+  val OptionsButton = new Button("options")
+  val ExitButton = new Button("exit")
 
-  val buttons = Array(ContinueButton, ExitButton)
+  val buttons = Array(ContinueButton, NewGameButton, OptionsButton, ExitButton)
 
-  val optionsMenu = new OptionsMenu(inputSet, canvas)
-  val debugMenu = new DebugMenu(inputSet, canvas, Tweak)
+  var optionsMenu: Option[OptionsMenu] = None
 
   var music: SoundRef = null
 
@@ -113,6 +117,19 @@ class MenuState extends GameState {
 
     inputSet.update()
 
+    if (OptionsButton.input.clicked) {
+      optionsMenu = Some(new OptionsMenu(inputSet, canvas))
+    }
+
+    if (ExitButton.input.clicked) {
+      GameStartup.exitRequested = true
+    }
+
+    for (menu <- optionsMenu) {
+      if (menu.wantsToClose)
+        optionsMenu = None
+    }
+
     val shader = SimpleMeshShader.get
     shader.use()
 
@@ -137,10 +154,11 @@ class MenuState extends GameState {
 
     val div = Layout.screen720p
 
-    optionsMenu.update()
+    for (menu <- optionsMenu)
+      menu.update()
     // debugMenu.update(div.copy.padAround(100.0).pushLeft(200.0))
 
-    if (false) {
+    if (optionsMenu.isEmpty) {
       div.pushLeft(1280.0 * 0.1)
       val options = div.pushLeft(200.0)
       options.pushTop(300.0)
@@ -152,9 +170,9 @@ class MenuState extends GameState {
 
         var style = tMenuItem.copy(height = pos.heightPx, color = Color.White.copy(a = 0.5))
         if (button.input.focused) {
-          style = style.copy(color = Color.rgb(0xFF0000))
+          style = style.copy(color = style.color.copy(a = 0.75))
         }
-        canvas.drawText(lMain, style, pos.x0, pos.y0, button.localeKey)
+        canvas.drawText(lMain, style, pos.x0, pos.y0, button.text)
         options.padTop(20.0)
       }
 
