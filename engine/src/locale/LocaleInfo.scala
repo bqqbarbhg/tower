@@ -11,15 +11,15 @@ object LocaleInfo {
 
   def load(): Unit = withStack {
     val pack = Package.get
-    val localeFiles = pack.list("locale")
+    val localeFiles = pack.list("locale").filter(_.name.endsWith(".s2lc"))
     val buffer = alloca(128)
     locales = for (localeFile <- localeFiles) yield {
       val stream = pack.get(localeFile.name).get.read()
       val info = new LocaleInfo(Identifier(localeFile.name))
-      buffer.readFrom(stream)
-      buffer.finish()
+      val buf = buffer.sliceEx
+      buf.readFrom(stream)
+      buf.finish()
       info.load(buffer)
-      buffer.finish()
       stream.close()
       info
     }

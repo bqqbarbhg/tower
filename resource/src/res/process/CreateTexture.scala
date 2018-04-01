@@ -161,6 +161,8 @@ object CreateTexture {
     for (free <- imageToFree)
       free.unload()
 
+    texture.noDownscale = config.noDownscale
+
     texture
   }
 

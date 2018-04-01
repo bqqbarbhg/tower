@@ -5,7 +5,6 @@
       <element id="directory" name="META-INF">
         <element id="file-copy" path="$PROJECT_DIR$/manifest/META-INF/MANIFEST.MF" />
       </element>
-      <element id="module-output" name="test" />
       <element id="module-output" name="shared" />
       <element id="module-output" name="engine" />
       <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl/lwjgl.jar" path-in-jar="/" />
@@ -37,11 +36,12 @@
       <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-stb/lwjgl-stb-natives-windows.jar" path-in-jar="/" />
       <element id="directory" name="resources">
         <element id="directory" name="data">
-          <element id="dir-copy" path="$PROJECT_DIR$/../tower-data/data" />
+          <element id="dir-copy" path="$PROJECT_DIR$/../test/tower-data/data" />
         </element>
       </element>
       <element id="module-output" name="game" />
       <element id="module-output" name="resource" />
+      <element id="module-output" name="editor" />
     </root>
   </artifact>
 </component>

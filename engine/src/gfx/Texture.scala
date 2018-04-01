@@ -30,7 +30,7 @@ object Texture {
   def deferredLoadArray(names: Seq[Identifier]): Task[Texture] = {
     val texture = new Texture()
 
-    ContentFile.load[Unit](names.head, buffer => {
+    ContentFile.load[Unit](names.head, (buffer: ByteBuffer) => {
       // Setup the array and first layer data from the first file
       val MaxVersion = 1
       buffer.verifyMagic("s2tx")

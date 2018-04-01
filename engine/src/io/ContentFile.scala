@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 import core._
 import util.BufferUtils._
-import task.Task
+import task.{Task, TaskExecutor}
 import io.content.Package
 
 import scala.collection.mutable.ArrayBuffer
@@ -17,7 +17,8 @@ object ContentFile {
   var lockingTask: Option[Task[_]] = None
 
   def load[T](name: String, userLoadFunc: ByteBuffer => T): Task[T] = load(Identifier(name), userLoadFunc)
-  def load[T](name: Identifier, userLoadFunc: ByteBuffer => T): Task[T] = {
+  def load[T](name: Identifier, userLoadFunc: ByteBuffer => T): Task[T] = load[T](name, Task.Main, userLoadFunc)
+  def load[T](name: Identifier, executor: TaskExecutor, userLoadFunc: ByteBuffer => T): Task[T] = {
     val file = Package.get.get(name).getOrElse {
       throw new RuntimeException(s"Asset not found: $name")
     }
@@ -33,7 +34,7 @@ object ContentFile {
 
     val fileTask = Task.Io.addWithManualDependencies(lockingTask.size, loadFileBuffer)
     for (task <- lockingTask) task.linkDependent(fileTask)
-    val userTask = Task.Main.add(fileTask, userLoadFunc)
+    val userTask = executor.add(fileTask, userLoadFunc)
     lockingTask = Some(userTask)
 
     userTask

@@ -17,7 +17,7 @@ import scala.collection.mutable.ArrayBuffer
 
 object AppWindow {
 
-  case class WindowStyle(val width: Int, val height: Int, val fullscreen: Boolean, val borderless: Boolean, val monitorIndex: Int)
+  case class WindowStyle(val width: Int, val height: Int, val fullscreen: Boolean, val borderless: Boolean, val monitorIndex: Int, val icon: Option[IconImage])
 
   private var window: Long = NULL
   private var currentWindowStyle: WindowStyle = null
@@ -129,7 +129,6 @@ object AppWindow {
       }
     }
 
-
     val createMonitor = if (style.fullscreen) maybeMonitor else NULL
 
     if (debug)
@@ -138,6 +137,10 @@ object AppWindow {
     window = glfwCreateWindow(width, height, title, createMonitor, NULL)
     glfwMakeContextCurrent(window)
     GL.createCapabilities()
+
+    for (icon <- style.icon) {
+      glfwSetWindowIcon(window, icon.images)
+    }
 
     if (!style.fullscreen) {
       if (userSpecifiedMonitor != NULL) {

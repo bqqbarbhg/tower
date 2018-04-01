@@ -31,6 +31,7 @@ object TextureFile {
 
     var flags = 0x00
     if (readAsLinear) flags |= 0x01
+    if (texture.noDownscale) flags |= 0x02
     buffer.putInt(flags)
 
     for (level <- texture.levelData) {

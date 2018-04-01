@@ -180,6 +180,9 @@ object Config {
       /** Should the colors be premultiplied with alpha */
       var premultiplyAlpha: Boolean = false
 
+      /** Never downscale this image */
+      var noDownscale: Boolean = false
+
       /** Bits per pixel of the texture */
       var colorDepth: Int = 8
 
@@ -189,6 +192,7 @@ object Config {
         hasMipmaps = v.field("hasMipmaps", hasMipmaps)
         readAsLinear = v.field("readAsLinear", readAsLinear)
         premultiplyAlpha = v.field("premultiplyAlpha", premultiplyAlpha)
+        noDownscale = v.field("noDownscale", noDownscale)
         colorDepth = v.field("colorDepth", colorDepth)
       }
     }
@@ -390,6 +394,7 @@ object Config {
       /** Texture options */
       var texture = new Texture()
       texture.hasMipmaps = false
+      texture.noDownscale = true
 
       override def visit(v: SimpleVisitor): Unit = {
         variant = v.field("variant", variant, new Font.Variant)

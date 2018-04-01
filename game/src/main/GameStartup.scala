@@ -9,11 +9,14 @@ import io.SimpleSerialization.SMap
 import io.Toml
 import locale.{Locale, LocaleInfo}
 import platform.AppWindow.WindowStyle
+import platform.IconImage
 import render.opengl.{MapMode, OptsGl}
+import task.Task
 
 object GameStartup {
 
   var restartRequested: Boolean = false
+  var iconTask: Task[IconImage] = null
 
   class Options {
     val engine: EngineStartup.Options = new EngineStartup.Options()
@@ -23,6 +26,17 @@ object GameStartup {
   def start(opts: Options): Unit = {
     opts.engine.windowName = "Tower defence"
     EngineStartup.start(opts.engine)
+
+    iconTask = IconImage.deferredLoad(Seq(
+      Identifier("misc/icon/icon_128.png.s2tx"),
+      Identifier("misc/icon/icon_64.png.s2tx"),
+      Identifier("misc/icon/icon_48.png.s2tx"),
+      Identifier("misc/icon/icon_32.png.s2tx"),
+      Identifier("misc/icon/icon_24.png.s2tx"),
+      Identifier("misc/icon/icon_16.png.s2tx"),
+      Identifier("misc/icon/icon_8.png.s2tx"),
+    ))
+
     softStart()
   }
 
@@ -62,7 +76,7 @@ object GameStartup {
 
     Locale.load(locale)
 
-    val windowStyle = new WindowStyle(resX, resY, fullscreen, borderless, opt.monitor)
+    val windowStyle = new WindowStyle(resX, resY, fullscreen, borderless, opt.monitor, Some(iconTask.get))
 
     EngineStartup.softStart(windowStyle)
   }
@@ -80,6 +94,7 @@ object GameStartup {
 
   def stop(): Unit = {
     softStop()
+    iconTask.get.unload()
     EngineStartup.stop()
     AudioSystem.joinAudioThread()
   }

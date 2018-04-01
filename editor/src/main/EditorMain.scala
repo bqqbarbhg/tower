@@ -33,6 +33,7 @@ object EditorMain extends App {
   processResources()
 
   val pack = new MultiPackage()
+
   JarPackage.create("data") match {
     case Some(jar) => pack.add(jar, 1)
     case None => // Nop
@@ -46,7 +47,7 @@ object EditorMain extends App {
 
   val opts = new GameStartup.Options()
   opts.engine.debug = arg.flag("debug")
-  opts.engine.glCompatability = true
+  opts.engine.glCompatability = arg.flag("gl-compat")
   GameStartup.start(opts)
 
   def dumpColorLookup(): Unit = {

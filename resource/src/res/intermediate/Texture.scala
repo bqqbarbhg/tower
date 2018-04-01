@@ -24,6 +24,9 @@ class Texture(val width: Int, val height: Int, val format: String, val readAsLin
   /** Data of the mip-map levels, allocated using `MemoryUtil` */
   var levelData: Array[ByteBuffer] = Array[ByteBuffer]()
 
+  /** Don't allow downscaling */
+  var noDownscale: Boolean = false
+
   override def unload(): Unit = {
     levelData.foreach(MemoryUtil.memFree)
     levelData = Array[ByteBuffer]()
