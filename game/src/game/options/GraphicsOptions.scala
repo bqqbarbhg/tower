@@ -39,6 +39,7 @@ object GraphicsOptions {
         maxTextureSize = 256
         antialias = 1
         shaderQuality = 0
+        resolutionFactor = 0.5
         halfFramerate = true
         highBitdepth = false
         preset = "Minimal"
@@ -48,6 +49,7 @@ object GraphicsOptions {
         maxTextureSize = 512
         antialias = 2
         shaderQuality = 1
+        resolutionFactor = 0.75
         preset = "Low"
       }),
 

@@ -11,6 +11,7 @@ object RenderingSystem {
   var screenWidth: Int = -1
   var screenHeight: Int = -1
   var MainTargetMsaa: RenderTarget = null
+  var MsaaResolveTarget: RenderTarget = null
 
   def updateScreenSize(width: Int, height: Int): Unit = {
     if (width == screenWidth && height == screenHeight) return
@@ -31,7 +32,10 @@ object RenderingSystem {
   def unloadTargets(): Unit = {
     if (MainTargetMsaa != null)
       MainTargetMsaa.unload()
+    if (MsaaResolveTarget != null)
+      MsaaResolveTarget.unload()
     MainTargetMsaa = null
+    MsaaResolveTarget = null
   }
 
   def createTargets(width: Int, height: Int): Unit = {
@@ -39,7 +43,12 @@ object RenderingSystem {
     msaa = Vector(1, 2, 4, 8, 16).find(_ == qOpt.antialias).getOrElse(1)
     val format = if (qOpt.highBitdepth) TexFormat.Rgbf16 else TexFormat.Rgbf10
 
-    MainTargetMsaa = RenderTarget.create(width, height, Some(format), Some(TexFormat.D24S8), false, msaa)
+    val scale = math.sqrt(qOpt.resolutionFactor)
+    val targetWidth = (scale * width).toInt
+    val targetHeight = (scale * height).toInt
+
+    MainTargetMsaa = RenderTarget.create(targetWidth, targetHeight, Some(format), Some(TexFormat.D24S8), false, msaa)
+    MsaaResolveTarget = RenderTarget.create(targetWidth, targetHeight, Some(TexFormat.Rgba), None, false)
   }
 
   def unload(): Unit = {

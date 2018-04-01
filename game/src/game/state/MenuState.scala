@@ -38,7 +38,7 @@ object MenuState {
     StatueModel,
     MainFont,
     SimpleMeshShader,
-    PostprocessShader,
+    TonemapShader,
     MenuAtlas,
     Material.shared,
     MainColorgrade,
@@ -198,17 +198,25 @@ class MenuState extends GameState {
     renderer.setDepthMode(false, false)
     renderer.setCull(false)
     renderer.setBlend(Renderer.BlendNone)
+    renderer.setRenderTarget(RenderingSystem.MsaaResolveTarget)
+
+    TonemapShader.get.use()
+
+    if (RenderingSystem.msaa > 1)
+      renderer.setTextureTargetColor(TonemapShader.Textures.BackbufferMsaa, RenderingSystem.MainTargetMsaa, 0)
+    else
+      renderer.setTextureTargetColor(TonemapShader.Textures.Backbuffer, RenderingSystem.MainTargetMsaa, 0)
+
+    renderer.setTexture(TonemapShader.Textures.ColorLookup, MainColorgrade.get.texture)
+
+    renderer.drawQuad()
+
     renderer.setRenderTarget(RenderTarget.Backbuffer)
     renderer.clear(Some(Color.Black), None)
 
     PostprocessShader.get.use()
 
-    if (RenderingSystem.msaa > 1)
-      renderer.setTextureTargetColor(PostprocessShader.Textures.BackbufferMsaa, RenderingSystem.MainTargetMsaa, 0)
-    else
-      renderer.setTextureTargetColor(PostprocessShader.Textures.Backbuffer, RenderingSystem.MainTargetMsaa, 0)
-
-    renderer.setTexture(PostprocessShader.Textures.ColorLookup, MainColorgrade.get.texture)
+    renderer.setTextureTargetColor(TonemapShader.Textures.Backbuffer, RenderingSystem.MsaaResolveTarget, 0)
 
     renderer.drawQuad()
 

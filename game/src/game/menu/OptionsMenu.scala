@@ -415,7 +415,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
     }
 
     elements += new Slider(PercentageSlider, SliderTextBox) with QualityOption {
-      override def minValue: Double = 0.2
+      override def minValue: Double = 0.25
       override def maxValue: Double = 1.0
 
       override def setValue(newValue: Double): Unit = options.graphics.quality.resolutionFactor = newValue

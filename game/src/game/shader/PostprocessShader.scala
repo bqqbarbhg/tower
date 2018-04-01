@@ -7,15 +7,8 @@ import gfx.Shader
 
 object PostprocessShader extends ShaderAsset("shader/postprocess") {
 
-  override object Defines extends Shader.Defines {
-    frag("MsaaSamples", Options.current.graphics.quality.antialias)
-    frag("PerSampleTonemap", 1)
-  }
-
   override object Textures extends SamplerBlock {
     val Backbuffer = sampler2D("Backbuffer", Sampler.ClampBilinearNoMip)
-    val BackbufferMsaa = sampler2DMS("BackbufferMsaa")
-    val ColorLookup = sampler2D("ColorLookup", Sampler.ClampBilinearNoMip)
   }
 
 }
