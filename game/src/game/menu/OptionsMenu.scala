@@ -706,7 +706,8 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
   var activeTab: Tab = TabCommon
 
   def update(): Unit = {
-    val parent = Layout.screen720p.padAround(50.0)
+    val screen = Layout.screen720p.padAround(50.0)
+    val parent = screen.contain(500.0, 550.0)
 
     val unit = parent.unit
 

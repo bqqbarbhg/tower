@@ -7,6 +7,7 @@ import game.state._
 import game.system.{ModelSystem, RenderingSystem}
 import platform.AppWindow
 import io.content._
+import ui.Layout
 import util.BufferUtils._
 
 object EditorMain extends App {
@@ -133,6 +134,9 @@ object EditorMain extends App {
       }
       if (AppWindow.keyEvents.exists(e => e.down == true && e.control && e.key == 'L')) {
         dumpColorLookup()
+      }
+      if (AppWindow.keyEvents.exists(e => e.down == true && e.control && e.key == 'U')) {
+        Layout.debug = !Layout.debug
       }
     }
 

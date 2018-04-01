@@ -116,6 +116,27 @@ class Layout(var unit: Vector2, var x0: Double, var y0: Double, var x1: Double, 
     this
   }
 
+  def contain(targetWidth: Double, targetHeight: Double, anchor: Vector2 = Vector2(0.5, 0.5)): Layout = {
+    val targetAspect = targetWidth / targetHeight
+    val ownAspect = widthPx / heightPx
+    val res = if (targetAspect > ownAspect) {
+      val off = (heightPx - widthPx / targetAspect) * anchor.y
+      val uu = widthPx / targetWidth
+      val u = Vector2(uu, uu)
+      new Layout(u, x0, y0 + off, x1, y0 + off + widthPx / targetAspect)
+    } else {
+      val off = (widthPx - heightPx * targetAspect) * anchor.x
+      val uu = heightPx / targetHeight
+      val u = Vector2(uu, uu)
+      new Layout(u, x0 + off, y0, x0 + off + heightPx * targetAspect, y1)
+    }
+    Layout.debug(res.x0, res.y0, res.x1, res.y0)
+    Layout.debug(res.x0, res.y1, res.x1, res.y1)
+    Layout.debug(res.x0, res.y0, res.x0, res.y1)
+    Layout.debug(res.x1, res.y0, res.x1, res.y1)
+    res
+  }
+
   def pushBottomLeft(amount: Double): Layout = pushBottomLeft(amount, amount)
   def pushBottomLeft(amountX: Double, amountY: Double): Layout = pushBottom(amountX).pushLeft(amountY)
   def pushBottomRight(amount: Double): Layout = pushBottomRight(amount, amount)
