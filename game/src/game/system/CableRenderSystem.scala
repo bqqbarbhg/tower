@@ -2,18 +2,25 @@ package game.system
 
 import core._
 import game.lighting.LightProbe
+import game.options.Options
 import org.lwjgl.system.MemoryUtil
 import render._
 import util.BinarySearch
 
 import scala.collection.mutable.ArrayBuffer
 
-object CableRenderSystem {
+class CableRenderSystem {
 
-  val VertsPerRing = 6
+  val Quality = Options.current.graphics.quality.modelQuality
+
+  val VertsPerRing = Quality match {
+    case 0|1 => 4
+    case 2 => 6
+    case 3 => 8
+  }
   val MaxRingsPerDraw = 2048
 
-  lazy val indexBuffer = {
+  val indexBuffer = {
     val data = MemoryUtil.memAlloc(VertsPerRing * MaxRingsPerDraw * 6 * 2)
 
     var ringIx = 0
@@ -371,6 +378,10 @@ object CableRenderSystem {
     mesh.length = length
 
     mesh
+  }
+
+  def unload(): Unit = {
+    indexBuffer.free()
   }
 
 }

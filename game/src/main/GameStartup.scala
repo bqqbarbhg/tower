@@ -3,7 +3,7 @@ package main
 import core.Identifier
 import game.options.GraphicsOptions.OpenGlOptions
 import game.options.Options
-import game.system.RenderingSystem
+import game.system._
 import gfx.OptsGfx
 import io.SimpleSerialization.SMap
 import io.Toml
@@ -65,6 +65,8 @@ object GameStartup {
     val windowStyle = new WindowStyle(resX, resY, fullscreen, borderless, opt.monitor)
 
     EngineStartup.softStart(windowStyle)
+
+    game.system.load()
   }
 
   private def softStop(): Unit = {
@@ -73,12 +75,15 @@ object GameStartup {
 
     RenderingSystem.unload()
 
+    game.system.unload()
+
     EngineStartup.softStop()
   }
 
   def stop(): Unit = {
     softStop()
     EngineStartup.stop()
+    AudioSystem.joinAudioThread()
   }
 
   def restart(): Unit = {

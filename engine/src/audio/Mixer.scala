@@ -3,6 +3,10 @@ package audio
 import scala.collection.mutable.ArrayBuffer
 
 class Mixer extends Input {
+
+  /** Total volume for the output, not thread safe! */
+  var volume: Float = 1.0f
+
   val inputs: ArrayBuffer[Input] = ArrayBuffer[Input]()
 
   var tempBuffer = Array[Float]()
@@ -28,8 +32,8 @@ class Mixer extends Input {
       var dstIx = offsetInFrames * 2
       var dstEnd = dstIx + numFrames * 2
       while (dstIx < dstEnd) {
-        data(dstIx + 0) += tempBuffer(srcIx + 0)
-        data(dstIx + 1) += tempBuffer(srcIx + 1)
+        data(dstIx + 0) += tempBuffer(srcIx + 0) * volume
+        data(dstIx + 1) += tempBuffer(srcIx + 1) * volume
         srcIx += 2
         dstIx += 2
       }

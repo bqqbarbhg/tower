@@ -22,6 +22,7 @@ class Options extends SimpleSerializable {
   var language: String = "en"
 
   var graphics = new GraphicsOptions()
+  var audio = new AudioOptions()
 
   def copy: Options = {
     val map = SMap.read(this)
@@ -37,6 +38,7 @@ class Options extends SimpleSerializable {
     windowSizeY = v.field("windowSizeY", windowSizeY)
     language = v.field("language", language)
     graphics = v.field("graphics", graphics)
+    audio = v.field("audio", audio)
   }
 }
 

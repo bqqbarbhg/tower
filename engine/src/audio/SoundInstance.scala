@@ -8,6 +8,7 @@ class SoundInstance(var sound: Sound) extends Input {
   var pitch: Double = 1.0
   var volume: Double = 1.0
   var pan: Double = 0.0
+  var loop: Option[(Int, Int)] = None
 
   private var snapParameters: Boolean = true
   private var targetPitch: Double = _
@@ -23,6 +24,11 @@ class SoundInstance(var sound: Sound) extends Input {
   private var interpVolumeRight: Float = targetVolumeRight
 
   private var timeInSourceFrames: Double = 0.0
+
+  private var framesPlayedMainThread: Long = 0
+  private var framesPlayedAudioThread: Long = 0
+  private var endedMainThread: Boolean = false
+  private var endedAudioThread: Boolean = false
 
   private val BufferMaxFrames = 64
   /** Local buffer of the sample data */
@@ -47,6 +53,10 @@ class SoundInstance(var sound: Sound) extends Input {
   private var onePastLastFrameToRead = sound.lengthInFrames
 
   private var cursor = sound.sampleSource.open()
+
+  def setFullLoop(): Unit = {
+    loop = Some(0 -> sound.lengthInFrames)
+  }
 
   private def reload(): Unit = {
     cursor.close()
@@ -142,13 +152,26 @@ class SoundInstance(var sound: Sound) extends Input {
       velocityVolumeLeft = math.abs(targetVolumeLeft - interpVolumeLeft)
       velocityVolumeRight = math.abs(targetVolumeRight - interpVolumeRight)
     }
+
+    framesPlayedMainThread = framesPlayedAudioThread
+    endedMainThread = endedAudioThread
+
+    if (loop.isDefined != loopEnabled) {
+      loop match {
+        case Some((begin, end)) => setLoop(begin, end)
+        case None => clearLoop()
+      }
+    }
   }
+
+  def framesPlayed: Long = framesPlayedMainThread
+  def ended: Boolean = endedMainThread
 
   /** Set the sound instance to loop between the full range */
   def setLoop(): Unit = setLoop(0, sound.lengthInFrames)
 
   /** Set the sound instance to loop between [begin, end[ */
-  def setLoop(begin: Int, end: Int): Unit = {
+  private def setLoop(begin: Int, end: Int): Unit = {
     invalidateBuffer()
     loopEnabled = true
     loopBegin = begin
@@ -157,7 +180,7 @@ class SoundInstance(var sound: Sound) extends Input {
   }
 
   /** Disable looping the sound */
-  def clearLoop(): Unit = {
+  private def clearLoop(): Unit = {
     invalidateBuffer()
     loopEnabled = false
     onePastLastFrameToRead = sound.lengthInFrames
@@ -165,6 +188,7 @@ class SoundInstance(var sound: Sound) extends Input {
 
   override def advance(dstData: Array[Float], offsetInFrames: Int, numFrames: Int, sampleRate: Int): Unit = {
     if (!sound.loaded) reload()
+    framesPlayedAudioThread += numFrames
 
     val timeAdvance = sound.sampleRate.toDouble / sampleRate.toDouble
 
@@ -173,6 +197,15 @@ class SoundInstance(var sound: Sound) extends Input {
     while (dstIndex < dstEnd) {
       if (loopEnabled && timeInSourceFrames.toInt >= loopEnd) {
         wrapTimeInLoop()
+      } else if (timeInSourceFrames.toInt >= sound.lengthInFrames) {
+        endedAudioThread = true
+        while (dstIndex < dstEnd) {
+          val dstBase = dstIndex << 1
+          dstData(dstBase + 0) = 0.0f
+          dstData(dstBase + 1) = 0.0f
+          dstIndex += 2
+        }
+        return
       }
 
       val time = timeInSourceFrames

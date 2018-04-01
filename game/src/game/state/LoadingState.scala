@@ -8,6 +8,7 @@ import ui.Canvas._
 import platform.AppWindow
 import task.Task
 import LoadingState._
+import game.system._
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -51,6 +52,7 @@ class LoadingState extends GameState {
   val canvas = new Canvas()
 
   override def load(): Unit = {
+    AudioSystem.acquireHighLatency()
     LoadingState.assetBundle.load()
   }
 
@@ -65,6 +67,11 @@ class LoadingState extends GameState {
 
   override def stop(): Unit = {
     loadingAssets = null
+
+    // Collect garbage after loading
+    System.gc()
+
+    AudioSystem.releaseHighLatency()
   }
 
   def tryFinishOneAsset(): Unit = {

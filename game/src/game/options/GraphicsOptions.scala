@@ -11,6 +11,7 @@ object GraphicsOptions {
 
     var maxTextureSize: Int = 2048
     var shaderQuality: Int = 3
+    var modelQuality: Int = 3
     var antialias: Int = 4
     var resolutionFactor: Double = 1.0
     var verticalSync: Boolean = true
@@ -21,6 +22,7 @@ object GraphicsOptions {
     override def visit(v: SimpleVisitor): Unit = {
       maxTextureSize = v.field("maxTextureSize", maxTextureSize)
       shaderQuality = v.field("shaderQuality", shaderQuality)
+      modelQuality = v.field("modelQuality", modelQuality)
       antialias = v.field("antialias", antialias)
       resolutionFactor = v.field("resolutionFactor", resolutionFactor)
       verticalSync = v.field("verticalSync", verticalSync)

@@ -7,7 +7,7 @@ import asset._
 import game.shader._
 import platform.AppWindow
 import MenuState._
-import game.system.{ModelSystem, RenderingSystem}
+import game.system.{ModelSystem, RenderingSystem, SoundRef}
 import game.system.ModelSystem.ModelRef
 import gfx.Material
 import menu.{DebugMenu, OptionsMenu}
@@ -16,6 +16,7 @@ import ui.Canvas._
 import ui.InputSet.InputArea
 import io.property._
 import org.lwjgl.system.MemoryUtil
+import game.system._
 
 object MenuState {
 
@@ -23,6 +24,8 @@ object MenuState {
   val StatueModel = ModelAsset("mainmenu/mainmenu_statue.fbx.s2md")
   val MainFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
   val MainColorgrade = TextureAsset("colorgrade/mainmenu.png.s2tx")
+
+  val MenuMusic = SoundAsset("audio/music/mainmenu.ogg.s2au")
 
   private val tMenuItem = TextStyle(MainFont, 44.0)
 
@@ -37,6 +40,7 @@ object MenuState {
     MenuAtlas,
     Material.shared,
     MainColorgrade,
+    MenuMusic,
   )
 
   class Button(val localeKey: String) {
@@ -71,6 +75,8 @@ class MenuState extends GameState {
   val optionsMenu = new OptionsMenu(inputSet, canvas)
   val debugMenu = new DebugMenu(inputSet, canvas, Tweak)
 
+  var music: SoundRef = null
+
   override def load(): Unit = {
     menuAssets.acquire()
     GameState.push(new LoadingState())
@@ -80,10 +86,12 @@ class MenuState extends GameState {
     turretModel = ModelSystem.addModel(null, StatueModel)
     turretModel.useManualDraws = true
     startTime = AppWindow.currentTime
+    music = AudioSystem.play(MenuMusic, AudioChannel.Music)
   }
 
   override def stop(): Unit = {
     menuAssets.release()
+    music.remove()
 }
 
   override def update(): Unit = {
@@ -101,6 +109,7 @@ class MenuState extends GameState {
     ModelSystem.updateMatrices()
     ModelSystem.collectMeshInstances()
     ModelSystem.setupUniforms()
+    AudioSystem.update()
 
     inputSet.update()
 
