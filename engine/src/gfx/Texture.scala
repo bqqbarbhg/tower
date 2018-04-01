@@ -3,6 +3,7 @@ package gfx
 import java.nio.ByteBuffer
 
 import core._
+import io.ContentFile
 import org.lwjgl.system.MemoryUtil
 import render._
 import util.BufferUtils._
@@ -11,66 +12,26 @@ import task.Task
 
 object Texture {
 
-  def load(name: Identifier): Option[Texture] = {
-    Package.get.get(name).map(file => {
-      val texture = new Texture()
-
-      val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
-      val stream = file.read()
-      buffer.readFrom(stream)
-      buffer.finish()
-      texture.load(buffer)
-      stream.close()
-      MemoryUtil.memFree(buffer)
-
-      texture.texture.setLabel(name.toString)
-
-      texture
-    })
-  }
+  def load(name: Identifier): Option[Texture] = Some(deferredLoad(name).get)
 
   def deferredLoad(name: Identifier): Task[Texture] = {
-    val fileTask = Task.Io.add[ByteBuffer](() => {
-      val file = Package.get.get(name).getOrElse {
-        throw new RuntimeException(s"Asset not found: $name")
-      }
-      val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
-      val stream = file.read()
-      buffer.readFrom(stream)
-      buffer.finish()
-      stream.close()
-
-      buffer
-    })
-
-    val loadTask = Task.Main.add(fileTask, (buffer: ByteBuffer) => {
+    ContentFile.load(name, buffer => {
       val texture = new Texture()
-      texture.load(buffer)
-      MemoryUtil.memFree(buffer)
 
+      texture.load(buffer)
       texture.texture.setLabel(name.toString)
 
       texture
     })
-
-    loadTask
   }
 
-  def createArray(names: Seq[Identifier]): Option[Texture] = {
-    if (names.length <= 0) return None
-    val files = names.flatMap(Package.get.get(_)).toSeq
-    if (files.length != names.length) return None
+  def loadArray(names: Seq[Identifier]): Option[Texture] = Some(deferredLoadArray(names).get)
 
+  def deferredLoadArray(names: Seq[Identifier]): Task[Texture] = {
     val texture = new Texture()
 
-    // Setup the array and first layer data from the first file
-    {
-      val file = files.head
-      val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
-      val stream = file.read()
-      buffer.readFrom(stream)
-      buffer.finish()
-
+    ContentFile.load[Unit](names.head, buffer => {
+      // Setup the array and first layer data from the first file
       val MaxVersion = 1
       buffer.verifyMagic("s2tx")
       val version = buffer.getVersion(MaxVersion)
@@ -87,7 +48,7 @@ object Texture {
         buffer.getBuffer(size)
       }
 
-      texture.texture = TextureHandle.createArray(width, height, format, files.length, numLevels, readAsLinear)
+      texture.texture = TextureHandle.createArray(width, height, format, names.length, numLevels, readAsLinear)
       texture.texture.setLayerData(0, width, height, format, levels)
       texture.width = width
       texture.height = height
@@ -96,43 +57,40 @@ object Texture {
       texture.format = format
       texture.numLevels = numLevels
 
+      texture.texture.setLayerData(0, width, height, format, levels)
+
       buffer.verifyMagic("E.tx")
-      stream.close()
-      MemoryUtil.memFree(buffer)
-    }
+    })
 
     // Setup rest of the layers
-    for ((file, index) <- files.zipWithIndex.drop(1)) {
-      val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
-      val stream = file.read()
-      buffer.readFrom(stream)
-      buffer.finish()
+    for ((name, index) <- names.zipWithIndex.drop(1)) {
+      ContentFile.load(name, buffer => {
+        val MaxVersion = 1
+        buffer.verifyMagic("s2tx")
+        val version = buffer.getVersion(MaxVersion)
+        val width = buffer.getInt()
+        val height = buffer.getInt()
+        val numLevels = buffer.getInt()
+        val format = buffer.getMagic()
+        val flags = buffer.getInt()
 
-      val MaxVersion = 1
-      buffer.verifyMagic("s2tx")
-      val version = buffer.getVersion(MaxVersion)
-      val width = buffer.getInt()
-      val height = buffer.getInt()
-      val numLevels = buffer.getInt()
-      val format = buffer.getMagic()
-      val flags = buffer.getInt()
+        val levels = Seq.fill(numLevels) {
+          val size = buffer.getInt()
+          buffer.getBuffer(size)
+        }
 
-      val levels = Seq.fill(numLevels) {
-        val size = buffer.getInt()
-        buffer.getBuffer(size)
-      }
+        texture.texture.setLayerData(index, width, height, format, levels)
 
-      texture.texture.setLayerData(index, width, height, format, levels)
-
-      buffer.verifyMagic("E.tx")
-      stream.close()
-      MemoryUtil.memFree(buffer)
+        buffer.verifyMagic("E.tx")
+        MemoryUtil.memFree(buffer)
+      })
     }
 
-    for (first <- names.headOption)
-      texture.texture.setLabel(first.toString)
-
-    Some(texture)
+    Task.Main.add(() => {
+      for (first <- names.headOption)
+        texture.texture.setLabel(first.toString)
+      texture
+    })
   }
 
   def createRgba(width: Int, height: Int, content: ByteBuffer, srgbToLinear: Boolean): Texture = {

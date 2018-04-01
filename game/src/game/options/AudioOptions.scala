@@ -19,12 +19,28 @@ class AudioOptions extends SimpleSerializable {
   /** Use audio debugging */
   var debug: Boolean = false
 
+  /** Volume for sound effects */
+  var volumeSfx: Double = 1.0
+
+  /** Volume for UI beeps */
+  var volumeUi: Double = 1.0
+
+  /** Volume for the background music */
+  var volumeMusic: Double = 1.0
+
+  /** Volume for everything */
+  var volumeMaster: Double = 1.0
+
   override def visit(v: SimpleVisitor): Unit = {
     sampleRate = v.field("sampleRate", sampleRate)
     latency = v.field("latency", latency)
     debugFilename = v.field("debugFilename", debugFilename)
     audioOutput = v.field("audioOutput", audioOutput)
     debug = v.field("debug", debug)
+    volumeSfx = v.field("volumeSfx", volumeSfx)
+    volumeUi = v.field("volumeUi", volumeUi)
+    volumeMusic = v.field("volumeMusic", volumeMusic)
+    volumeMaster = v.field("volumeMaster", volumeMaster)
   }
 
 }

@@ -74,6 +74,11 @@ class AudioSystem {
   }
 
   def update(): Unit = this.synchronized {
+    mixerSfx.volume = Opt.volumeSfx.toFloat
+    mixerUi.volume = Opt.volumeUi.toFloat
+    mixerMusic.volume = Opt.volumeMusic.toFloat
+    mixerFinal.volume = Opt.volumeMaster.toFloat
+
     for (inst <- newInstances) {
       val ix = if (freeInstances.nonEmpty) {
         freeInstances.pop()
@@ -207,7 +212,7 @@ class AudioSystem {
     sharedCloseAudio = true
   }
 
-  def joinAudioThread(): Unit = this.synchronized {
+  def joinAudioThread(): Unit = {
     audioThread.join()
 
     for (inst <- activeInstances) {

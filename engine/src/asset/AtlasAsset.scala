@@ -2,6 +2,7 @@ package asset
 
 import ui._
 import core._
+import task.Task
 import ui.Sprite.SpriteMap
 
 object AtlasAsset {
@@ -12,6 +13,7 @@ object AtlasAsset {
 class AtlasAsset(val name: Identifier) extends LoadableAsset {
   def debugName: String = s"Atlas: $name"
 
+  private var loadTask: Task[Unit] = null
   private var atlasImpl: Atlas = null
 
   def get: Atlas = {
@@ -26,8 +28,14 @@ class AtlasAsset(val name: Identifier) extends LoadableAsset {
     None
   }
 
+  override def isAssetLoaded() = loadTask.isCompleted
+
+  override def startLoadingAsset(): Unit = {
+    loadTask = atlasImpl.loadTextures()
+  }
+
   override def loadAsset(): Unit = {
-    atlasImpl.loadTextures()
+    loadTask.get
   }
 
   override def unloadAsset(): Unit = {

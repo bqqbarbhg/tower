@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 
 import org.lwjgl.system.MemoryUtil
 import core._
+import io.ContentFile
 import render._
 import util.BufferUtils._
 import io.content.Package
@@ -11,26 +12,12 @@ import task._
 
 object Mesh {
 
-  def load(name: Identifier): Option[Mesh] = {
-    Some(deferredLoad(name).get)
-  }
+  def load(name: Identifier): Option[Mesh] = Some(deferredLoad(name).get)
 
   def deferredLoad(name: Identifier): Task[Mesh] = {
-    val fileTask = Task.Io.add[ByteBuffer](() => {
-      val file = Package.get.get(name).get
-      val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
-      val stream = file.read()
-      buffer.readFrom(stream)
-      buffer.finish()
-      stream.close()
-
-      buffer
-    })
-
-    val loadTask = Task.Main.add(fileTask, (buffer: ByteBuffer) => {
+    ContentFile.load(name, buffer => {
       val mesh = new Mesh()
       mesh.load(buffer)
-      MemoryUtil.memFree(buffer)
 
       if (mesh.parts.length > 1) {
         for ((part, index) <- mesh.parts.zipWithIndex) {
@@ -46,8 +33,6 @@ object Mesh {
 
       mesh
     })
-
-    loadTask
   }
 
 }

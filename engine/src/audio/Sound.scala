@@ -1,26 +1,22 @@
 package audio
 
 import java.nio.{ByteBuffer, ByteOrder}
-import org.lwjgl.system.MemoryUtil
 
+import org.lwjgl.system.MemoryUtil
 import audio.source.SampleSource
 import core._
+import io.ContentFile
 import util.BufferUtils._
 import io.content.Package
+import task.Task
 
 object Sound {
-  def load(name: Identifier): Option[Sound] = {
-    Package.get.get(name).map(file => {
+  def load(name: Identifier): Option[Sound] = Some(deferredLoad(name).get)
+
+  def deferredLoad(name: Identifier): Task[Sound] = {
+    ContentFile.load(name, buffer => {
       val sound = new Sound(name)
-
-      val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
-      val stream = file.read()
-      buffer.readFrom(stream)
-      buffer.finish()
       sound.load(buffer)
-      stream.close()
-      MemoryUtil.memFree(buffer)
-
       sound
     })
   }

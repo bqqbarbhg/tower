@@ -50,13 +50,15 @@ class LoadingState extends GameState {
   var frameCount = 0
   var isLoading = false
   val canvas = new Canvas()
+  var systemLoadTask: Task[Unit] = null
 
   override def load(): Unit = {
-    AudioSystem.acquireHighLatency()
     LoadingState.assetBundle.load()
   }
 
   override def start(): Unit = {
+
+    systemLoadTask = game.system.deferredLoad()
     loadingAssets = AssetLoader.startLoading()
     numAssetsBegin = loadingAssets.length
     numAssetsLeft = numAssetsBegin
@@ -67,6 +69,8 @@ class LoadingState extends GameState {
 
   override def stop(): Unit = {
     loadingAssets = null
+
+    AudioSystem.acquireHighLatency()
 
     // Collect garbage after loading
     System.gc()

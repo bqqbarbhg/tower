@@ -7,6 +7,7 @@ import gfx.Texture
 import util.BufferUtils._
 import Atlas._
 import org.lwjgl.system.MemoryUtil
+import task.Task
 import ui.Sprite.AtlasIndexPair
 
 object Atlas {
@@ -58,9 +59,17 @@ class Atlas(val atlasIndex: Int) {
   var numPages: Int = 0
   var numSprites: Int = 0
 
-  def loadTextures(): Unit = {
-    textureArray = Texture.createArray(pageNames.dropRight(1).map(new Identifier(_)))
-    lastTexture = Texture.load(new Identifier(pageNames.last))
+  def loadTextures(): Task[Unit] = {
+    if (pageNames.length > 1) {
+      val arrayTask = Texture.deferredLoadArray(pageNames.dropRight(1).map(new Identifier(_)))
+      Task.Main.add(arrayTask, (tex: Texture) => {
+        textureArray = Some(tex)
+      })
+    }
+    val lastTask = Texture.deferredLoad(new Identifier(pageNames.last))
+    Task.Main.add(lastTask, (tex: Texture) => {
+      lastTexture = Some(tex)
+    })
   }
 
   def load(buffer: ByteBuffer): Unit = {

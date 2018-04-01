@@ -40,6 +40,10 @@ class TaskExecutor {
     task.run()
   }
 
+  def addWithManualDependencies[R](numDependencies: Int, f: () => R): Task[R] = {
+    new Task[R](this, numDependencies, f)
+  }
+
   def add[R](f: () => R): Task[R] = {
     new Task[R](this, 0, f)
   }
@@ -56,6 +60,30 @@ class TaskExecutor {
 
   def add[D1, R](d1: Seq[Task[D1]], f: (Seq[D1]) => R): Task[R] = {
     val task = new Task[R](this, d1.length, () => {
+      f(d1.map(_.result))
+    })
+
+    for (d <- d1) {
+      d.linkDependent(task)
+    }
+
+    task
+  }
+
+  def add[D1, R](d1: Option[Task[D1]], f: (Option[D1]) => R): Task[R] = {
+    val task = new Task[R](this, d1.size, () => {
+      f(d1.map(_.result))
+    })
+
+    for (d <- d1) {
+      d.linkDependent(task)
+    }
+
+    task
+  }
+
+  def add[D1, R](d1: Iterable[Task[D1]], f: (Iterable[D1]) => R): Task[R] = {
+    val task = new Task[R](this, d1.size, () => {
       f(d1.map(_.result))
     })
 

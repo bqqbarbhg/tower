@@ -6,10 +6,12 @@ import Font._
 import asset.{DynamicAsset, ShaderAsset, Unloadable}
 import gfx._
 import core._
+import io.ContentFile
 import org.lwjgl.system.MemoryUtil
 import render._
 import util.BufferUtils._
 import io.content.Package
+import task.Task
 
 object Font {
 
@@ -107,20 +109,24 @@ object Font {
     }
   }
 
-  def load(name: Identifier): Option[Font] = withStack {
-    Package.get.get(name).map(file => {
-      val font = new Font()
+  def load(name: Identifier): Option[Font] = Some(deferredLoad(name).get)
+  def deferredLoad(name: Identifier): Task[Font] = {
+    val font = new Font()
+    var texture: Texture = null
 
-      val buffer = MemoryUtil.memAlloc(file.sizeInBytes.toInt)
-      val stream = file.read()
-      buffer.readFrom(stream)
-      buffer.finish()
-      font.load(buffer)
-      stream.close()
-      MemoryUtil.memFree(buffer)
-
+    val finishTask = Task.Main.addWithManualDependencies(1, () => {
+      font.texture = texture
       font
     })
+
+    ContentFile.load(name, buffer => {
+      font.load(buffer)
+      val texTask = Texture.deferredLoad(font.textureFile)
+      val assignTask = Task.Main.add(texTask, (tex: Texture) => texture = tex)
+      assignTask.linkDependent(finishTask)
+    })
+
+    finishTask
   }
 
   case class TextDraw(text: String, offset: Int, length: Int, position: Vector2, height: Double, color: Color, outline: Double, order: Int) {
@@ -166,6 +172,9 @@ class Font {
 
   /** Different sizes and rendering techniques for the font */
   var variants = Array[Variant]()
+
+  /** Filename of the texture */
+  var textureFile: Identifier = Identifier.Empty
 
   /** The texture data */
   var texture: Texture = null
@@ -499,7 +508,7 @@ class Font {
     val version = buffer.getVersion(MaxVersion)
 
     // Read the header
-    val texFile = buffer.getIdentifier()
+    textureFile = buffer.getIdentifier()
     val numCharset = buffer.getInt()
     val numKernData = buffer.getInt()
     val numVariants = buffer.getInt()
@@ -577,9 +586,6 @@ class Font {
     }
 
     buffer.verifyMagic("E.ft")
-
-    // Load the texture
-    texture = Texture.load(texFile).get
   }
 
   def unload(): Unit = {

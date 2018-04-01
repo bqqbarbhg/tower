@@ -65,8 +65,6 @@ object GameStartup {
     val windowStyle = new WindowStyle(resX, resY, fullscreen, borderless, opt.monitor)
 
     EngineStartup.softStart(windowStyle)
-
-    game.system.load()
   }
 
   private def softStop(): Unit = {

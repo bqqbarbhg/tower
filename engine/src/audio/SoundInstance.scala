@@ -187,7 +187,11 @@ class SoundInstance(var sound: Sound) extends Input {
   }
 
   override def advance(dstData: Array[Float], offsetInFrames: Int, numFrames: Int, sampleRate: Int): Unit = {
-    if (!sound.loaded) reload()
+    if (!sound.loaded) {
+      java.util.Arrays.fill(dstData, offsetInFrames * 2, (offsetInFrames + numFrames) * 2, 0.0f)
+      return
+    }
+
     framesPlayedAudioThread += numFrames
 
     val timeAdvance = sound.sampleRate.toDouble / sampleRate.toDouble

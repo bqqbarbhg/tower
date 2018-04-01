@@ -1,17 +1,32 @@
 package game
 
+import task.Task
+
+import scala.collection.mutable.ArrayBuffer
+
 package object system {
 
   var AudioSystem: AudioSystem = null
   var CableRenderSystem: CableRenderSystem = null
 
-  def load(): Unit = {
-    if (AudioSystem != null) {
-      AudioSystem.joinAudioThread()
+  def deferredLoad(): Task[Unit] = {
+    val stopAudioTask = for (as <- Option(AudioSystem)) yield {
+      Task.Io.add(() => {
+        as.joinAudioThread()
+      })
     }
 
-    AudioSystem = new AudioSystem()
-    CableRenderSystem = new CableRenderSystem()
+    val tasks = new ArrayBuffer[Task[Unit]]()
+
+    tasks += Task.Main.add(stopAudioTask, (_: Option[Unit]) => {
+      AudioSystem = new AudioSystem()
+    })
+
+    tasks += Task.Main.add(() => {
+      CableRenderSystem = new CableRenderSystem()
+    })
+
+    Task.Main.add(tasks, (_: Seq[Unit]) => ())
   }
 
   def unload(): Unit = {

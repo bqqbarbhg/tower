@@ -27,7 +27,7 @@ class Task[T](val executor: TaskExecutor, val dependencyCount: Int = 0, val fn: 
     }
   }
 
-  private[task] def linkDependent(task: Task[_]): Unit = this.synchronized {
+  def linkDependent(task: Task[_]): Unit = this.synchronized {
     if (completed)
       task.dependencyCompleted()
     else
