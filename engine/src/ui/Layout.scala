@@ -137,6 +137,46 @@ class Layout(var unit: Vector2, var x0: Double, var y0: Double, var x1: Double, 
     res
   }
 
+  def containSnapped(targetWidth: Double, targetHeight: Double, snapScale: Double = 1.0, magScale: Double = 1.0, minScale: Double = 1.0, anchor: Vector2 = Vector2(0.5, 0.5)): Layout = {
+    val targetAspect = targetWidth / targetHeight
+    val ownAspect = widthPx / heightPx
+    var scale = 0.0
+    var resWidth = 0.0
+    var resHeight = 0.0
+
+    def doSnap(scale: Double): Double = {
+      if (scale < 1.0) {
+        val min = math.floor(scale * minScale) / minScale
+        if (min > 0.0) min else scale
+      } else if (scale > 1.0) {
+        math.floor(scale * magScale) / magScale
+      } else {
+        1.0
+      }
+    }
+
+    if (targetAspect > ownAspect) {
+      scale = doSnap(widthPx / targetWidth)
+      resWidth = targetWidth * scale
+      resHeight = resWidth * targetAspect
+    } else {
+      scale = doSnap(heightPx / targetHeight)
+      resHeight = targetHeight * scale
+      resWidth = resHeight / targetAspect
+    }
+
+    val u = Vector2(scale, scale)
+    val rx = math.floor((x0 + (widthPx - resWidth) * anchor.x) * snapScale) / snapScale
+    val ry = math.floor((y0 + (heightPx - resHeight) * anchor.y) * snapScale) / snapScale
+    val res = new Layout(u, rx, ry, rx + resWidth, ry + resHeight)
+
+    Layout.debug(res.x0, res.y0, res.x1, res.y0)
+    Layout.debug(res.x0, res.y1, res.x1, res.y1)
+    Layout.debug(res.x0, res.y0, res.x0, res.y1)
+    Layout.debug(res.x1, res.y0, res.x1, res.y1)
+    res
+  }
+
   def pushBottomLeft(amount: Double): Layout = pushBottomLeft(amount, amount)
   def pushBottomLeft(amountX: Double, amountY: Double): Layout = pushBottom(amountX).pushLeft(amountY)
   def pushBottomRight(amount: Double): Layout = pushBottomRight(amount, amount)
