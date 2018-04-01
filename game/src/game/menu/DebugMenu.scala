@@ -1,6 +1,7 @@
 package menu
 
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Try
 
 import core._
 import io.property._
@@ -65,6 +66,7 @@ object DebugMenu {
   val DoubleSlider = new SliderStyle(22.0, 60.0, 5.0,
     rectSprite = Identifier("gui/menu/background_white.png"),
     stringFormat = v => f"$v%.2f",
+    stringParse = v => Try(v.toDouble).toOption,
     lineWidth = 2.0,
     markWidth = 4.0,
   )

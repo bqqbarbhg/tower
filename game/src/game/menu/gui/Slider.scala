@@ -7,7 +7,7 @@ import ui._
 
 import scala.util.Try
 
-case class SliderStyle(height: Double, labelWidth: Double, labelPad: Double, rectSprite: Identifier, stringFormat: Double => String, lineWidth: Double, markWidth: Double)
+case class SliderStyle(height: Double, labelWidth: Double, labelPad: Double, rectSprite: Identifier, stringFormat: Double => String, stringParse: String => Option[Double], lineWidth: Double, markWidth: Double)
 
 abstract class Slider(val style: SliderStyle, val textBoxStyle: TextBoxStyle) extends Element {
   def minValue: Double
@@ -30,7 +30,8 @@ abstract class Slider(val style: SliderStyle, val textBoxStyle: TextBoxStyle) ex
   val textBox = new TextBox(textBoxStyle) {
     override def currentText: String = Slider.this.style.stringFormat(currentValue)
     override def setText(newValue: String): Unit = {
-      for (v <- Try(newValue.toDouble).toOption) {
+      val maybeV = Slider.this.style.stringParse(newValue)
+      for (v <- maybeV) {
         setValueImpl(v)
       }
     }

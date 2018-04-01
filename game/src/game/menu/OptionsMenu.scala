@@ -18,6 +18,7 @@ import locale.LocaleString._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Try
 
 
 object OptionsMenu {
@@ -75,11 +76,22 @@ object OptionsMenu {
     selectAllOnFirstClick = true,
   )
 
-  val DoubleSlider = new SliderStyle(22.0, 60.0, 5.0,
+  val NormalSlider = new SliderStyle(22.0, 60.0, 5.0,
     rectSprite = Identifier("gui/menu/background_white.png"),
     stringFormat = v => f"$v%.2f",
+    stringParse = v => Try(v.toDouble).toOption,
     lineWidth = 2.0,
     markWidth = 4.0,
+  )
+
+  val PercentageSlider = NormalSlider.copy(
+    stringFormat = v => s"${(v * 100.0).toInt}%",
+    stringParse = v => Try(v.stripSuffix("%").toDouble / 100.0).toOption,
+  )
+
+  val MillisecondSlider = NormalSlider.copy(
+    stringFormat = v => s"${(v * 1000.0).toInt}ms",
+    stringParse = v => Try(v.toLowerCase.stripSuffix("ms").toDouble / 1000.0).toOption,
   )
 
   val ColMonitorSelectedBg = Color.rgb(0xDDDDDD)
@@ -401,7 +413,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
       val text: String = lc"menu.options.graphics.ql.resolution.title"
     }
 
-    elements += new Slider(DoubleSlider, SliderTextBox) {
+    elements += new Slider(PercentageSlider, SliderTextBox) {
       override def minValue: Double = 0.2
       override def maxValue: Double = 1.0
 
@@ -416,6 +428,89 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
     }
 
     elements
+  }
+
+  val volumeElements = {
+    val elements = ArrayBuffer[Element]()
+    val opt = options.audio
+
+    elements += new Label(TitleLabel) {
+      override def text: String = lc"menu.options.audio.vol.title"
+    }
+
+
+    def addVolumeSlider(name: String, getVolume: => Double, setVolume: Double => Unit): Unit = {
+      elements += new Padding(10.0)
+
+      elements += new Label(InfoLabel) {
+        val text: String = lc"menu.options.audio.vol.$name.title"
+      }
+
+      elements += new Slider(PercentageSlider, SliderTextBox) {
+        override def minValue: Double = 0.0
+        override def maxValue: Double = 1.0
+
+        override def setValue(newValue: Double): Unit = setVolume(newValue)
+        override def currentValue: Double = getVolume
+
+        override def clamped: Boolean = true
+        override def step: Option[Double] = None
+
+        addTooltipToLayout(sliderInput, lastLayout, lc"menu.options.audio.vol.$name.desc")
+        addTooltipToLayout(textBox.input, lastLayout, lc"menu.options.audio.vol.$name.desc")
+      }
+    }
+
+    addVolumeSlider("master", opt.volumeMaster, opt.volumeMaster_=)
+    addVolumeSlider("sfx", opt.volumeSfx, opt.volumeSfx_=)
+    addVolumeSlider("ui", opt.volumeUi, opt.volumeUi_=)
+    addVolumeSlider("music", opt.volumeMusic, opt.volumeMusic_=)
+
+    elements
+  }
+
+  val audioAdvancedElements = {
+    val elements = ArrayBuffer[Element]()
+    val opt = options.audio
+
+    elements += new Label(TitleLabel) {
+      override def text: String = lc"menu.options.audio.advanced.title"
+    }
+
+    elements += new Padding(10.0)
+
+    elements += new Label(InfoLabel) {
+      val text: String = lc"menu.options.audio.advanced.latency.title"
+    }
+
+    elements += new Slider(MillisecondSlider, SliderTextBox) {
+      override def minValue: Double = 0.01
+      override def maxValue: Double = 0.3
+
+      override def setValue(newValue: Double): Unit = opt.latency = newValue
+      override def currentValue: Double = opt.latency
+
+      override def clamped: Boolean = true
+      override def step: Option[Double] = None
+
+      addTooltipToLayout(sliderInput, lastLayout, lc"menu.options.audio.advanced.latency.desc")
+      addTooltipToLayout(textBox.input, lastLayout, lc"menu.options.audio.advanced.latency.desc")
+    }
+
+    elements += new Padding(10.0)
+
+    elements += new Label(InfoLabel) {
+      val text: String = lc"menu.options.audio.advanced.sampleRate.title"
+    }
+
+    elements += new LabelDropdown[Int](NormalDropdown, NormalLabel) {
+      override val items: Seq[Int] = Array(8000, 22050, 44100, 48000, 96000)
+      override def currentItem: Int = opt.sampleRate
+      override def setItem(newItem: Int): Unit = opt.sampleRate = newItem
+      override def itemToText(item: Int): String = item.toString
+
+      addTooltipOption(inputOpen, if (!isOpen) Some(lc"menu.options.audio.advanced.sampleRate.desc") else None)
+    }
   }
 
   val commonElements = {
@@ -548,7 +643,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
 
   val separateElements = Vector(applyButton, cancelButton)
 
-  val allElements = commonElements ++ glElements ++ qualityElements ++ separateElements
+  val allElements = commonElements ++ volumeElements ++ audioAdvancedElements ++ glElements ++ qualityElements ++ separateElements
 
   abstract class Tab {
     def name: String = ""
@@ -565,6 +660,26 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
         element.update(commonParent)
       }
     }
+  }
+
+  object TabAudio extends Tab {
+    override val name = lc"menu.options.audio.tabName"
+
+    override def update(parent: Layout): Unit = {
+      val volumeParent = parent.pushLeft(200.0)
+      parent.padLeft(50.0)
+      val advancedParent = parent.pushLeft(200.0)
+
+      for (element <- volumeElements) {
+        element.update(volumeParent)
+      }
+
+      for (element <- audioAdvancedElements) {
+        element.update(advancedParent)
+      }
+
+    }
+
   }
 
   object TabRendering extends Tab {
@@ -587,7 +702,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
   }
 
   val TabInput = new InputArea()
-  val tabs = Array(TabCommon, TabRendering)
+  val tabs = Array(TabCommon, TabAudio, TabRendering)
   var activeTab: Tab = TabCommon
 
   def update(): Unit = {
