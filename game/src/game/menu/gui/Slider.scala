@@ -35,6 +35,8 @@ abstract class Slider(val style: SliderStyle, val textBoxStyle: TextBoxStyle) ex
         setValueImpl(v)
       }
     }
+
+    override def enabled: Boolean = Slider.this.enabled
   }
 
   def update(parent: Layout): Unit = {
@@ -68,11 +70,18 @@ abstract class Slider(val style: SliderStyle, val textBoxStyle: TextBoxStyle) ex
         val s = style.rectSprite
         val lw = style.lineWidth * unit.y
         val lh = size.y * 0.5
-        val lineCol = Color(0.0, 0.0, 0.0, 0.4)
+        val lineCol = if (enabled) {
+          Color(0.0, 0.0, 0.0, 0.4)
+        } else {
+          Color(0.0, 0.0, 0.0, 0.2)
+        }
+
         val markCol = if (sliderInput.focused || sliderInput.dragged) {
           Color(1.0, 1.0, 1.0, 1.0)
-        } else {
+        } else if (enabled) {
           Color(0.7, 0.7, 0.7, 1.0)
+        } else {
+          Color(0.2, 0.2, 0.2, 1.0)
         }
 
         canvas.draw(0, s, base + Vector2(lw, -lw * 0.5 + size.y * 0.5), Vector2(size.x - 2.0 * lw, lw), lineCol)

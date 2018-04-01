@@ -43,7 +43,12 @@ abstract class TextBox(val style: TextBoxStyle) extends Element {
     val fullBox = parent.pushTop(style.height)
     val textBox = fullBox.copy.padLeft(style.paddingLeft)
     val pos = textBox.position + Vector2(0.0, style.yOffset)
-    val ts = style.textStyle.scaled(parent.unit.y)
+    val baseTs = style.textStyle.scaled(parent.unit.y)
+    val ts = if (enabled) {
+      baseTs
+    } else {
+      baseTs.copy(color = baseTs.color * 0.5)
+    }
 
     if (enabled) {
 
@@ -228,7 +233,8 @@ abstract class TextBox(val style: TextBoxStyle) extends Element {
       if (enabled)
         inputs.add(0, input, fullBox, 0.0, 0)
 
-      canvas.draw(0, style.idleBackgroundSprite, fullBox)
+      val bgColor = if (enabled) Color.White else Color.White * 0.5
+      canvas.draw(0, style.idleBackgroundSprite, fullBox, bgColor)
 
       editContext match {
         case Some(ec) =>
