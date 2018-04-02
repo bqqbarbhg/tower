@@ -1,6 +1,7 @@
 package game.system
 
-import core.{ArrayPool, Vector3}
+import core._
+import ui.DebugDraw
 import util.geometry._
 
 import scala.collection.mutable
@@ -85,11 +86,12 @@ object CullingSystem {
 
   private val globalContainer = new CullableContainer()
 
-  private val QuadTreeBranchAtNumShapes = 32
+  private val QuadTreeBranchAtNumShapes = 16
   private val QuadTreeMaxSubdivisionLevel = 8
-  private val QuadTreeSize = Vector3(1000.0, 400.0, 1000.0)
+  private val QuadTreeOrigin = Vector3(0.0, 20.0, 0.0)
+  private val QuadTreeSize = Vector3(500.0, 50.0, 500.0)
 
-  private val quadTree = new QuadTreeNode(Aabb(Vector3.Zero, QuadTreeSize), 0)
+  private val quadTree = new QuadTreeNode(Aabb(QuadTreeOrigin, QuadTreeSize * 0.5), 1)
 
   private class QuadTreeNode(val bounds: Aabb, val level: Int) {
     val maxOfSizeXZ = math.max(bounds.halfSize.x, bounds.halfSize.z)
@@ -265,6 +267,18 @@ object CullingSystem {
         ix += 1
       }
     }
+
+    narrowAabbs.clear()
+    narrowSpheres.clear()
+  }
+
+  def update(): Unit = {
+    for (viewport <- viewports) {
+      currentPass += 1
+      viewport.visibleEntities.clear()
+      cullBroadPhase(viewport)
+      cullNarrowPhase(viewport)
+    }
   }
 
   class Viewport {
@@ -276,29 +290,53 @@ object CullingSystem {
 
   var viewports = ArrayBuffer[Viewport]()
 
-  def addStaticAABB(entity: Entity, aabb: Aabb, viewportMask: Int): Unit = {
+  def addStaticAABB(entity: Entity, relativeAabb: Aabb, viewportMask: Int): Unit = {
+    val aabb = relativeAabb.copy(center = entity.position + relativeAabb.center)
+
     val cullable = getCullable(entity)
     val shape = new ShapeAabb(cullable, aabb, viewportMask)
 
-    if (quadTree.bounds.intersects(aabb)) {
+    if (quadTree.bounds.contains(aabb)) {
       quadTree.add(shape)
     } else {
       globalContainer.add(shape)
     }
   }
 
-  def addStaticSphere(entity: Entity, sphere: Sphere, viewportMask: Int): Unit = {
+  def addStaticSphere(entity: Entity, relativeSphere: Sphere, viewportMask: Int): Unit = {
+    val sphere = relativeSphere.copy(center = entity.position + relativeSphere.center)
+
     val cullable = getCullable(entity)
     val shape = new ShapeSphere(cullable, sphere, viewportMask)
 
-    if (quadTree.bounds.intersects(sphere)) {
+    if (quadTree.bounds.contains(sphere)) {
       quadTree.add(shape)
     } else {
       globalContainer.add(shape)
     }
   }
 
+  def debugDrawQuadTree(): Unit = {
+    currentPass += 1
 
+    def debugDrawNode(node: QuadTreeNode): Unit = {
+      if (!node.isLeaf) {
+        debugDrawNode(node.c00)
+        debugDrawNode(node.c01)
+        debugDrawNode(node.c10)
+        debugDrawNode(node.c11)
+      } else {
+        val c = node.bounds.center.copy(y = 6.0)
+        val h = node.bounds.halfSize.copy(y = 4.0)
+        val aabb = Aabb(c, h)
+        val color = if (viewports.head.frustum.intersects(node.bounds))
+          Color.rgb(0xFF8888) else Color.rgb(0xFF0000)
+        DebugDraw.drawAabb(aabb, color)
+      }
+    }
+
+    debugDrawNode(quadTree)
+  }
 
 }
 

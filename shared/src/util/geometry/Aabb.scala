@@ -14,11 +14,14 @@ object Aabb {
 
 final case class Aabb(center: Vector3, halfSize: Vector3) {
 
+  def min: Vector3 = center - halfSize
+  def max: Vector3 = center + halfSize
+
   def intersects(rhs: Aabb): Boolean = {
     val adx = math.abs(center.x - rhs.center.x) - halfSize.x - rhs.halfSize.x
     val ady = math.abs(center.y - rhs.center.y) - halfSize.y - rhs.halfSize.y
     val adz = math.abs(center.z - rhs.center.z) - halfSize.z - rhs.halfSize.z
-    adx >= 0.0 || ady >= 0.0 || adz >= 0.0
+    !(adx >= 0.0 || ady >= 0.0 || adz >= 0.0)
   }
 
   def intersects(rhs: Plane): Boolean = rhs.orient(this) == 0
@@ -29,6 +32,20 @@ final case class Aabb(center: Vector3, halfSize: Vector3) {
     val dz = math.max(math.abs(rhs.center.z - center.z) - halfSize.z, 0.0)
     val distSq = dx*dx + dy*dy + dz*dz
     distSq <= rhs.radius
+  }
+
+  def contains(rhs: Aabb): Boolean = {
+    val adx = math.abs(center.x - rhs.center.x) - halfSize.x - rhs.halfSize.x
+    val ady = math.abs(center.y - rhs.center.y) - halfSize.y - rhs.halfSize.y
+    val adz = math.abs(center.z - rhs.center.z) - halfSize.z - rhs.halfSize.z
+    adx <= 0.0 && ady <= 0.0 && adz <= 0.0
+  }
+
+  def contains(rhs: Sphere): Boolean = {
+    val adx = math.abs(center.x - rhs.center.x) - halfSize.x - rhs.radius
+    val ady = math.abs(center.y - rhs.center.y) - halfSize.y - rhs.radius
+    val adz = math.abs(center.z - rhs.center.z) - halfSize.z - rhs.radius
+    adx <= 0.0 && ady <= 0.0 && adz <= 0.0
   }
 
 }

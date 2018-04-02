@@ -9,9 +9,12 @@ import io.Toml
 import io.content._
 import _root_.main.EngineStartup
 import game.TestModelSystem.TestModelShader.PixelUniform
+import game.system.CullingSystem.Viewport
 import platform.AppWindow
 import platform.AppWindow.WindowStyle
 import res.runner.{RunOptions, Runner}
+import ui.DebugDraw
+import util.geometry.{Aabb, Frustum, Sphere}
 
 object TestModelSystem extends App {
 
@@ -62,6 +65,11 @@ object TestModelSystem extends App {
 
   val probeOffset = Vector3(0.0, 2.0, 0.0)
 
+  val viewport = new Viewport()
+  viewport.viewportMask = 1
+
+  CullingSystem.viewports += viewport
+
   for {
     y <- -5 to 5
     x <- -5 to 5
@@ -73,6 +81,12 @@ object TestModelSystem extends App {
 
       val probe = LightSystem.addStaticProbe(entity.position + probeOffset)
       model.lightProbe = probe.probe
+
+      if ((x + y) % 2 == 0) {
+        CullingSystem.addStaticAABB(entity, Aabb(Vector3(0.0, 3.0, 0.0), Vector3(3.0, 3.0, 3.0)), 1)
+      } else {
+        CullingSystem.addStaticSphere(entity, Sphere(Vector3(0.0, 3.0, 0.0), 3.0), 1)
+      }
     }
   }
 
@@ -81,6 +95,8 @@ object TestModelSystem extends App {
   entity.position = Vector3(0.0, 0.0, 0.0)
   val probe = LightSystem.addStaticProbe(entity.position + probeOffset)
   model.lightProbe = probe.probe
+
+  CullingSystem.addStaticAABB(entity, Aabb(Vector3.Zero, Vector3(3.0, 3.0, 3.0)), 1)
 
   val radar = model.findNode(Identifier("Radar"))
 
@@ -137,9 +153,15 @@ object TestModelSystem extends App {
       renderTarget.setLabel("Multisample target")
     }
 
+    val offX = math.sin(time) * 1.5
+
     val viewProjection = (
       Matrix4.perspective(viewWidth.toDouble / viewHeight.toDouble, math.Pi / 3.0, 0.01, 1000.0)
         * Matrix43.look(Vector3(0.0, 12.0, -14.0) * 4.0, Vector3(0.0, -1.0, 1.0)))
+
+    val viewProjectionSway = (
+      Matrix4.perspective(viewWidth.toDouble / viewHeight.toDouble, math.Pi / 3.0, 0.01, 1000.0)
+        * Matrix43.look(Vector3(0.0, 12.0, -14.0) * 4.0, Vector3(offX, -1.0, 1.0)))
 
     renderer.beginFrame()
     renderer.setRenderTarget(renderTarget)
@@ -147,9 +169,13 @@ object TestModelSystem extends App {
     renderer.setWriteSrgb(true)
     renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
 
+    viewport.frustum = Frustum.fromViewProjection(viewProjectionSway)
+
+    CullingSystem.update()
     LightSystem.addDynamicLightsToCells()
     LightSystem.evaluateProbes()
     LightSystem.finishFrame()
+    ModelSystem.collectVisibleModels(viewport.visibleEntities)
     ModelSystem.updateMatrices()
     ModelSystem.collectMeshInstances()
     ModelSystem.setupUniforms()
@@ -158,6 +184,8 @@ object TestModelSystem extends App {
     renderer.pushUniform(GlobalUniform, u => {
       GlobalUniform.ViewProjection.set(u, viewProjection)
     })
+
+    CullingSystem.debugDrawQuadTree()
 
     renderer.setCull(true)
 
@@ -187,6 +215,8 @@ object TestModelSystem extends App {
       AssetLoader.reloadEverything()
       ModelSystem.assetsLoaded()
     }
+
+    DebugDraw.render(viewProjection)
 
     renderer.blitRenderTargetColor(RenderTarget.Backbuffer, renderTarget)
 

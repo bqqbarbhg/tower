@@ -16,7 +16,7 @@ object ArrayPool {
       var localPos = position
       while (pool.sparseData(localPos) == null)
         localPos += 1
-      position = localPos
+      position = localPos + 1
       numIterated += 1
       pool.sparseData(localPos)
     }

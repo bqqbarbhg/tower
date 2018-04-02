@@ -5,6 +5,7 @@ import core._
 import gfx.RingVertexBufferAsset
 import render.VertexSpec.{Attrib, DataFmt}
 import render._
+import util.geometry.Aabb
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -50,6 +51,24 @@ object DebugDraw {
   def drawLine(begin: Vector3, end: Vector3, color: Color): Unit = drawLine(begin, end, color, color)
   def drawLine(begin: Vector3, end: Vector3, beginColor: Color, endColor: Color): Unit = drawLine(Line(begin, end, beginColor, endColor))
   def drawLine(line: Line): Unit = lines += line
+
+  def drawAabb(aabb: Aabb, color: Color): Unit = drawAabb(aabb.min, aabb.max, color)
+  def drawAabb(min: Vector3, max: Vector3, color: Color): Unit = {
+    drawLine(Vector3(min.x, min.y, min.z), Vector3(max.x, min.y, min.z), color)
+    drawLine(Vector3(min.x, max.y, min.z), Vector3(max.x, max.y, min.z), color)
+    drawLine(Vector3(min.x, min.y, max.z), Vector3(max.x, min.y, max.z), color)
+    drawLine(Vector3(min.x, max.y, max.z), Vector3(max.x, max.y, max.z), color)
+
+    drawLine(Vector3(min.x, min.y, min.z), Vector3(min.x, max.y, min.z), color)
+    drawLine(Vector3(min.x, min.y, max.z), Vector3(min.x, max.y, max.z), color)
+    drawLine(Vector3(min.x, min.y, min.z), Vector3(min.x, min.y, max.z), color)
+    drawLine(Vector3(min.x, max.y, min.z), Vector3(min.x, max.y, max.z), color)
+
+    drawLine(Vector3(max.x, min.y, min.z), Vector3(max.x, max.y, min.z), color)
+    drawLine(Vector3(max.x, min.y, max.z), Vector3(max.x, max.y, max.z), color)
+    drawLine(Vector3(max.x, min.y, min.z), Vector3(max.x, min.y, max.z), color)
+    drawLine(Vector3(max.x, max.y, min.z), Vector3(max.x, max.y, max.z), color)
+  }
 
   def drawLine2D(begin: Vector2, end: Vector2, color: Color): Unit = drawLine2D(begin, end, color, color)
   def drawLine2D(begin: Vector2, end: Vector2, beginColor: Color, endColor: Color): Unit = drawLine2D(Line2D(begin, end, beginColor, endColor))
