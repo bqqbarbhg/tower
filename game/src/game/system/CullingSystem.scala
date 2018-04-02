@@ -272,13 +272,11 @@ object CullingSystem {
     narrowSpheres.clear()
   }
 
-  def update(): Unit = {
-    for (viewport <- viewports) {
-      currentPass += 1
-      viewport.visibleEntities.clear()
-      cullBroadPhase(viewport)
-      cullNarrowPhase(viewport)
-    }
+  def update(viewport: Viewport): Unit = {
+    currentPass += 1
+    viewport.visibleEntities.clear()
+    cullBroadPhase(viewport)
+    cullNarrowPhase(viewport)
   }
 
   class Viewport {
@@ -287,8 +285,6 @@ object CullingSystem {
 
     val visibleEntities = new ArrayBuffer[Entity]()
   }
-
-  var viewports = ArrayBuffer[Viewport]()
 
   def addStaticAABB(entity: Entity, relativeAabb: Aabb, viewportMask: Int): Unit = {
     val aabb = relativeAabb.copy(center = entity.position + relativeAabb.center)
@@ -316,7 +312,7 @@ object CullingSystem {
     }
   }
 
-  def debugDrawQuadTree(): Unit = {
+  def debugDrawQuadTree(frustum: Frustum): Unit = {
     currentPass += 1
 
     def debugDrawNode(node: QuadTreeNode): Unit = {
@@ -329,7 +325,7 @@ object CullingSystem {
         val c = node.bounds.center.copy(y = 6.0)
         val h = node.bounds.halfSize.copy(y = 4.0)
         val aabb = Aabb(c, h)
-        val color = if (viewports.head.frustum.intersects(node.bounds))
+        val color = if (frustum.intersects(node.bounds))
           Color.rgb(0xFF8888) else Color.rgb(0xFF0000)
         DebugDraw.drawAabb(aabb, color)
       }

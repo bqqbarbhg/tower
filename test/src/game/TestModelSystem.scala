@@ -68,8 +68,6 @@ object TestModelSystem extends App {
   val viewport = new Viewport()
   viewport.viewportMask = 1
 
-  CullingSystem.viewports += viewport
-
   for {
     y <- -5 to 5
     x <- -5 to 5
@@ -171,7 +169,8 @@ object TestModelSystem extends App {
 
     viewport.frustum = Frustum.fromViewProjection(viewProjectionSway)
 
-    CullingSystem.update()
+    CullingSystem.update(viewport)
+
     LightSystem.addDynamicLightsToCells()
     LightSystem.evaluateProbes()
     LightSystem.finishFrame()
@@ -185,7 +184,7 @@ object TestModelSystem extends App {
       GlobalUniform.ViewProjection.set(u, viewProjection)
     })
 
-    CullingSystem.debugDrawQuadTree()
+    CullingSystem.debugDrawQuadTree(viewport.frustum)
 
     renderer.setCull(true)
 

@@ -13,11 +13,13 @@ import res.runner.{RunOptions, Runner}
 import ui.{DebugDraw, SpriteBatch}
 import game.lighting.LightProbe
 import game.state.LoadingState
+import game.system.CullingSystem.Viewport
 import gfx.Shader
 import org.lwjgl.system.MemoryUtil
 import platform.AppWindow.WindowStyle
 import render.VertexSpec.Attrib
 import render.VertexSpec.DataFmt._
+import util.geometry.{Frustum, Sphere}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -287,6 +289,8 @@ object TestCableSystem extends App {
   val model = ModelSystem.addModel(entity, asset)
   entity.position = Vector3(0.0, 0.0, 0.0)
 
+  CullingSystem.addStaticSphere(entity, Sphere(Vector3(0.0, 1.0, 0.0), 4.0), 1)
+
   val head = model.findNode(Identifier("Head"))
   val barrel = model.findNode(Identifier("Barrel"))
 
@@ -511,6 +515,9 @@ object TestCableSystem extends App {
     IndexBuffer.createStatic(buffer)
   }
 
+  val viewport = new Viewport()
+  viewport.viewportMask = 1
+
   TestModelShader.load()
   TestShadowShader.load()
 
@@ -667,6 +674,8 @@ object TestCableSystem extends App {
       Matrix4.orthographic(80.0, 80.0, 0.1, 100.0)
         * Matrix43.look(Vector3(0.25, 0.75, -0.25) * 40.0, -Vector3(0.25, 0.75, -0.25)))
 
+    viewport.frustum = Frustum.fromViewProjection(viewProjection)
+
     val tt = 0.5
     head.localTransform = Matrix43.rotateZ(math.sin(tt * 0.6) * 0.5) * Matrix43.rotateX(math.sin(tt * 0.5) * 0.2)
     barrel.localTransform = Matrix43.rotateY(tt * -15.0)
@@ -675,6 +684,9 @@ object TestCableSystem extends App {
     LightSystem.evaluateProbes()
     LightSystem.finishFrame()
 
+    CullingSystem.update(viewport)
+
+    ModelSystem.collectVisibleModels(viewport.visibleEntities)
     ModelSystem.updateMatrices()
     ModelSystem.collectMeshInstances()
     ModelSystem.setupUniforms()
