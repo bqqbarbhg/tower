@@ -1,7 +1,6 @@
 package platform
 
 import core._
-import input.device.Keyboard
 import org.lwjgl.glfw.GLFW._
 import org.lwjgl.glfw.GLFWKeyCallbackI
 import org.lwjgl.glfw.GLFWCharCallbackI
@@ -75,8 +74,6 @@ object AppWindow {
       }
     }
   }
-
-  val keyboard = new Keyboard()
 
   /** Initialize the system */
   def initialize(): Unit = {

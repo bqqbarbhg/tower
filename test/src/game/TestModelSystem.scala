@@ -2,16 +2,15 @@ package game
 
 import core._
 import asset._
-import game.TestEngine.DebugInput.button
 import game.TestEngine._
 import render._
 import game.system._
-import input.{InputMapping, InputSet}
 import io.Toml
 import io.content._
 import _root_.main.EngineStartup
 import game.TestModelSystem.TestModelShader.PixelUniform
 import platform.AppWindow
+import platform.AppWindow.WindowStyle
 import res.runner.{RunOptions, Runner}
 
 object TestModelSystem extends App {
@@ -53,6 +52,9 @@ object TestModelSystem extends App {
   opts.windowName = "Engine test"
   EngineStartup.start(opts)
 
+  val windowStyle = new WindowStyle(1280, 720, false, false, -1, None)
+  EngineStartup.softStart(windowStyle)
+
   var prevWidth = -1
   var prevHeight = -1
 
@@ -79,20 +81,6 @@ object TestModelSystem extends App {
   entity.position = Vector3(0.0, 0.0, 0.0)
   val probe = LightSystem.addStaticProbe(entity.position + probeOffset)
   model.lightProbe = probe.probe
-
-  object DebugInput extends InputSet("Debug") {
-    val Reload = button("Reload")
-  }
-
-  val keyboard = AppWindow.keyboard
-  val debugMapping = Toml.parse(
-    """
-      |[Keyboard.Debug]
-      |Reload = "R"
-    """.stripMargin)
-
-  val mapping = new InputMapping(Array(keyboard))
-  mapping.init(debugMapping)
 
   val radar = model.findNode(Identifier("Radar"))
 
@@ -145,7 +133,7 @@ object TestModelSystem extends App {
       renderer.resizeBackbuffer(viewWidth, viewHeight)
 
       if (renderTarget != null) renderTarget.unload()
-      renderTarget = RenderTarget.create(viewWidth, viewHeight, Some("SRGB"), Some("D24S"), false, 2)
+      renderTarget = RenderTarget.create(viewWidth, viewHeight, Some(TexFormat.SrgbA), Some("D24S"), false, 2)
       renderTarget.setLabel("Multisample target")
     }
 
@@ -194,7 +182,7 @@ object TestModelSystem extends App {
       renderer.drawElementsInstanced(draw.num, numElems, part.indexBuffer, part.vertexBuffer)
     }
 
-    if (mapping.justPressed(DebugInput.Reload)) {
+    if (AppWindow.keyEvents.exists(e => e.down && e.key == 'R'.toInt)) {
       processResources()
       AssetLoader.reloadEverything()
       ModelSystem.assetsLoaded()
@@ -206,5 +194,6 @@ object TestModelSystem extends App {
     AppWindow.swapBuffers()
   }
 
-  AppWindow.unload()
+  EngineStartup.softStop()
+  EngineStartup.stop()
 }

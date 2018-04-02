@@ -14,7 +14,7 @@ import com.sun.management.GarbageCollectionNotificationInfo
 
 import collection.JavaConverters._
 import core._
-import gfx.Shader.NoPermutations
+import gfx.Shader.{NoDefines, NoPermutations}
 import gfx._
 import render._
 import render.UniformBlock
@@ -22,8 +22,10 @@ import platform.{AppWindow, Intrinsic}
 import ui.{Atlas, Font, Sprite, SpriteBatch}
 import io.content._
 import locale.LocaleInfo
+import platform.AppWindow.WindowStyle
 import render.SamplerBlock.NoSamplers
 import render.opengl._
+import task.{Task, TaskExecutor}
 import ui.Font.TextDraw
 
 import scala.collection.mutable.ArrayBuffer
@@ -56,8 +58,26 @@ object TestScene extends App {
 
   Package.set(pack)
 
-  val LC = TestLocale
   LocaleInfo.load()
+
+  object IoThread extends Thread {
+    override def run(): Unit = {
+      val executor = Task.Io
+      executor.claimForThisThread()
+
+      try {
+        while (!Thread.interrupted()) {
+          executor.runNextWait()
+        }
+      } catch {
+        case e: InterruptedException => // Nop
+      }
+    }
+  }
+
+  IoThread.setName("Engine IO thread")
+  IoThread.start()
+  Task.Main.claimForThisThread()
 
   for (locale <- LocaleInfo.locales) {
     println(s"${locale.code} -> ${locale.language} (${locale.file})")
@@ -145,9 +165,9 @@ object TestScene extends App {
   }
 
   val music = Sound.load(Identifier("test/music.ogg.s2au")).get
-  val musicInstance = new SoundInstance(music)
+  val musicInstance = SoundInstance.make(music).get
   val sound = Sound.load(Identifier("test/beep.wav.s2au")).get
-  val soundInstance = new SoundInstance(sound)
+  val soundInstance = SoundInstance.make(sound).get
 
   val mixer = new Mixer()
 
@@ -165,7 +185,11 @@ object TestScene extends App {
   val CreateHeight = 720
 
   val debug = arg.flag("debug")
-  AppWindow.initialize(CreateWidth, CreateHeight, "Test window", debug)
+  AppWindow.initialize()
+
+  val style = new WindowStyle(CreateWidth, CreateHeight, false, false, -1, None)
+
+  AppWindow.createWindow(style, "Test window", debug)
 
   @volatile var closeAudio: Boolean = false
   val limiter = new Limiter(mixer)
@@ -275,8 +299,8 @@ object TestScene extends App {
   val fs = ShaderSource.load(Identifier("test/test_mesh.fs.glsl.s2sh")).get
   val svs = ShaderSource.load(Identifier("test/shadow_mesh.vs.glsl.s2sh")).get
   val sfs = ShaderSource.load(Identifier("test/shadow_mesh.fs.glsl.s2sh")).get
-  val shader = Shader.load("test/test_mesh", vs, fs, ModelPermutations, ModelTextures, GlobalUniform, ModelUniform, ModelUniformBones, PixelGlobalUniform)
-  val shadowShader = Shader.load("test/shadow_mesh", svs, sfs, ModelPermutations, NoSamplers, GlobalUniform, ModelUniform, ModelUniformBones)
+  val shader = Shader.load("test/test_mesh", vs, fs, ModelPermutations, NoDefines, ModelTextures, GlobalUniform, ModelUniform, ModelUniformBones, PixelGlobalUniform)
+  val shadowShader = Shader.load("test/shadow_mesh", svs, sfs, ModelPermutations, NoDefines, NoSamplers, GlobalUniform, ModelUniform, ModelUniformBones)
 
   val buffer = ByteBuffer.allocateDirect(16 * 1024 * 1024)
 
@@ -474,11 +498,6 @@ object TestScene extends App {
       draws += TextDraw(text, 0, text.length, Vector2(100.0, 440.0), 30.0, Color.rgb(0xFFFFFF), 0.0, 0)
     }
 
-    {
-      val text = LC.Test.welcome(name = "Player")
-      draws += TextDraw(text, 0, text.length, Vector2(100.0, 480.0), 30.0, Color.rgb(0xFFFFFF), 0.0, 0)
-    }
-
     font.render(draws)
 
     val names = ('a' to 'z').map(_.toString) ++ Seq("face")
@@ -515,6 +534,8 @@ object TestScene extends App {
     }
 
   }
+
+  AppWindow.destroyWindow()
   AppWindow.unload()
 
   closeAudio = true

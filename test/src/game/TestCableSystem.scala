@@ -2,22 +2,20 @@ package game
 
 import core._
 import asset._
-import game.TestEngine.DebugInput.button
 import game.TestEngine._
 import render._
 import game.system._
-import input.{InputMapping, InputSet}
 import io.Toml
 import io.content._
 import _root_.main.EngineStartup
 import platform.AppWindow
 import res.runner.{RunOptions, Runner}
 import ui.{DebugDraw, SpriteBatch}
-import CableRenderSystem.{CableMesh, CableNode}
 import game.lighting.LightProbe
 import game.state.LoadingState
 import gfx.Shader
 import org.lwjgl.system.MemoryUtil
+import platform.AppWindow.WindowStyle
 import render.VertexSpec.Attrib
 import render.VertexSpec.DataFmt._
 
@@ -57,10 +55,15 @@ object TestCableSystem extends App {
   Package.set(pack)
 
   val opts = new EngineStartup.Options()
-  opts.debug = false
+  opts.debug = true
   opts.profile = true
   opts.windowName = "Engine test"
   EngineStartup.start(opts)
+
+  val windowStyle = new WindowStyle(1280, 720, false, false, -1, None)
+  EngineStartup.softStart(windowStyle)
+
+  system.deferredLoad().get
 
   processResources()
 
@@ -158,33 +161,7 @@ object TestCableSystem extends App {
   val ground_ao = TextureAsset("game/ground/sand_stone_ao.png.s2tx")
 
 
-  object DebugInput extends InputSet("Debug") {
-    val Reload = button("Reload")
-    val Toggle = button("Toggle")
-    val ResToggle = button("ResToggle")
-    val Left = button("Left")
-    val Right = button("Right")
-    val Up = button("Up")
-    val Down = button("Down")
-  }
-
   val fontAsset = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
-
-  val keyboard = AppWindow.keyboard
-  val debugMapping = Toml.parse(
-    """
-      |[Keyboard.Debug]
-      |Reload = "R"
-      |Toggle = "T"
-      |ResToggle = "Y"
-      |Left = "A"
-      |Right = "D"
-      |Up = "W"
-      |Down = "S"
-    """.stripMargin)
-
-  val mapping = new InputMapping(Array(keyboard))
-  mapping.init(debugMapping)
 
   object GlobalUniform extends UniformBlock("GlobalUniform") {
     val ViewProjection = mat4("ViewProjection")
@@ -574,10 +551,14 @@ object TestCableSystem extends App {
   while (AppWindow.running) {
     val renderer = Renderer.get
 
-    if (mapping.justPressed(DebugInput.Toggle))
+    val keyEvents = AppWindow.keyEvents
+    def justPressed(key: Int) = keyEvents.exists(e => e.down && e.key == key)
+    def isDown(key: Int) = AppWindow.keyDown(key)
+
+    if (justPressed('T'.toInt))
       toggle = !toggle
 
-    if (mapping.justPressed(DebugInput.ResToggle))
+    if (justPressed('Y'.toInt))
       resToggle = !resToggle
 
     AppWindow.pollEvents()
@@ -602,8 +583,8 @@ object TestCableSystem extends App {
 
       if (renderTarget != null) renderTarget.unload()
       if (resolveTarget != null) resolveTarget.unload()
-      renderTarget = RenderTarget.create(width, height, Some("SRGB"), Some("D24S"), false, 4)
-      resolveTarget = RenderTarget.create(width, height, Some("SRGB"), None, false)
+      renderTarget = RenderTarget.create(width, height, Some(TexFormat.SrgbA), Some("D24S"), false, 4)
+      resolveTarget = RenderTarget.create(width, height, Some(TexFormat.SrgbA), None, false)
       renderTarget.setLabel("Multisample target")
 
       val samples = renderTarget.sampleLocations
@@ -673,8 +654,8 @@ object TestCableSystem extends App {
       MemoryUtil.memFree(buf)
     }
 
-    if (mapping.isDown(DebugInput.Down)) zoom += dt * 2.0
-    if (mapping.isDown(DebugInput.Up)) zoom -= dt * 2.0
+    if (isDown('S'.toInt)) zoom += dt * 2.0
+    if (isDown('W'.toInt)) zoom -= dt * 2.0
     zoom = clamp(zoom, 0.5, 1.5)
 
     val viewPos = Vector3(math.sin(angle) * 18.0, 30.0, math.cos(angle) * -18.0) * zoom
@@ -834,16 +815,16 @@ object TestCableSystem extends App {
       renderer.drawElements(groundIndices.numIndices, groundIndices, patch.vertices)
     }
 
-    if (mapping.justPressed(DebugInput.Reload)) {
+    if (justPressed('R'.toInt)) {
       processResources()
       AssetLoader.reloadEverything()
       ModelSystem.assetsLoaded()
     }
 
-    if (mapping.isDown(DebugInput.Left)) {
+    if (isDown('A'.toInt)) {
       angle += dt * 2.0
     }
-    if (mapping.isDown(DebugInput.Right)) {
+    if (isDown('D'.toInt)) {
       angle -= dt * 2.0
     }
 
@@ -989,6 +970,7 @@ object TestCableSystem extends App {
     AppWindow.swapBuffers()
   }
 
+  EngineStartup.softStop()
   EngineStartup.stop()
 }
 

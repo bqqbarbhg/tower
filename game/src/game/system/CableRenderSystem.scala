@@ -9,6 +9,60 @@ import util.BinarySearch
 
 import scala.collection.mutable.ArrayBuffer
 
+class CableMeshPart(val system: CableRenderSystem) {
+  var lightProbes: Array[LightProbe] = null
+  var vertexBuffer: VertexBuffer = null
+  var numRings: Int = 0
+
+  def draw(): Unit = {
+    val renderer = Renderer.get
+    var baseRing = 0
+
+    renderer.pushUniform(ModelSystem.LightProbeUniform, u => {
+      import ModelSystem.LightProbeUniform
+      var ix = 0
+      var base = LightProbeUniform.LightProbes.offsetInBytes
+      val stride = LightProbeUniform.LightProbes.arrayStrideInBytes
+      val baseStride = LightProbe.SizeInVec4 * stride
+      while (ix < lightProbes.length) {
+        lightProbes(ix).writeToUniform(u, base, stride)
+        ix += 1
+        base += baseStride
+      }
+    })
+
+    val maxRing = numRings - 1
+    while (baseRing < maxRing) {
+      val toDraw = math.min(maxRing - baseRing, system.MaxRingsPerDraw)
+      val quadsToDraw = system.VertsPerRing * toDraw
+      val baseVertex = baseRing * system.VertsPerRing
+      renderer.drawElements(quadsToDraw * 6, system.indexBuffer, vertexBuffer, baseVertex = baseVertex)
+      baseRing += toDraw
+    }
+  }
+}
+
+class CableMesh {
+  var numRings: Int = 0
+  var length: Double = 0.0
+  var parts: Array[CableMeshPart] = null
+
+  def draw(): Unit = {
+    for (part <- parts) {
+      part.draw()
+    }
+  }
+
+}
+
+/**
+  * Represents a single node in the Hermite-interpolation based cable curve.
+  *
+  * @param position Position of the node
+  * @param tangent Tangent direction and magnitude
+  */
+case class CableNode(position: Vector3, tangent: Vector3)
+
 class CableRenderSystem {
 
   val Quality = Options.current.graphics.quality.modelQuality
@@ -67,59 +121,6 @@ class CableRenderSystem {
     ))
   }
 
-  /**
-    * Represents a single node in the Hermite-interpolation based cable curve.
-    *
-    * @param position Position of the node
-    * @param tangent Tangent direction and magnitude
-    */
-  case class CableNode(position: Vector3, tangent: Vector3)
-
-  class CableMeshPart {
-    var lightProbes: Array[LightProbe] = null
-    var vertexBuffer: VertexBuffer = null
-    var numRings: Int = 0
-
-    def draw(): Unit = {
-      val renderer = Renderer.get
-      var baseRing = 0
-
-      renderer.pushUniform(ModelSystem.LightProbeUniform, u => {
-        import ModelSystem.LightProbeUniform
-        var ix = 0
-        var base = LightProbeUniform.LightProbes.offsetInBytes
-        val stride = LightProbeUniform.LightProbes.arrayStrideInBytes
-        val baseStride = LightProbe.SizeInVec4 * stride
-        while (ix < lightProbes.length) {
-          lightProbes(ix).writeToUniform(u, base, stride)
-          ix += 1
-          base += baseStride
-        }
-      })
-
-      val maxRing = numRings - 1
-      while (baseRing < maxRing) {
-        val toDraw = math.min(maxRing - baseRing, MaxRingsPerDraw)
-        val quadsToDraw = VertsPerRing * toDraw
-        val baseVertex = baseRing * VertsPerRing
-        renderer.drawElements(quadsToDraw * 6, indexBuffer, vertexBuffer, baseVertex = baseVertex)
-        baseRing += toDraw
-      }
-    }
-  }
-
-  class CableMesh {
-    var numRings: Int = 0
-    var length: Double = 0.0
-    var parts: Array[CableMeshPart] = null
-
-    def draw(): Unit = {
-      for (part <- parts) {
-        part.draw()
-      }
-    }
-
-  }
 
   /**
     * Convert the cable path into a piecewise linear approximation.
@@ -244,7 +245,7 @@ class CableRenderSystem {
     var partNumRings = 0
 
     def flushCurrentPart(): Unit = {
-      val part = new CableMeshPart()
+      val part = new CableMeshPart(this)
       val finished = vertexData.duplicateEx
       finished.finish()
       part.numRings = partNumRings

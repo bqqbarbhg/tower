@@ -8,6 +8,7 @@ import platform.AppWindow
 import ui.{Canvas, SpriteBatch}
 import io.content.{DirectoryPackage, Package}
 import locale.LocaleInfo
+import platform.AppWindow.WindowStyle
 
 
 object TestSpriteBatch extends App {
@@ -20,6 +21,9 @@ object TestSpriteBatch extends App {
   opts.debug = true
   opts.windowName = "Sprite test"
   EngineStartup.start(opts)
+
+  val windowStyle = new WindowStyle(1280, 720, false, false, -1, None)
+  EngineStartup.softStart(windowStyle)
 
   val sb = new SpriteBatch()
 
@@ -107,5 +111,6 @@ object TestSpriteBatch extends App {
     AppWindow.swapBuffers()
   }
 
+  EngineStartup.softStop()
   EngineStartup.stop()
 }

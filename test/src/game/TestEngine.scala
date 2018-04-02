@@ -6,13 +6,13 @@ import audio.{Mixer, SoundInstance}
 import core._
 import game.test.{Sausageman, TestAudioEngine}
 import gfx.{ModelState, Shader}
-import input._
 import render._
 import io.content._
 import io.Toml
 import locale._
 import main.EngineStartup
 import platform.AppWindow
+import platform.AppWindow.WindowStyle
 import res.runner.{RunOptions, Runner}
 import ui.Font.TextDraw
 import ui.SpriteBatch
@@ -94,6 +94,9 @@ object TestEngine extends App {
   opts.windowName = "Engine test"
   EngineStartup.start(opts)
 
+  val windowStyle = new WindowStyle(1280, 720, false, false, -1, None)
+  EngineStartup.softStart(windowStyle)
+
   val bundle = new AssetBundle("TestBundle", SimpleShader, sausagemanAsset, uiAtlas)
   bundle.acquire()
 
@@ -118,11 +121,10 @@ object TestEngine extends App {
 
   val audioEngine = new TestAudioEngine(audioOutput, renderAudio)
 
-  val musicInstance = new SoundInstance(music.get)
+  val musicInstance = SoundInstance.make(music.get).get
   musicInstance.copyParameters()
   mixer.add(musicInstance)
 
-  val LC = TestLocale
   LocaleInfo.load()
 
   {
@@ -138,20 +140,6 @@ object TestEngine extends App {
   val renderer = Renderer.get
   var prevWidth = -1
   var prevHeight = -1
-
-  object DebugInput extends InputSet("Debug") {
-    val Reload = button("Reload")
-  }
-
-  val keyboard = AppWindow.keyboard
-  val debugMapping = Toml.parse(
-    """
-      |[Keyboard.Debug]
-      |Reload = "R"
-    """.stripMargin)
-
-  val mapping = new InputMapping(Array(keyboard))
-  mapping.init(debugMapping)
 
   val startTime = AppWindow.currentTime
   while (AppWindow.running) {
@@ -240,11 +228,6 @@ object TestEngine extends App {
     draws += TextDraw("Hello world!", 0, "Hello world!".length, Vector2(100.0, 90.0), 82.0, bg, 2.0, 0)
     draws += TextDraw("manually wrapped...", 0, "manually wrapped...".length, Vector2(100.0, 142.0), 22.0, fg, 0.0, 1)
 
-    {
-      val text = LC.Test.welcome(name = "Player")
-      draws += TextDraw(text, 0, text.length, Vector2(100.0, 480.0), 30.0, Color.rgb(0xFFFFFF), 0.0, 0)
-    }
-
     val font = fontAsset.get
     font.render(draws)
 
@@ -264,7 +247,7 @@ object TestEngine extends App {
     renderer.endFrame()
     AppWindow.swapBuffers()
 
-    if (mapping.justPressed(DebugInput.Reload)) {
+    if (AppWindow.keyEvents.exists(e => e.down && e.key == 'R'.toInt)) {
       TestEngine.synchronized {
         processResources()
         AssetLoader.reloadEverything()
@@ -272,7 +255,8 @@ object TestEngine extends App {
     }
   }
 
-  AppWindow.unload()
+  EngineStartup.softStop()
+  EngineStartup.stop()
 
   audioEngine.closeAudio = true
   audioEngine.audioThread.join()

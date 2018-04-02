@@ -48,8 +48,8 @@ class ColorTest extends FlatSpec with Matchers {
     assertEqual(color, Color(0.0, 0.0, 0.0))
   }
 
-  it should "round trip with toSrgb32" in {
-    val (r, g, b, a) = Color.argb(0x12345678).toSrgb32
+  it should "round trip with toSrgb8" in {
+    val (r, g, b, a) = Color.argb(0x12345678).toSrgb8
     assert(a === 0x12)
     assert(r === 0x34)
     assert(g === 0x56)
@@ -69,21 +69,21 @@ class ColorTest extends FlatSpec with Matchers {
   }
 
   "toSrgb32Int" should "be all 0x00 on transparent black" in {
-    val rgba = Color(0.0, 0.0, 0.0, 0.0).toSrgbInt32
+    val rgba = Color(0.0, 0.0, 0.0, 0.0).toSrgbInt8
     assert(rgba === argbInt32(0x00000000))
   }
 
   it should "be all 0xFF on opaque white" in {
-    val rgba = Color(1.0, 1.0, 1.0, 1.0).toSrgbInt32
+    val rgba = Color(1.0, 1.0, 1.0, 1.0).toSrgbInt8
     assert(rgba === argbInt32(0xFFFFFFFF))
   }
 
-  it should "be compatible with toSrgb32" in {
+  it should "be compatible with toSrgb8" in {
     val r = new java.util.Random(1)
     for (hex <- Iterator.continually(r.nextInt()).take(1000)) {
       val col = Color.argb(hex)
-      val (r, g, b, a) = col.toSrgb32
-      val packed = col.toSrgbInt32
+      val (r, g, b, a) = col.toSrgb8
+      val packed = col.toSrgbInt8
       assert(r === (packed >>  0 & 0xFF))
       assert(g === (packed >>  8 & 0xFF))
       assert(b === (packed >> 16 & 0xFF))
@@ -91,8 +91,8 @@ class ColorTest extends FlatSpec with Matchers {
     }
   }
 
-  "toSrgb32" should "be all 0x00 on transparent black" in {
-    val (r, g, b, a) = Color(0.0, 0.0, 0.0, 0.0).toSrgb32
+  "toSrgb8" should "be all 0x00 on transparent black" in {
+    val (r, g, b, a) = Color(0.0, 0.0, 0.0, 0.0).toSrgb8
     assert(a === 0x00)
     assert(r === 0x00)
     assert(g === 0x00)
@@ -100,7 +100,7 @@ class ColorTest extends FlatSpec with Matchers {
   }
 
   it should "be all 0xFF on opaque white" in {
-    val (r, g, b, a) = Color(1.0, 1.0, 1.0, 1.0).toSrgb32
+    val (r, g, b, a) = Color(1.0, 1.0, 1.0, 1.0).toSrgb8
     assert(a === 0xFF)
     assert(r === 0xFF)
     assert(g === 0xFF)
@@ -108,7 +108,7 @@ class ColorTest extends FlatSpec with Matchers {
   }
 
   "toLinear32" should "be all 0x00 on transparent black" in {
-    val (r, g, b, a) = Color(0.0, 0.0, 0.0, 0.0).toSrgb32
+    val (r, g, b, a) = Color(0.0, 0.0, 0.0, 0.0).toSrgb8
     assert(a === 0x00)
     assert(r === 0x00)
     assert(g === 0x00)
@@ -116,7 +116,7 @@ class ColorTest extends FlatSpec with Matchers {
   }
 
   it should "be all 0xFF on opaque white" in {
-    val (r, g, b, a) = Color(1.0, 1.0, 1.0, 1.0).toSrgb32
+    val (r, g, b, a) = Color(1.0, 1.0, 1.0, 1.0).toSrgb8
     assert(a === 0xFF)
     assert(r === 0xFF)
     assert(g === 0xFF)
