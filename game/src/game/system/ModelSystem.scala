@@ -98,8 +98,12 @@ object ModelSystem {
     var localTransform: Matrix43 = Matrix43.Identity
   }
 
+  private val EmptyModelRefs = Array[ModelRef]()
+  private val entityModels = new mutable.HashMap[Entity, Array[ModelRef]].withDefaultValue(EmptyModelRefs)
+
   private val allModels = new ArrayBuffer[ModelRef]()
   private val visibleModels = new ArrayBuffer[ModelRef]()
+  private val alwaysVisibleModels = new ArrayBuffer[ModelRef]()
 
   /**
     * Called when the asset load state has changed.
@@ -136,9 +140,30 @@ object ModelSystem {
     val model = new ModelRef(parent, asset)
 
     allModels += model
-    visibleModels += model
+    if (parent != null) {
+      entityModels(parent) :+= model
+    } else {
+      alwaysVisibleModels += model
+    }
 
     model
+  }
+
+  /**
+    * List all the visible models.
+    */
+  def collectVisibleModels(visibleEntities: ArrayBuffer[Entity]): Unit = {
+    visibleModels.clear()
+    visibleModels ++= alwaysVisibleModels
+
+    {
+      var ix = 0
+      var num = visibleEntities.length
+      while (ix < num) {
+        visibleModels ++= entityModels(visibleEntities(ix))
+        ix += 1
+      }
+    }
   }
 
   /**

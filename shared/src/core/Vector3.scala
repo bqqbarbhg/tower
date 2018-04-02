@@ -5,10 +5,18 @@ object Vector3 {
   val One = Vector3(1.0, 1.0, 1.0)
 
   def lerp(a: Vector3, b: Vector3, t: Double): Vector3 = a * (1.0 - t) + b * t
+
+  def distanceSquared(a: Vector3, b: Vector3) = {
+    val dx = a.x - b.x
+    val dy = a.y - b.y
+    val dz = a.z - b.z
+    dx*dx + dy*dy + dz*dz
+  }
 }
 
 case class Vector3(x: Double, y: Double, z: Double) {
 
+  def lengthSquared: Double = x*x + y*y + z*z
   def length: Double = math.sqrt(x*x + y*y + z*z)
   def normalize: Vector3 = {
     val len = this.length

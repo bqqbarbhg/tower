@@ -20,6 +20,8 @@ import game.system._
 import locale.LocaleString._
 import main.GameStartup
 
+import scala.collection.mutable.ArrayBuffer
+
 object MenuState {
 
   val MenuAtlas = AtlasAsset("atlas/menu.s2at")
@@ -111,6 +113,7 @@ class MenuState extends GameState {
     renderer.clear(Some(Color.rgb(0x707070)), Some(1.0))
     renderer.setBlend(Renderer.BlendNone)
 
+    ModelSystem.collectVisibleModels(ArrayBuffer[Entity]())
     ModelSystem.updateMatrices()
     ModelSystem.collectMeshInstances()
     ModelSystem.setupUniforms()
