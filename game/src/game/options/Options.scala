@@ -23,6 +23,7 @@ class Options extends SimpleSerializable {
 
   var graphics = new GraphicsOptions()
   var audio = new AudioOptions()
+  var binds = new BindsOptions()
 
   def copy: Options = {
     val map = SMap.read(this)
@@ -39,6 +40,7 @@ class Options extends SimpleSerializable {
     language = v.field("language", language)
     graphics = v.field("graphics", graphics)
     audio = v.field("audio", audio)
+    binds = v.field("binds", binds)
   }
 }
 

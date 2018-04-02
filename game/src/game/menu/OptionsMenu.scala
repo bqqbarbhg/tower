@@ -36,6 +36,8 @@ object OptionsMenu {
   val TooltipTextStyle = TextStyle(TooltipFont, 16.0)
   val TabTextStyle = TextStyle(TitleFont, 28.0, align = AlignCenter)
   val MonitorIndexTextStyle = TextStyle(TooltipFont, 26.0, align = AlignCenter)
+  val ButtonInputTextStyle = TextStyle(MainFont, 22.0, align = AlignCenter)
+
   val BgSprite = Identifier("gui/menu/background_white.png")
 
   val NormalDropdown = new DropdownStyle(22.0, 0.0, 0.0, 0.0,
@@ -92,6 +94,12 @@ object OptionsMenu {
   val MillisecondSlider = NormalSlider.copy(
     stringFormat = v => s"${(v * 1000.0).toInt}ms",
     stringParse = v => Try(v.toLowerCase.stripSuffix("ms").toDouble / 1000.0).toOption,
+  )
+
+  val NormalButtonInput = new ButtonInputStyle(22.0, ButtonInputTextStyle,
+    idleBackgroundSprite = Identifier("gui/menu/background_idle.png"),
+    focusBackgroundSprite = Identifier("gui/menu/background_focus.png"),
+    inputWidth = 100.0,
   )
 
   val ColMonitorSelectedBg = Color.rgb(0xDDDDDD)
@@ -514,6 +522,34 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
     }
   }
 
+  val bindsElements = {
+    val elements = ArrayBuffer[Element]()
+    val opt = options.binds
+
+    elements += new Label(TitleLabel) {
+      override def text: String = lc"menu.options.input.binds.title"
+    }
+
+    elements += new Padding(10.0)
+
+    def addBind(name: String, get: => String, set: String => Unit): Unit = {
+      elements += new Padding(4.0)
+      elements += new ButtonInput(NormalButtonInput, NormalLabel) {
+        override val title: String = lc"menu.options.input.binds.$name"
+        override def getBind: String = get
+        override def setBind(newBind: String): Unit = set(newBind)
+        override def bindToText(bind: String): String = Locale.getSimpleOption(s"key.$bind").getOrElse(bind)
+      }
+    }
+
+    addBind("cameraUp", opt.cameraUp, opt.cameraUp_=)
+    addBind("cameraDown", opt.cameraDown, opt.cameraDown_=)
+    addBind("cameraLeft", opt.cameraLeft, opt.cameraLeft_=)
+    addBind("cameraRight", opt.cameraRight, opt.cameraRight_=)
+
+    elements
+  }
+
   val commonElements = {
     val elements = ArrayBuffer[Element]()
     val monitors = AppWindow.listMonitors
@@ -645,7 +681,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
 
   val separateElements = Vector(applyButton, cancelButton)
 
-  val allElements = commonElements ++ volumeElements ++ audioAdvancedElements ++ glElements ++ qualityElements ++ separateElements
+  val allElements = commonElements ++ bindsElements ++ volumeElements ++ audioAdvancedElements ++ glElements ++ qualityElements ++ separateElements
 
   abstract class Tab {
     def name: String = ""
@@ -660,6 +696,18 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
 
       for (element <- commonElements) {
         element.update(commonParent)
+      }
+    }
+  }
+
+  object TabInput extends Tab {
+    override val name = lc"menu.options.input.tabName"
+
+    override def update(parent: Layout): Unit = {
+      val bindsParent = parent.pushLeft(200.0)
+
+      for (element <- bindsElements) {
+        element.update(bindsParent)
       }
     }
   }
@@ -703,8 +751,8 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
 
   }
 
-  val TabInput = new InputArea()
-  val tabs = Array(TabCommon, TabAudio, TabRendering)
+  val TabInputArea = new InputArea()
+  val tabs = Array(TabCommon, TabInput, TabAudio, TabRendering)
   var activeTab: Tab = TabCommon
 
   def update(): Unit = {
@@ -723,7 +771,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
     val bottom = parent.pushBottom(50.0)
     bottom.padTop(10.0)
 
-    val clickedTab = TabInput.clickIndex
+    val clickedTab = TabInputArea.clickIndex
     if (clickedTab >= 0) {
       activeTab = tabs(clickedTab)
     }
@@ -734,7 +782,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
 
       val color = if (tab == activeTab) {
         ColTabBg
-      } else if (TabInput.focusIndex == index) {
+      } else if (TabInputArea.focusIndex == index) {
         ColTabHover
       } else {
         ColTabUnselected
@@ -743,7 +791,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
       canvas.draw(0, BgSprite, loc, color)
       canvas.drawText(0, TabTextStyle, loc, tab.name)
 
-      inputs.add(0, TabInput, loc, 0.0, index)
+      inputs.add(0, TabInputArea, loc, 0.0, index)
     }
 
     canvas.draw(0, BgSprite, parent, ColTabBg)
