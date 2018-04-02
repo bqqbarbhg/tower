@@ -3,7 +3,19 @@ package audio
 import asset.SoundAsset
 import core._
 
-class SoundInstance(var sound: Sound) extends Input {
+object SoundInstance {
+
+  def make(sound: Sound): Option[SoundInstance] = {
+    if (sound.acquire()) {
+      Some(new SoundInstance(sound))
+    } else {
+      None
+    }
+  }
+
+}
+
+class SoundInstance private(var sound: Sound) extends Input {
 
   var pitch: Double = 1.0
   var volume: Double = 1.0
@@ -58,9 +70,9 @@ class SoundInstance(var sound: Sound) extends Input {
     loop = Some(0 -> sound.lengthInFrames)
   }
 
-  private def reload(): Unit = {
+  def reload(newSound: Sound): Unit = {
     cursor.close()
-    sound = SoundAsset(sound.filename).get
+    sound = newSound
     cursor = sound.sampleSource.open()
     invalidateBuffer()
   }
@@ -187,11 +199,6 @@ class SoundInstance(var sound: Sound) extends Input {
   }
 
   override def advance(dstData: Array[Float], offsetInFrames: Int, numFrames: Int, sampleRate: Int): Unit = {
-    if (!sound.loaded) {
-      java.util.Arrays.fill(dstData, offsetInFrames * 2, (offsetInFrames + numFrames) * 2, 0.0f)
-      return
-    }
-
     framesPlayedAudioThread += numFrames
 
     val timeAdvance = sound.sampleRate.toDouble / sampleRate.toDouble
@@ -243,6 +250,7 @@ class SoundInstance(var sound: Sound) extends Input {
 
   def close(): Unit = {
     cursor.close()
+    sound.release()
   }
 
 }

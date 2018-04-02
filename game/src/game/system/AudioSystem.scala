@@ -13,7 +13,7 @@ import scala.collection.mutable.ArrayBuffer
 class SoundRef(private[system] val mixer: Mixer, val instance: SoundInstance) {
   private[system] var stopFrame: Long = -1L
 
-  def remove(): Unit = {
+  def stop(): Unit = {
     instance.volume = 0.0
     stopFrame = instance.framesPlayed
   }
@@ -97,6 +97,16 @@ class AudioSystem {
       val inst = activeInstances(ix)
       if (inst != null) {
         inst.instance.copyParameters()
+
+        if (!inst.instance.sound.loaded) {
+          val asset = SoundAsset(inst.instance.sound.filename)
+          if (asset.isReferenced) {
+            inst.instance.reload(asset.get)
+          } else {
+            inst.stop()
+          }
+        }
+
         if (inst.stopFrame >= 0L || inst.instance.ended) {
           val delta = inst.instance.framesPlayed - inst.stopFrame
           if (delta >= SamplesPerFrame * 2 || inst.instance.ended) {
@@ -230,7 +240,7 @@ class AudioSystem {
     }
 
     val sound = soundAsset.get
-    val inst = new SoundInstance(sound)
+    val inst = SoundInstance.make(sound).orElse(SoundInstance.make(NullSound)).get
     inst.volume = volume
     inst.pan = pan
     inst.pitch = pitch

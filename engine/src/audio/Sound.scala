@@ -1,6 +1,7 @@
 package audio
 
 import java.nio.{ByteBuffer, ByteOrder}
+import java.util.concurrent.atomic.AtomicInteger
 
 import org.lwjgl.system.MemoryUtil
 import audio.source.SampleSource
@@ -28,8 +29,10 @@ class Sound(val filename: Identifier) {
   var sampleRate: Int = 0
   var lengthInFrames: Int = 0
   var sampleSource: SampleSource = null
+  @volatile var loaded: Boolean = true
 
-  var loaded: Boolean = false
+  /** Number of references to this, starts at one due to being loaded. */
+  protected var refCount: Int = 1
 
   def load(buffer: ByteBuffer): Unit = {
 
@@ -64,12 +67,25 @@ class Sound(val filename: Identifier) {
     }
 
     buffer.verifyMagic("E.au")
+  }
 
-    loaded = true
+  def acquire(): Boolean = this.synchronized {
+    if (refCount >= 1) {
+      refCount += 1
+      true
+    } else {
+      false
+    }
+  }
+
+  def release(): Unit = this.synchronized {
+    refCount -= 1
+    if (refCount == 0)
+      sampleSource.unload()
   }
 
   def unload(): Unit = {
-    sampleSource.unload()
     loaded = false
+    release()
   }
 }

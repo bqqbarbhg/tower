@@ -96,7 +96,7 @@ class MenuState extends GameState {
 
   override def stop(): Unit = {
     menuAssets.release()
-    music.remove()
+    music.stop()
 }
 
   override def update(): Unit = {
