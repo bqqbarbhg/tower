@@ -13,7 +13,7 @@ import res.runner.{RunOptions, Runner}
 import ui.{DebugDraw, SpriteBatch}
 import game.lighting.LightProbe
 import game.state.LoadingState
-import game.system.CullingSystem.Viewport
+import CullingSystem.Viewport
 import gfx.Shader
 import org.lwjgl.system.MemoryUtil
 import platform.AppWindow.WindowStyle

@@ -9,7 +9,7 @@ import io.Toml
 import io.content._
 import _root_.main.EngineStartup
 import game.TestModelSystem.TestModelShader.PixelUniform
-import game.system.CullingSystem.Viewport
+import CullingSystem.Viewport
 import platform.AppWindow
 import platform.AppWindow.WindowStyle
 import res.runner.{RunOptions, Runner}
