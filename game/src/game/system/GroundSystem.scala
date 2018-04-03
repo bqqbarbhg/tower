@@ -1,11 +1,19 @@
 package game.system
 
 import scala.collection.mutable
-
 import core._
 import game.lighting.LightProbe
+import render._
+import render.Renderer.UniformRef
 
-object GroundSystem {
+class GroundMesh {
+  var lightProbes: Array[LightProbe] = _
+  var vertexBuffer: VertexBuffer = _
+
+
+}
+
+class GroundSystem(val minX: Int, val minZ: Int, val maxX: Int, val maxZ: Int) {
 
   val TileSize = 16.0
   val InvTileSize = 1.0 / TileSize

@@ -3,13 +3,14 @@ package game.system
 import core._
 import game.lighting.LightProbe
 import game.options.Options
+import game.shader._
 import org.lwjgl.system.MemoryUtil
 import render._
 import util.BinarySearch
 
 import scala.collection.mutable.ArrayBuffer
 
-class CableMeshPart(val system: CableRenderSystem) {
+class CableMeshPart {
   var lightProbes: Array[LightProbe] = null
   var vertexBuffer: VertexBuffer = null
   var numRings: Int = 0
@@ -18,25 +19,14 @@ class CableMeshPart(val system: CableRenderSystem) {
     val renderer = Renderer.get
     var baseRing = 0
 
-    renderer.pushUniform(ModelSystem.LightProbeUniform, u => {
-      import ModelSystem.LightProbeUniform
-      var ix = 0
-      var base = LightProbeUniform.LightProbes.offsetInBytes
-      val stride = LightProbeUniform.LightProbes.arrayStrideInBytes
-      val baseStride = LightProbe.SizeInVec4 * stride
-      while (ix < lightProbes.length) {
-        lightProbes(ix).writeToUniform(u, base, stride)
-        ix += 1
-        base += baseStride
-      }
-    })
+    renderer.pushUniform(LightProbeUniform, u => LightProbeUniform.write(u, lightProbes))
 
     val maxRing = numRings - 1
     while (baseRing < maxRing) {
-      val toDraw = math.min(maxRing - baseRing, system.MaxRingsPerDraw)
-      val quadsToDraw = system.VertsPerRing * toDraw
-      val baseVertex = baseRing * system.VertsPerRing
-      renderer.drawElements(quadsToDraw * 6, system.indexBuffer, vertexBuffer, baseVertex = baseVertex)
+      val toDraw = math.min(maxRing - baseRing, CableRenderSystem.MaxRingsPerDraw)
+      val quadsToDraw = CableRenderSystem.VertsPerRing * toDraw
+      val baseVertex = baseRing * CableRenderSystem.VertsPerRing
+      renderer.drawElements(quadsToDraw * 6, CableRenderSystem.indexBuffer, vertexBuffer, baseVertex = baseVertex)
       baseRing += toDraw
     }
   }
@@ -245,7 +235,7 @@ class CableRenderSystem {
     var partNumRings = 0
 
     def flushCurrentPart(): Unit = {
-      val part = new CableMeshPart(this)
+      val part = new CableMeshPart()
       val finished = vertexData.duplicateEx
       finished.finish()
       part.numRings = partNumRings
@@ -265,7 +255,7 @@ class CableRenderSystem {
       var ix2 = partProbes.indexOf(probeRet(2))
       var ix3 = partProbes.indexOf(probeRet(3))
 
-      val MaxProbes = ModelSystem.MaxLightProbesPerBlock
+      val MaxProbes = LightProbeUniform.MaxProbes
       if (ix0 < 0 && partProbes.length < MaxProbes) { ix0 = partProbes.length; partProbes += probeRet(0) }
       if (ix1 < 0 && partProbes.length < MaxProbes) { ix1 = partProbes.length; partProbes += probeRet(1) }
       if (ix2 < 0 && partProbes.length < MaxProbes) { ix2 = partProbes.length; partProbes += probeRet(2) }

@@ -15,6 +15,7 @@ import platform.AppWindow.WindowStyle
 import res.runner.{RunOptions, Runner}
 import ui.DebugDraw
 import util.geometry.{Aabb, Frustum, Sphere}
+import game.shader._
 
 object TestModelSystem extends App {
 
@@ -108,7 +109,7 @@ object TestModelSystem extends App {
 
   object TestModelShader extends ShaderAsset("test/instanced_mesh_light") {
     uniform(ModelSystem.InstancedUniform)
-    uniform(ModelSystem.LightProbeUniform)
+    uniform(LightProbeUniform)
     uniform(GlobalUniform)
 
     uniform(PixelUniform)
@@ -203,7 +204,7 @@ object TestModelSystem extends App {
       renderer.setTexture(ModelTextures.Diffuse, mesh.material.albedoTex.texture)
 
       renderer.bindUniform(ModelSystem.InstancedUniform, draw.instanceUbo)
-      renderer.bindUniform(ModelSystem.LightProbeUniform, draw.lightProbeUbo)
+      renderer.bindUniform(LightProbeUniform, draw.lightProbeUbo)
 
       val numElems = part.numIndices
       renderer.drawElementsInstanced(draw.num, numElems, part.indexBuffer, part.vertexBuffer)

@@ -5,7 +5,8 @@ import gfx._
 import render._
 import asset.ModelAsset
 import game.lighting.LightProbe
-import render.opengl.RendererGl.UniformRef
+import game.shader._
+import render.Renderer.UniformRef
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -13,15 +14,10 @@ import scala.collection.mutable.ArrayBuffer
 object ModelSystem {
 
   val MaxInstancesPerDraw = 8
-  val MaxLightProbesPerBlock = 16
 
   object InstancedUniform extends UniformBlock("InstancedUniform") {
     val World = mat4x3("World", MaxInstancesPerDraw)
     val LightInfo = ivec4("LightInfo", MaxInstancesPerDraw)
-  }
-
-  object LightProbeUniform extends UniformBlock("LightProbeUniform") {
-    val LightProbes = mat4x3("LightProbes", MaxLightProbesPerBlock * LightProbe.SizeInVec4)
   }
 
   // Note: Properties are `var` here in case of pooling!
@@ -275,7 +271,7 @@ object ModelSystem {
       while (base < instanceBuffer.length) {
         val toDraw = math.min(MaxInstancesPerDraw, instanceBuffer.length - base)
 
-        if (currentLightProbes.size + toDraw > MaxLightProbesPerBlock) {
+        if (currentLightProbes.size + toDraw > LightProbeUniform.MaxProbes) {
           lightProbesToUpload += currentLightProbes
           lightProbeDrawCount += currentNumDraws
 

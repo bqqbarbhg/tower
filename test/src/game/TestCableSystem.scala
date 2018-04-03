@@ -20,6 +20,7 @@ import platform.AppWindow.WindowStyle
 import render.VertexSpec.Attrib
 import render.VertexSpec.DataFmt._
 import util.geometry.{Frustum, Sphere}
+import game.shader._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -66,6 +67,8 @@ object TestCableSystem extends App {
   EngineStartup.softStart(windowStyle)
 
   system.deferredLoad().get
+
+  system.GroundSystem = new GroundSystem(-16, -16, 16, 16)
 
   processResources()
 
@@ -190,7 +193,7 @@ object TestCableSystem extends App {
     }
 
     uniform(ModelSystem.InstancedUniform)
-    uniform(ModelSystem.LightProbeUniform)
+    uniform(LightProbeUniform)
     uniform(GlobalUniform)
 
     uniform(PixelUniform)
@@ -209,7 +212,7 @@ object TestCableSystem extends App {
       val BrdfFunc_F = frag("BrdfFunc_F", 1 to 2)
     }
 
-    uniform(ModelSystem.LightProbeUniform)
+    uniform(LightProbeUniform)
     uniform(GlobalUniform)
 
     override object Textures extends SamplerBlock {
@@ -233,7 +236,7 @@ object TestCableSystem extends App {
   }
 
   object TestCableShader extends ShaderAsset("test/cable_test") {
-    uniform(ModelSystem.LightProbeUniform)
+    uniform(LightProbeUniform)
     uniform(GlobalUniform)
 
     uniform(CableUniform)
@@ -781,7 +784,7 @@ object TestCableSystem extends App {
       renderer.setTextureTargetDepth(ModelTextures.ShadowMap, shadowTarget)
 
       renderer.bindUniform(ModelSystem.InstancedUniform, draw.instanceUbo)
-      renderer.bindUniform(ModelSystem.LightProbeUniform, draw.lightProbeUbo)
+      renderer.bindUniform(LightProbeUniform, draw.lightProbeUbo)
 
       val numElems = part.numIndices
       renderer.drawElementsInstanced(draw.num, numElems, part.indexBuffer, part.vertexBuffer)
@@ -815,9 +818,9 @@ object TestCableSystem extends App {
     })
 
     for (patch <- groundPatches) {
-      renderer.pushUniform(ModelSystem.LightProbeUniform, u => {
-        val stride = ModelSystem.LightProbeUniform.LightProbes.arrayStrideInBytes
-        var base = ModelSystem.LightProbeUniform.LightProbes.offsetInBytes
+      renderer.pushUniform(LightProbeUniform, u => {
+        val stride = LightProbeUniform.LightProbes.arrayStrideInBytes
+        var base = LightProbeUniform.LightProbes.offsetInBytes
         val baseStride = LightProbe.SizeInVec4 * stride
         for (probe <- patch.probes) {
           probe.writeToUniform(u, base, stride)
