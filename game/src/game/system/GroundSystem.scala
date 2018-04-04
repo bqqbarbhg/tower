@@ -22,7 +22,7 @@ class GroundSystem(val minX: Int, val minZ: Int, val maxX: Int, val maxZ: Int) {
     val posX = x * TileSize
     val posZ = y * TileSize
 
-    val lightProbe: LightProbe = LightSystem.addStaticProbe(Vector3(posX, 0.0, posZ)).probe
+    val lightProbe: LightProbe = LightSystem.addStaticGroundProbe(Vector3(posX, 0.0, posZ)).probe
   }
 
   private val groundMap = new mutable.HashMap[Long, GroundTile]()

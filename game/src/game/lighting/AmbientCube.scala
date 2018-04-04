@@ -79,5 +79,39 @@ class AmbientCube extends LightProbe {
     }
   }
 
+  override def evaluate(direction: Vector3): Vector3 = {
+    val fx = direction.x * direction.x
+    val fy = direction.y * direction.y
+    val fz = direction.z * direction.z
+    val ox = if (direction.x >= 0.0) 0  else 3
+    val oy = if (direction.x >= 0.0) 6  else 9
+    val oz = if (direction.x >= 0.0) 12 else 15
+
+    val c = coefficents
+    val r = c(ox + 0) * fx + c(oy + 0) * fy + c(oz + 0) * fz
+    val g = c(ox + 1) * fx + c(oy + 1) * fy + c(oz + 1) * fz
+    val b = c(ox + 2) * fx + c(oy + 2) * fy + c(oz + 2) * fz
+
+    Vector3(r, g, b)
+  }
+
+  override def *=(amount: Double): Unit = {
+    var ix = 0
+    val len = coefficents.length
+    while (ix < len) {
+      coefficents(ix) *= amount
+      ix += 1
+    }
+  }
+
+  override def +=(other: LightProbe): Unit = {
+    val cube = other.asInstanceOf[AmbientCube]
+    var ix = 0
+    val len = coefficents.length
+    while (ix < len) {
+      coefficents(ix) += cube.coefficents(ix)
+      ix += 1
+    }
+  }
 }
 

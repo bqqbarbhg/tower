@@ -275,11 +275,6 @@ class CableRenderSystem {
       val wg2 = clamp(weightRet(2) * 255.0, 0, 255.0).toInt
       val wg3 = clamp(weightRet(3) * 255.0, 0, 255.0).toInt
 
-      ix0 *= LightProbe.SizeInVec4
-      ix1 *= LightProbe.SizeInVec4
-      ix2 *= LightProbe.SizeInVec4
-      ix3 *= LightProbe.SizeInVec4
-
       // Note: This is endian-independent since both vectors get
       // reversed between little and big endian systems and the shader uses
       // the vectors as unordered index-weight pairs.

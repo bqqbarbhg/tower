@@ -46,6 +46,7 @@ object RendererGl {
   case object BlendAlpha extends BlendMode(true, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
   case object BlendPremultipliedAlpha extends BlendMode(true, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
   case object BlendAddAlpha extends BlendMode(true, GL_SRC_ALPHA, GL_ONE)
+  case object BlendMultiply extends BlendMode(true, GL_ZERO, GL_SRC_COLOR)
 
   /**
     * A re-usable reference to an uniform block.
@@ -273,6 +274,12 @@ class RendererGl {
     glBindSampler(sampler.index, samplerObj)
   }
 
+  def setTextureTargetDepth(sampler: SamplerBlock.USampler2DMS, target: RenderTarget): Unit = {
+    glActiveTexture(GL_TEXTURE0 + sampler.index)
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, target.depthTexture.get)
+    glBindSampler(sampler.index, 0)
+  }
+
   def applyState(): Unit = {
     if (!activeShaderEnabled) {
       glUseProgram(activeShader.program)
@@ -334,7 +341,7 @@ class RendererGl {
   }
 
   def setCull(enable: Boolean): Unit = {
-    if (enable) {
+    if (enable && false) {
       glEnable(GL_CULL_FACE)
       glFrontFace(GL_CCW)
       glCullFace(GL_BACK)

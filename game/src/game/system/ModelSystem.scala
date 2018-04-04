@@ -292,10 +292,8 @@ object ModelSystem {
               currentLightProbes.length - 1
             })
 
-            val probeOffset = probeIndex * LightProbe.SizeInVec4
-
             InstancedUniform.World.set(b, ix, inst.worldTransform)
-            InstancedUniform.LightInfo.set(b, ix, probeOffset, 0, 0, 0)
+            InstancedUniform.LightInfo.set(b, ix, probeIndex, 0, 0, 0)
             ix += 1
           }
         })

@@ -25,6 +25,7 @@ import game.shader._
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.io.StdIn
+import scala.util.Random
 
 object TestCableSystem extends App {
 
@@ -273,6 +274,25 @@ object TestCableSystem extends App {
     }
   }
 
+  object SsaoGenShader extends ShaderAsset("shader/post/ssao_gen") {
+
+    val NumSamples = 16
+
+    uniform(SsaoUniform)
+    object SsaoUniform extends UniformBlock("SsaoUniform") {
+      val TextureScale = vec4("TextureScale")
+      val DepthPlanes = vec4("DepthPlanes")
+      val Projection = mat4("Projection")
+      val InvProjection = mat4("InvProjection")
+      val Samples = vec4("Samples", NumSamples)
+    }
+
+    override object Textures extends SamplerBlock {
+      val Depth = sampler2DMS("Depth")
+    }
+
+  }
+
   val bundle = new AssetBundle(
     "TestBundle",
     asset,
@@ -298,9 +318,9 @@ object TestCableSystem extends App {
   val barrel = model.findNode(Identifier("Barrel"))
 
   model.lightProbe = LightSystem.addStaticProbe(Vector3(0.0, 0.5, 0.0)).probe
-  // LightSystem.addDynamicLight(Vector3(40.0, 20.0, 20.0), Vector3(1.0, 0.0, 0.0) * 4.0, 150.0)
-  // LightSystem.addStaticLight(Vector3(100.0, 80.0, 20.0), Vector3(0.6, 0.5, 0.5) * 1.0, 100.0)
-  // LightSystem.addStaticLight(Vector3(-20.0, 20.0, -20.0), Vector3(0.5, 0.5, 0.8) * 0.6, 100.0)
+  LightSystem.addDynamicLight(Vector3(40.0, 50.0, 20.0), Vector3(1.0, 0.0, 0.0) * 3.7, 150.0)
+  LightSystem.addStaticLight(Vector3(100.0, 80.0, 20.0), Vector3(0.6, 0.5, 0.5) * 2.7, 100.0)
+  LightSystem.addStaticLight(Vector3(-20.0, 50.0, -20.0), Vector3(0.5, 0.5, 0.8) * 3.4, 150.0)
 
   // LightSystem.addStaticLight(Vector3(-10.0, 20.0, 20.0), Vector3(1.0, 1.0, 1.0) * 2.0, 60.0)
   //LightSystem.addStaticLight(Vector3(20.0, 20.0, 20.0), Vector3(0.5, 0.5, 3.0) * 2.0, 60.0)
@@ -309,13 +329,15 @@ object TestCableSystem extends App {
   val ambientAmount = 1.0
   val groundColor = Color.rgb(0x8a857f)
   val groundIntensity = Vector3(groundColor.r, groundColor.g, groundColor.b) * ambientAmount
+
+  /*
   LightSystem.globalProbe.addDirectional(Vector3(0.0, +1.0, 0.0), Vector3(0.1, 0.2, 0.3) * 0.4 * ambientAmount)
   LightSystem.globalProbe.addDirectional(Vector3(0.0, -1.0, 0.0), groundIntensity * 0.25 * 0.5)
   LightSystem.globalProbe.addDirectional(Vector3(+1.0, 0.0, 0.0), groundIntensity * 0.125 * 0.5)
   LightSystem.globalProbe.addDirectional(Vector3(-1.0, 0.0, 0.0), groundIntensity * 0.125 * 0.5)
   LightSystem.globalProbe.addDirectional(Vector3(0.0, 0.0, +1.0), groundIntensity * 0.125 * 0.5)
   LightSystem.globalProbe.addDirectional(Vector3(0.0, 0.0, -1.0), groundIntensity * 0.125 * 0.5)
-
+  */
 
   val GroundSpec = VertexSpec(Vector(
     Attrib(3, F32, Identifier("Position")),
@@ -373,10 +395,10 @@ object TestCableSystem extends App {
       val y0 = getGroundNode(chunkX + startX, chunkY + startY).y
       val y1 = getGroundNode(chunkX + startX, chunkY + startY + 1).y
 
-      val probeA = ((chunkY + 0) * (numX + 1) + (chunkX + 0)) * LightProbe.SizeInVec4
-      val probeB = ((chunkY + 0) * (numX + 1) + (chunkX + 1)) * LightProbe.SizeInVec4
-      val probeC = ((chunkY + 1) * (numX + 1) + (chunkX + 0)) * LightProbe.SizeInVec4
-      val probeD = ((chunkY + 1) * (numX + 1) + (chunkX + 1)) * LightProbe.SizeInVec4
+      val probeA = ((chunkY + 0) * (numX + 1) + (chunkX + 0))
+      val probeB = ((chunkY + 0) * (numX + 1) + (chunkX + 1))
+      val probeC = ((chunkY + 1) * (numX + 1) + (chunkX + 0))
+      val probeD = ((chunkY + 1) * (numX + 1) + (chunkX + 1))
 
       val probeI = probeA | probeB << 8 | probeC << 16 | probeD << 24
 
@@ -543,7 +565,7 @@ object TestCableSystem extends App {
   var numSamples: Int = 0
 
   var toggle = true
-  var resToggle = true
+  var resToggle = false
   var zoom = 0.5
 
   val cableMesh: CableMesh = {
@@ -555,6 +577,12 @@ object TestCableSystem extends App {
     cable += new CableNode(Vector3(40.0, 0.2, 5.0), Vector3(30.0, 0.0, 0.0))
     CableRenderSystem.createCableMesh(cable, 0.2)
   }
+
+  val random = new Random()
+  val ssaoSamples = Array.fill(SsaoGenShader.NumSamples)({
+    val vec = Vector3(random.nextDouble() * 2.0 - 1.0, random.nextDouble() * 2.0 - 1.0, random.nextDouble() + 0.05)
+    vec.normalize * (random.nextDouble() + 0.05)
+  })
 
   val startTime = AppWindow.currentTime
   var prevTime = startTime
@@ -593,7 +621,7 @@ object TestCableSystem extends App {
 
       if (renderTarget != null) renderTarget.unload()
       if (resolveTarget != null) resolveTarget.unload()
-      renderTarget = RenderTarget.create(width, height, Some(TexFormat.SrgbA), Some("D24S"), false, 4)
+      renderTarget = RenderTarget.create(width, height, Some(TexFormat.SrgbA), Some("D24S"), true, 4)
       resolveTarget = RenderTarget.create(width, height, Some(TexFormat.SrgbA), None, false)
       renderTarget.setLabel("Multisample target")
 
@@ -668,10 +696,9 @@ object TestCableSystem extends App {
     if (isDown('W'.toInt)) zoom -= dt * 2.0
     zoom = clamp(zoom, 0.5, 1.5)
 
+    val proj = Matrix4.perspective(viewWidth.toDouble / viewHeight.toDouble, math.Pi / 3.0, 1.0, 1000.0)
     val viewPos = Vector3(math.sin(angle) * 18.0, 30.0, math.cos(angle) * -18.0) * zoom
-    val viewProjection = (
-      Matrix4.perspective(viewWidth.toDouble / viewHeight.toDouble, math.Pi / 3.0, 0.01, 1000.0)
-        * Matrix43.look(viewPos, Vector3(-math.sin(angle), -1.5, math.cos(angle))))
+    val viewProjection = proj * Matrix43.look(viewPos, Vector3(-math.sin(angle), -1.5, math.cos(angle)))
 
     val shadowViewProjection = (
       Matrix4.orthographic(80.0, 80.0, 0.1, 100.0)
@@ -959,6 +986,25 @@ object TestCableSystem extends App {
       renderer.blitRenderTargetColor(RenderTarget.Backbuffer, renderTarget)
       renderer.setRenderTarget(RenderTarget.Backbuffer)
     }
+
+    renderer.pushUniform(SsaoGenShader.SsaoUniform, u => {
+      val m33 = proj.m33.toFloat
+      val m34 = proj.m34.toFloat
+
+      SsaoGenShader.SsaoUniform.TextureScale.set(u, width.toFloat, height.toFloat, 0.0f, 0.0f)
+      SsaoGenShader.SsaoUniform.DepthPlanes.set(u, m33, m34, 0.0f, 0.0f)
+      SsaoGenShader.SsaoUniform.Projection.set(u, proj)
+      SsaoGenShader.SsaoUniform.InvProjection.set(u, proj.inverse)
+      for ((s, i) <- ssaoSamples.zipWithIndex) {
+        SsaoGenShader.SsaoUniform.Samples.set(u, i, s, 0.0f)
+      }
+    })
+    renderer.setTextureTargetDepth(SsaoGenShader.Textures.Depth, renderTarget)
+    SsaoGenShader.get.use()
+
+    renderer.setBlend(Renderer.BlendMultiply)
+    renderer.setWriteSrgb(false)
+    renderer.drawQuad()
 
     renderer.setBlend(Renderer.BlendAlpha)
     renderer.setDepthMode(false, false)

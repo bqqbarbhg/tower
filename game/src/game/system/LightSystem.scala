@@ -77,10 +77,22 @@ object LightSystem {
   private val dynamicLights = new ArrayBuffer[InternalLightRef]()
   private val cellsWithDynamicLights = new ArrayBuffer[Cell]()
 
+  private val groundProbes = new ArrayBuffer[InternalProbeRef]()
+  private val nonGroundProbes = new ArrayBuffer[InternalProbeRef]()
+
   def addStaticProbe(position: Vector3): ProbeRef = {
     val probe = new InternalProbeRef()
     probe.position = position
     probes += probe
+    nonGroundProbes += probe
+    probe
+  }
+
+  def addStaticGroundProbe(position: Vector3): ProbeRef = {
+    val probe = new InternalProbeRef()
+    probe.position = position
+    probes += probe
+    groundProbes += probe
     probe
   }
 
@@ -91,6 +103,7 @@ object LightSystem {
     probe.position = position
     probe.parent = parent
     probes += probe
+    nonGroundProbes += probe
     probe
   }
 
@@ -187,6 +200,31 @@ object LightSystem {
       addLightsToProbe(probeRef, smallGrid.getLights(probeRef.position))
       addLightsToProbe(probeRef, bigGrid.getLights(probeRef.position))
     }
+
+    var groundProbe = new Array[LightProbe](4)
+    var groundWeight = new Array[Double](4)
+    var temp = LightProbe.make()
+    val up =   Vector3(0.0, +1.0, 0.0)
+    val down = Vector3(0.0, -1.0, 0.0)
+
+    for (probe <- nonGroundProbes) {
+      GroundSystem.getProbesAndWeights(probe.position, groundProbe, groundWeight)
+
+      temp.clear()
+      temp.addScaled(groundProbe(0), groundWeight(0))
+      temp.addScaled(groundProbe(1), groundWeight(1))
+      temp.addScaled(groundProbe(2), groundWeight(2))
+      temp.addScaled(groundProbe(3), groundWeight(3))
+
+      val intensity = temp.evaluate(up)
+      probe.probe.addDirectional(down, intensity * 0.35)
+    }
+
+    for (probe <- groundProbes) {
+      val intensity = probe.probe.evaluate(up)
+      probe.probe.addDirectional(down, intensity * 0.35)
+    }
+
   }
 
   def finishFrame(): Unit = {
