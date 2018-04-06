@@ -1056,6 +1056,7 @@ object TestCableSystem extends App {
     AppWindow.swapBuffers()
   }
 
+  game.system.unload()
   EngineStartup.softStop()
   EngineStartup.stop()
 }
