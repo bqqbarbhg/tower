@@ -195,7 +195,7 @@ object TestCableSystem extends App {
       val PerSampleShading = both("PerSampleShading", 0 to 1)
     }
 
-    uniform(ModelSystem.InstancedUniform)
+    uniform(ModelInstanceUniform)
     uniform(LightProbeUniform)
     uniform(GlobalUniform)
 
@@ -230,7 +230,7 @@ object TestCableSystem extends App {
   }
 
   object TestShadowShader extends ShaderAsset("test/instanced_shadow") {
-    uniform(ModelSystem.InstancedUniform)
+    uniform(ModelInstanceUniform)
 
     uniform(ShadowUniform)
     object ShadowUniform extends UniformBlock("ShadowUniform") {
@@ -796,7 +796,7 @@ object TestCableSystem extends App {
       val part = mesh.parts.head
       assert(draw.mesh.parts.length == 1)
 
-      renderer.bindUniform(ModelSystem.InstancedUniform, draw.instanceUbo)
+      renderer.bindUniform(ModelInstanceUniform, draw.instanceUbo)
 
       val numElems = part.numIndices
       renderer.drawElementsInstanced(draw.num, numElems, part.indexBuffer, part.vertexBuffer)
@@ -845,7 +845,7 @@ object TestCableSystem extends App {
       renderer.setTexture(ModelTextures.AoTex, ao.get.texture)
       renderer.setTextureTargetDepth(ModelTextures.ShadowMap, shadowTarget)
 
-      renderer.bindUniform(ModelSystem.InstancedUniform, draw.instanceUbo)
+      renderer.bindUniform(ModelInstanceUniform, draw.instanceUbo)
       renderer.bindUniform(LightProbeUniform, draw.lightProbeUbo)
 
       val numElems = part.numIndices

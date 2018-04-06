@@ -108,7 +108,7 @@ object TestModelSystem extends App {
   }
 
   object TestModelShader extends ShaderAsset("test/instanced_mesh_light") {
-    uniform(ModelSystem.InstancedUniform)
+    uniform(ModelInstanceUniform)
     uniform(LightProbeUniform)
     uniform(GlobalUniform)
 
@@ -203,7 +203,7 @@ object TestModelSystem extends App {
 
       renderer.setTexture(ModelTextures.Diffuse, mesh.material.albedoTex.texture)
 
-      renderer.bindUniform(ModelSystem.InstancedUniform, draw.instanceUbo)
+      renderer.bindUniform(ModelInstanceUniform, draw.instanceUbo)
       renderer.bindUniform(LightProbeUniform, draw.lightProbeUbo)
 
       val numElems = part.numIndices

@@ -13,12 +13,7 @@ import scala.collection.mutable.ArrayBuffer
 
 object ModelSystem {
 
-  val MaxInstancesPerDraw = 8
 
-  object InstancedUniform extends UniformBlock("InstancedUniform") {
-    val World = mat4x3("World", MaxInstancesPerDraw)
-    val LightInfo = ivec4("LightInfo", MaxInstancesPerDraw)
-  }
 
   // Note: Properties are `var` here in case of pooling!
 
@@ -43,7 +38,7 @@ object ModelSystem {
     /** Number of instances to draw */
     var num: Int = 0
 
-    /** Reference to `InstancedUniform` */
+    /** Reference to `ModelInstanceUniform` */
     var instanceUbo: UniformRef = null
 
     /** Reference to `LightProbeUniform` */
@@ -269,7 +264,7 @@ object ModelSystem {
 
       var base = 0
       while (base < instanceBuffer.length) {
-        val toDraw = math.min(MaxInstancesPerDraw, instanceBuffer.length - base)
+        val toDraw = math.min(ModelInstanceUniform.MaxInstancesPerDraw, instanceBuffer.length - base)
 
         if (currentLightProbes.size + toDraw > LightProbeUniform.MaxProbes) {
           lightProbesToUpload += currentLightProbes
@@ -282,7 +277,7 @@ object ModelSystem {
         val draw = new InstancedMeshDraw()
         draw.mesh = mesh
         draw.num = toDraw
-        draw.instanceUbo = renderer.pushUniformRef(InstancedUniform, b => {
+        draw.instanceUbo = renderer.pushUniformRef(ModelInstanceUniform, b => {
           var ix = 0
           while (ix < toDraw) {
             val inst = instanceBuffer(base + ix)
@@ -292,8 +287,8 @@ object ModelSystem {
               currentLightProbes.length - 1
             })
 
-            InstancedUniform.World.set(b, ix, inst.worldTransform)
-            InstancedUniform.LightInfo.set(b, ix, probeIndex, 0, 0, 0)
+            ModelInstanceUniform.World.set(b, ix, inst.worldTransform)
+            ModelInstanceUniform.LightInfo.set(b, ix, probeIndex, 0, 0, 0)
             ix += 1
           }
         })
