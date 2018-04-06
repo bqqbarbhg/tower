@@ -740,6 +740,16 @@ object TestCableSystem extends App {
       ModelSystem.setupUniforms()
     }
 
+    s.add("Check viewport")()(viewport) {
+    }
+
+    s.add("Reset viewport")(viewport)() {
+      viewport.visibleEntities.clear()
+    }
+
+    s.add("Ensure empty viewport")()(viewport) {
+    }
+
     s.finish()
 
     if (AppWindow.keyEvents.exists(e => e.down && e.key == 'P')) {

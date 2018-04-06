@@ -53,7 +53,11 @@ class Scheduler {
     * @param func Callback function to run
     */
   def addTo(name: String)(executor: TaskExecutor)(write: AnyRef*)(read: AnyRef*)(func: => Unit): Unit = {
-    val writeDeps = write.flatMap(activeReads)
+    val writeDeps = write.flatMap(d => {
+      val r = activeReads(d)
+      // The dependency to the write is unnecessary in the presence of reads
+      if (r.size > 1) r.drop(1) else r
+    })
     val readDeps = read.flatMap(lastWrite.get)
 
     val numDeps = writeDeps.length + readDeps.length

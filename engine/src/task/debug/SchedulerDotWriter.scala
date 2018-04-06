@@ -7,6 +7,7 @@ import scala.collection.mutable
 class SchedulerDotWriter extends SchedulerDebugger {
   private val b = new StringBuilder()
   b.append("digraph g {\n")
+  b.append("  rankdir = BT;\n")
 
   private val indexMap = mutable.HashMap[Task[Unit], Int]()
   private def taskId(task: Task[Unit]): Int = indexMap.getOrElseUpdate(task, indexMap.size + 1)
