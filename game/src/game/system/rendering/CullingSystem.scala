@@ -28,13 +28,13 @@ sealed trait CullingSystem {
     * Find all entities with bounding areas tagged with `mask` which intersect
     * with `frustum`.
     */
-  def cullEntities(frustum: Frustum, mask: Int): ArrayBuffer[Entity]
+  def cullEntities(frustum: Frustum, mask: Int): Array[Entity]
 
   /** Attach an axis aligned bounding box to the entity. */
-  def addAabb(entity: Entity, aabb: Aabb, mask: Int, isStatic: Boolean): Unit
+  def addAabb(entity: Entity, aabb: Aabb, mask: Int): Unit
 
   /** Attach a bounding sphere to the entity. */
-  def addSphere(entity: Entity, sphere: Sphere, mask: Int, isStatic: Boolean): Unit
+  def addSphere(entity: Entity, sphere: Sphere, mask: Int): Unit
 
   /** Remove an entity from the system. */
   def removeEntity(entity: Entity): Unit
@@ -116,13 +116,13 @@ object CullingSystemImpl {
   val entityToCullable = new mutable.HashMap[Entity, Cullable]()
   val dynamicCullables = new ArrayPool[Cullable]()
 
-  def getOrAddCullable(entity: Entity, isStatic: Boolean): Cullable = {
+  def getOrAddCullable(entity: Entity): Cullable = {
     val cullable = entityToCullable.getOrElseUpdate(entity, {
       entity.flag0 |= Entity.Flag0_HasCullables
       new Cullable(entity)
     })
 
-    if (!isStatic && cullable.dynamicIndex < 0) {
+    if (!entity.static && cullable.dynamicIndex < 0) {
       cullable.dynamicIndex = dynamicCullables.add(cullable)
     }
 
@@ -400,18 +400,18 @@ final class CullingSystemImpl extends CullingSystem {
 
   }
 
-  override def cullEntities(frustum: Frustum, mask: Int): ArrayBuffer[Entity] = ???
+  override def cullEntities(frustum: Frustum, mask: Int): Array[Entity] = ???
 
-  override def addAabb(entity: Entity, aabb: Aabb, mask: Int, isStatic: Boolean): Unit = {
-    val cullable = getOrAddCullable(entity, isStatic)
+  override def addAabb(entity: Entity, aabb: Aabb, mask: Int): Unit = {
+    val cullable = getOrAddCullable(entity)
 
     cullable.aabb = new ShapeAabb(cullable, aabb, null, mask, cullable.aabb)
     if (cullable.dynamicIndex < 0)
       addShape(cullable.aabb)
   }
 
-  override def addSphere(entity: Entity, sphere: Sphere, mask: Int, isStatic: Boolean): Unit = {
-    val cullable = getOrAddCullable(entity, isStatic)
+  override def addSphere(entity: Entity, sphere: Sphere, mask: Int): Unit = {
+    val cullable = getOrAddCullable(entity)
 
     cullable.sphere = new ShapeSphere(cullable, sphere, null, mask, cullable.sphere)
     if (cullable.dynamicIndex < 0)

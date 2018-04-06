@@ -4,6 +4,9 @@ object Vector3 {
   val Zero = Vector3(0.0, 0.0, 0.0)
   val One = Vector3(1.0, 1.0, 1.0)
 
+  val Up = Vector3(0.0, +1.0, 0.0)
+  val Down = Vector3(0.0, -1.0, 0.0)
+
   def lerp(a: Vector3, b: Vector3, t: Double): Vector3 = a * (1.0 - t) + b * t
 
   def distanceSquared(a: Vector3, b: Vector3) = {

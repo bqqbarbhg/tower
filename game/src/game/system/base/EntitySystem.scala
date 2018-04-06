@@ -17,6 +17,8 @@ final class EntitySystemImpl extends EntitySystem {
     if ((entity.flag0 & Entity.Flag0_HasPointLight) != 0) pointLightSystem.removeLights(entity)
     if ((entity.flag0 & Entity.Flag0_HasPointLightReceiver) != 0) pointLightSystem.removeReceivers(entity)
     if ((entity.flag0 & Entity.Flag0_HasCullables) != 0) cullingSystem.removeEntity(entity)
+    if ((entity.flag0 & Entity.Flag0_HasAmbientProbes) != 0) ambientSystem.removeProbesFrom(entity)
+    if ((entity.flag0 & Entity.Flag0_HasAmbientPointLight) != 0) ambientPointLightSystem.removeLights(entity)
   }
 
 }

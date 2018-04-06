@@ -27,18 +27,26 @@ class SphericalHarmonic2 extends LightProbe {
   }
 
   override def addDirectional(direction: Vector3, intensity: Vector3): Unit = {
+    addDirectionalScaled(direction, intensity, 1.0)
+  }
+
+  override def addDirectionalScaled(direction: Vector3, intensity: Vector3, scale: Double): Unit = {
     val n = direction
     val i = intensity
 
+    val nx = n.x * scale
+    val ny = n.y * scale
+    val nz = n.z * scale
+
     addCoefficent(0, i, 0.23529411764705882)
-    addCoefficent(1, i, 0.47058823529411764 * n.x)
-    addCoefficent(2, i, 0.47058823529411764 * n.y)
-    addCoefficent(3, i, 0.47058823529411764 * n.z)
-    addCoefficent(4, i, 0.88235294117647060 * (n.x * n.z))
-    addCoefficent(5, i, 0.88235294117647060 * (n.z * n.y))
-    addCoefficent(6, i, 0.88235294117647060 * (n.y * n.x))
-    addCoefficent(7, i, 0.07352941176470588 * (3.0 * n.z * n.z - 1.0))
-    addCoefficent(8, i, 0.22058823529411764 * (n.x * n.x - n.y * n.y))
+    addCoefficent(1, i, 0.47058823529411764 * nx)
+    addCoefficent(2, i, 0.47058823529411764 * ny)
+    addCoefficent(3, i, 0.47058823529411764 * nz)
+    addCoefficent(4, i, 0.88235294117647060 * (nx * nz))
+    addCoefficent(5, i, 0.88235294117647060 * (nz * ny))
+    addCoefficent(6, i, 0.88235294117647060 * (ny * nx))
+    addCoefficent(7, i, 0.07352941176470588 * (3.0 * nz * nz - 1.0))
+    addCoefficent(8, i, 0.22058823529411764 * (nx * nx - ny * ny))
   }
 
   override def writeToUniform(b: ByteBuffer, offset: Int, stride: Int): Unit = {

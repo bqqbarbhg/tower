@@ -13,7 +13,7 @@ class GroundMesh {
 
 }
 
-class GroundSystem(val minX: Int, val minZ: Int, val maxX: Int, val maxZ: Int) {
+class GroundSystemOld(val minX: Int, val minZ: Int, val maxX: Int, val maxZ: Int) {
 
   val TileSize = 16.0
   val InvTileSize = 1.0 / TileSize

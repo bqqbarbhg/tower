@@ -71,7 +71,7 @@ object TestCableSystem extends App {
 
   system.deferredLoad().get
 
-  system.GroundSystem = new GroundSystem(-16, -16, 16, 16)
+  system.GroundSystem = new GroundSystemOld(-16, -16, 16, 16)
 
   processResources()
 
@@ -310,7 +310,7 @@ object TestCableSystem extends App {
   bundle.acquire()
   bundle.load()
 
-  val entity = new Entity()
+  val entity = new Entity(true)
   val model = ModelSystem.addModel(entity, asset)
   entity.position = Vector3(0.0, 0.0, 0.0)
 

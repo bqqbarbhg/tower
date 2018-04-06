@@ -8,7 +8,7 @@ package object system {
 
   var AudioSystem: AudioSystem = null
   var CableRenderSystem: CableRenderSystem = null
-  var GroundSystem: GroundSystem = null
+  var GroundSystem: GroundSystemOld = null
 
   def deferredLoad(): Task[Unit] = {
     val stopAudioTask = for (as <- Option(AudioSystem)) yield {

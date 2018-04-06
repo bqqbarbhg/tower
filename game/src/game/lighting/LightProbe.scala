@@ -119,6 +119,17 @@ trait LightProbe {
   }
 
   /**
+    * Accumulate directed light to the probe with a multiplier.
+    *
+    * @param direction Normalized direction from the probe to the light
+    * @param intensity Intensity of the light (RGB)
+    * @param scale Multiplier for `intensity`
+    */
+  def addDirectionalScaled(direction: Vector3, intensity: Vector3, scale: Double): Unit = {
+    addDirectional(direction, intensity * scale)
+  }
+
+  /**
     * Linearly interpolate between `a` and `b` storing the result to `this`.
     *
     * @param a First endpoint _of the same type_ (t = 0.0)

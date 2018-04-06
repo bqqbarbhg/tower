@@ -74,7 +74,7 @@ object TestModelSystem extends App {
     x <- -5 to 5
   } {
     if (x != 0 || y != 0) {
-      val entity = new Entity()
+      val entity = new Entity(true)
       val model = ModelSystem.addModel(entity, asset)
       entity.position = Vector3(x * 8.0, 0.0, y * 8.0)
 
@@ -89,7 +89,7 @@ object TestModelSystem extends App {
     }
   }
 
-  val entity = new Entity()
+  val entity = new Entity(false)
   val model = ModelSystem.addModel(entity, asset)
   entity.position = Vector3(0.0, 0.0, 0.0)
   val probe = LightSystem.addStaticProbe(entity.position + probeOffset)
