@@ -216,6 +216,7 @@ class AudioSystem {
   }
 
   audioThread.setName("Audio Thread")
+  audioThread.setPriority(Thread.MAX_PRIORITY)
   audioThread.start()
 
   def unload(): Unit = {

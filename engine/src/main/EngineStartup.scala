@@ -16,6 +16,7 @@ object EngineStartup {
     var glCompatability: Boolean = false
     var initialWidth: Int = 1280
     var initialHeight: Int = 720
+    var numWorkers: Int = 0
     var windowName: String = ""
   }
 
@@ -23,6 +24,22 @@ object EngineStartup {
     override def run(): Unit = {
       val executor = Task.Io
       executor.claimForThisThread()
+
+      try {
+        while (!Thread.interrupted()) {
+          executor.runNextWait()
+        }
+      } catch {
+        case e: InterruptedException => // Nop
+      }
+    }
+  }
+
+  var workers: Array[WorkerThread] = Array[WorkerThread]()
+
+  class WorkerThread extends Thread {
+    override def run(): Unit = {
+      val executor = Task.Worker
 
       try {
         while (!Thread.interrupted()) {
@@ -42,6 +59,19 @@ object EngineStartup {
     IoThread.setName("Engine IO thread")
     IoThread.start()
     Task.Main.claimForThisThread()
+
+    val numWorkers = if (opts.numWorkers > 0) {
+      opts.numWorkers
+    } else {
+      math.min(Runtime.getRuntime.availableProcessors, 6)
+    }
+
+    workers = Array.tabulate(numWorkers)(i => {
+      val thread = new WorkerThread()
+      thread.setName(s"Engine Worker $i")
+      thread.start()
+      thread
+    })
 
     LocaleInfo.load()
 
@@ -95,7 +125,13 @@ object EngineStartup {
   def stop(): Unit = {
     AppWindow.destroyWindow()
     AppWindow.unload()
+
     IoThread.interrupt()
     IoThread.join()
+
+    for (worker <- workers) {
+      worker.interrupt()
+      worker.join()
+    }
   }
 }

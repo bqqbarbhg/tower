@@ -40,8 +40,8 @@ class TaskExecutor {
     task.run()
   }
 
-  def addWithManualDependencies[R](numDependencies: Int, f: () => R): Task[R] = {
-    new Task[R](this, numDependencies, f)
+  def addWithManualDependencies[R](numDependencies: Int, f: () => R, debugName: String = ""): Task[R] = {
+    new Task[R](this, numDependencies, f, debugName)
   }
 
   def add[R](f: () => R): Task[R] = {

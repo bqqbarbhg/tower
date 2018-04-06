@@ -6,10 +6,11 @@ object Task {
 
   val Main = new TaskExecutor()
   val Io = new TaskExecutor()
+  val Worker = new TaskExecutor()
 
 }
 
-class Task[T](val executor: TaskExecutor, val dependencyCount: Int = 0, val fn: () => T) {
+class Task[T](val executor: TaskExecutor, val dependencyCount: Int = 0, val fn: () => T, val debugName: String = "") {
 
   private[task] var result: T = _
 
@@ -55,7 +56,7 @@ class Task[T](val executor: TaskExecutor, val dependencyCount: Int = 0, val fn: 
     }
 
     while (this.synchronized(!completed)) {
-      executor.runNextWait()
+      TaskExecutor.forThisThread.runNextWait()
     }
   }
 

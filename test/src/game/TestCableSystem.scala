@@ -21,6 +21,8 @@ import render.VertexSpec.Attrib
 import render.VertexSpec.DataFmt._
 import util.geometry.{Frustum, Sphere}
 import game.shader._
+import task.debug.SchedulerDotWriter
+import task.{Scheduler, Task}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -710,16 +712,39 @@ object TestCableSystem extends App {
     head.localTransform = Matrix43.rotateZ(math.sin(tt * 0.6) * 0.5) * Matrix43.rotateX(math.sin(tt * 0.5) * 0.2)
     barrel.localTransform = Matrix43.rotateY(tt * -15.0)
 
-    LightSystem.addDynamicLightsToCells()
-    LightSystem.evaluateProbes()
-    LightSystem.finishFrame()
+    val debugger = new SchedulerDotWriter()
 
-    CullingSystem.update(viewport)
+    val s = new Scheduler()
+    s.attachDebugger(debugger)
 
-    ModelSystem.collectVisibleModels(viewport.visibleEntities)
-    ModelSystem.updateMatrices()
-    ModelSystem.collectMeshInstances()
-    ModelSystem.setupUniforms()
+    s.add("Light update")(LightSystem)() {
+      LightSystem.addDynamicLightsToCells()
+      LightSystem.evaluateProbes()
+      LightSystem.finishFrame()
+    }
+
+    s.add("Viewport cull")(CullingSystem, viewport)() {
+      CullingSystem.update(viewport)
+    }
+
+    s.add("Matrix update")(ModelSystem)(viewport) {
+      ModelSystem.collectVisibleModels(viewport.visibleEntities)
+      ModelSystem.updateMatrices()
+    }
+
+    s.add("Collect instances")(ModelSystem)(LightSystem) {
+      ModelSystem.collectMeshInstances()
+    }
+
+    s.addTo("Uniform update")(Task.Main)(ModelSystem)() {
+      ModelSystem.setupUniforms()
+    }
+
+    s.finish()
+
+    if (AppWindow.keyEvents.exists(e => e.down && e.key == 'P')) {
+      println(debugger.result)
+    }
 
     val draws = ModelSystem.getInstancedMeshDraws()
 
