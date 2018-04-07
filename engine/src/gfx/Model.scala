@@ -56,6 +56,9 @@ class Model {
   var materials: Array[Material] = Array[Material]()
   var numMaterials: Int = 0
 
+  // Bone to node mapping
+  var skinnedPartBoneToNodeMapping = Array[Array[Array[Int]]]()
+
   // Misc
   private val animationMappingCache = new java.util.IdentityHashMap[Animation, Array[Int]]
 
@@ -204,4 +207,29 @@ class Model {
     animationMappingCache.put(animation, mapping)
     mapping
   }
+
+  /**
+    * Initialize the mapping from skinned mesh parts to node indices.
+    */
+  def createSkinnedMeshMapping(): Unit = {
+    skinnedPartBoneToNodeMapping = new Array[Array[Array[IdentifierIx]]](numMeshes)
+
+    for ((mesh, meshIndex) <- meshes.zipWithIndex) {
+      if (mesh.numSkinnedParts > 0) {
+        val mapping = new Array[Array[Int]](mesh.numSkinnedParts)
+        for ((part, partIndex) <- mesh.parts.zipWithIndex) {
+          val mapIx = part.skinnedPartIndex
+          if (mapIx >= 0) {
+            mapping(mapIx) = Array.tabulate(part.numBones)(boneIx => {
+              val name = new Identifier(part.boneName(boneIx))
+              val nodeIx = findNodeByName(name)
+              assert(nodeIx >= 0, s"Bone '$name' not found in model!")
+              nodeIx
+            })
+          }
+        }
+      }
+    }
+  }
+
 }

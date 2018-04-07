@@ -41,6 +41,7 @@ class Mesh {
 
   var parts: Array[MeshPart] = null
   var material: Material = null
+  var numSkinnedParts: Int = 0
 
   def load(buffer: ByteBuffer): Unit = {
 
@@ -51,8 +52,15 @@ class Mesh {
     val numParts = buffer.getInt()
 
     parts = Array.tabulate(numParts)(ix => {
-      val part = new MeshPart()
+      val part = new MeshPart(this)
       part.load(buffer)
+
+      if (part.numBones > 0) {
+        val index = numSkinnedParts
+        numSkinnedParts += 1
+        part.skinnedPartIndex = index
+      }
+
       part
     })
 

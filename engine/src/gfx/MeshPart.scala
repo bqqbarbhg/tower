@@ -23,11 +23,13 @@ object MeshPart {
 
 }
 
-class MeshPart {
+class MeshPart(val mesh: Mesh) {
 
   var numVertices: Int = 0
   var numIndices: Int = 0
   var numBones: Int = 0
+
+  var skinnedPartIndex: Int = -1
 
   var vertexDataSize: Int = 0
   var indexDataSize: Int = 0

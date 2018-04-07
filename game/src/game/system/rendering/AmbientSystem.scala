@@ -193,10 +193,15 @@ final class AmbientSystemImpl extends AmbientSystem {
     var ix = 0
     val numProbes = probes.length
 
+    val falloff = 0.5
+    val baseFactor = 0.35
+
     while (ix < numProbes) {
       val probe = probes(ix).asInstanceOf[ProbeImpl]
       if (probe.isIndirectEmitter) {
-        probe.cachedIndirectLight = probe.irradianceProbe.evaluate(up)
+        val lightProbe = probe.irradianceProbe
+        probe.cachedIndirectLight = lightProbe.evaluate(up)
+        lightProbe.addDirectionalScaled(down, probe.cachedIndirectLight, baseFactor)
       }
     }
 
@@ -212,9 +217,6 @@ final class AmbientSystemImpl extends AmbientSystem {
         while (indIx < indLen) {
           val indProbe = probe.indirectProbes(indIx).asInstanceOf[ProbeImpl]
           val indWeight = probe.indirectWeights(indIx)
-
-          val falloff = 0.5
-          val baseFactor = 0.35
 
           val factor = baseFactor / (1.0 + math.abs(indProbe.worldPosition.y - posY) * falloff)
 

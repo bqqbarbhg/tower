@@ -70,6 +70,8 @@ class ModelAsset(val name: Identifier) extends LoadableAsset {
     for (i <- 0 until modelImpl.numAnims) {
       modelImpl.anims(i) = animations(i).get
     }
+
+    modelImpl.createSkinnedMeshMapping()
   }
 
   override def unloadAsset(): Unit = {
