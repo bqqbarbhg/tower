@@ -144,7 +144,12 @@ object ModelSystemImpl {
     var lastFrameUpdated: Long = 0L
     var worldTransform = new Matrix43.Unsafe()
 
-    override def findNode(name: Identifier): NodeInstance = ???
+    override def findNode(name: Identifier): NodeInstance = {
+      val ref = new NodeInstanceImpl(this, name)
+      nodes :+= ref
+      ref
+    }
+
     override def delete(): Unit = ???
   }
 
@@ -194,6 +199,8 @@ final class ModelSystemImpl extends ModelSystem {
 
     model.poolIndex = allModels.add(model)
     entityToModel(entity) = model
+
+    entity.flag0 |= Flag0_HasModel
 
     model
   }

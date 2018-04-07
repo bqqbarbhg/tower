@@ -400,7 +400,13 @@ final class CullingSystemImpl extends CullingSystem {
 
   }
 
-  override def cullEntities(frustum: Frustum, mask: Int): Array[Entity] = ???
+  override def cullEntities(frustum: Frustum, mask: Int): Array[Entity] = {
+    val res = new ArrayBuffer[Entity]()
+    currentPass += 1
+    cullBroadPhase(frustum, mask)
+    cullNarrowPhase(res, frustum)
+    res.toArray
+  }
 
   override def addAabb(entity: Entity, aabb: Aabb, mask: Int): Unit = {
     val cullable = getOrAddCullable(entity)

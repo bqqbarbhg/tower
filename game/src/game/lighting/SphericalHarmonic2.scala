@@ -27,16 +27,12 @@ class SphericalHarmonic2 extends LightProbe {
   }
 
   override def addDirectional(direction: Vector3, intensity: Vector3): Unit = {
-    addDirectionalScaled(direction, intensity, 1.0)
-  }
-
-  override def addDirectionalScaled(direction: Vector3, intensity: Vector3, scale: Double): Unit = {
     val n = direction
     val i = intensity
 
-    val nx = n.x * scale
-    val ny = n.y * scale
-    val nz = n.z * scale
+    val nx = n.x
+    val ny = n.y
+    val nz = n.z
 
     addCoefficent(0, i, 0.23529411764705882)
     addCoefficent(1, i, 0.47058823529411764 * nx)

@@ -3,7 +3,6 @@ package game.system
 package object rendering {
 
   var cullingSystem: CullingSystem = null
-  var worldRenderSystem: WorldRenderSystem = null
   var pointLightSystem: PointLightSystem = null
   var ambientSystem: AmbientSystem = null
   var groundSystem: GroundSystem = null
@@ -11,5 +10,18 @@ package object rendering {
   var modelSystem: ModelSystem = null
   var forwardRenderingSystem: ForwardRenderingSystem = null
   var shadowRenderingSystem: ShadowRenderingSystem = null
+
+  def load(): Unit = {
+    cullingSystem = new CullingSystemImpl()
+    pointLightSystem = new PointLightSystemImpl()
+    ambientSystem = new AmbientSystemImpl()
+    ambientPointLightSystem = new AmbientPointLightSystemImpl()
+    modelSystem = new ModelSystemImpl()
+    forwardRenderingSystem = new ForwardRenderingSystemImpl()
+    shadowRenderingSystem = new ShadowRenderingSystemImpl()
+
+    // Dependency: ambientSystem
+    groundSystem = new GroundSystemImpl()
+  }
 
 }

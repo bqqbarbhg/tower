@@ -154,7 +154,11 @@ final class AmbientPointLightSystemImpl extends AmbientPointLightSystem {
     }
   }
 
-  def addLightToProbe(probe: Probe, light: AmbientPointLightImpl): Unit = ???
+  def addLightToProbe(probe: Probe, light: AmbientPointLightImpl): Unit = {
+    // TODO: Do this better
+    val dir = (light.worldPosition - probe.worldPosition).normalize
+    probe.irradianceProbe.addDirectional(dir, light.intensity)
+  }
 
   def addLightsToProbe(probe: Probe, lights: ArrayBuffer[AmbientPointLightImpl]): Unit = {
     val lightProbe = probe.irradianceProbe
@@ -183,6 +187,8 @@ final class AmbientPointLightSystemImpl extends AmbientPointLightSystem {
     }
 
     entity.flag0 |= Flag0_HasAmbientPointLight
+
+    entityToLight(entity) = light
 
     light
   }

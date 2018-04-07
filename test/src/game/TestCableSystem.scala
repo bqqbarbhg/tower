@@ -23,6 +23,8 @@ import util.geometry.{Frustum, Sphere}
 import game.shader._
 import task.debug.SchedulerDotWriter
 import task.{Scheduler, Task}
+import game.system.rendering
+import game.system.rendering.ModelSystem.{MeshInstanceCollection, ModelInstance}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -72,6 +74,8 @@ object TestCableSystem extends App {
   system.deferredLoad().get
 
   system.GroundSystem = new GroundSystemOld(-16, -16, 16, 16)
+
+  rendering.load()
 
   processResources()
 
@@ -310,16 +314,24 @@ object TestCableSystem extends App {
   bundle.acquire()
   bundle.load()
 
+
   val entity = new Entity(true)
-  val model = ModelSystem.addModel(entity, asset)
+  val model = rendering.modelSystem.addModel(entity, asset)
   entity.position = Vector3(0.0, 0.0, 0.0)
 
-  CullingSystem.addStaticSphere(entity, Sphere(Vector3(0.0, 1.0, 0.0), 4.0), 1)
+  rendering.cullingSystem.addSphere(entity, Sphere(Vector3(0.0, 1.0, 0.0), 4.0), rendering.CullingSystem.MaskRender | rendering.CullingSystem.MaskShadow)
+
+  val probe = rendering.ambientSystem.addProbe(entity, Vector3(0.0, 0.5, 0.0))
+  model.lightProbe = probe.irradianceProbe
+
+  val lightEntity = new Entity(true)
+  rendering.ambientPointLightSystem.addLight(lightEntity, Vector3(40.0, 50.0, 20.0), Vector3(1.0, 0.0, 0.0) * 3.7, 150.0)
+  rendering.ambientPointLightSystem.addLight(lightEntity, Vector3(100.0, 80.0, 20.0), Vector3(0.6, 0.5, 0.5) * 2.7, 100.0)
+  rendering.ambientPointLightSystem.addLight(lightEntity, Vector3(-20.0, 50.0, -20.0), Vector3(0.5, 0.5, 0.8) * 3.4, 150.0)
 
   val head = model.findNode(Identifier("Head"))
   val barrel = model.findNode(Identifier("Barrel"))
 
-  model.lightProbe = LightSystem.addStaticProbe(Vector3(0.0, 0.5, 0.0)).probe
   LightSystem.addDynamicLight(Vector3(40.0, 50.0, 20.0), Vector3(1.0, 0.0, 0.0) * 3.7, 150.0)
   LightSystem.addStaticLight(Vector3(100.0, 80.0, 20.0), Vector3(0.6, 0.5, 0.5) * 2.7, 100.0)
   LightSystem.addStaticLight(Vector3(-20.0, 50.0, -20.0), Vector3(0.5, 0.5, 0.8) * 3.4, 150.0)
@@ -717,37 +729,61 @@ object TestCableSystem extends App {
     val s = new Scheduler()
     s.attachDebugger(debugger)
 
-    s.add("Light update")(LightSystem)() {
-      LightSystem.addDynamicLightsToCells()
-      LightSystem.evaluateProbes()
-      LightSystem.finishFrame()
+    var visEntities: Array[Entity] = null
+    var visProbes: ArrayBuffer[rendering.AmbientSystem.Probe] = null
+    var visMeshes: MeshInstanceCollection = null
+    var forwardDraws: rendering.ForwardRenderingSystem.Draws = null
+
+    object Vis
+    object VisModel
+    object VisMesh
+    object VisProbes
+
+    LightSystem.addDynamicLightsToCells()
+    LightSystem.evaluateProbes()
+    LightSystem.finishFrame()
+
+    s.add("Viewport cull")(rendering.cullingSystem, Vis)() {
+      visEntities = rendering.cullingSystem.cullEntities(viewport.frustum, rendering.CullingSystem.MaskRender)
     }
 
-    s.add("Viewport cull")(CullingSystem, viewport)() {
-      CullingSystem.update(viewport)
+    s.add("Probe collect")(rendering.ambientSystem, VisProbes)(Vis) {
+      rendering.ambientSystem.updateVisibleProbes(visEntities)
+      visProbes = rendering.ambientSystem.currentlyVisibleProbes
     }
 
-    s.add("Matrix update")(ModelSystem)(viewport) {
-      ModelSystem.collectVisibleModels(viewport.visibleEntities)
-      ModelSystem.updateMatrices()
+    s.add("Ambient point dynamic")(rendering.ambientPointLightSystem)() {
+      rendering.ambientPointLightSystem.updateDynamicLights()
     }
 
-    s.add("Collect instances")(ModelSystem)(LightSystem) {
-      ModelSystem.collectMeshInstances()
+    s.add("Ambient probe points")(VisProbes)(rendering.ambientPointLightSystem) {
+      rendering.ambientPointLightSystem.updateVisibleProbes(visProbes)
     }
 
-    s.addTo("Uniform update")(Task.Main)(ModelSystem)() {
-      ModelSystem.setupUniforms()
+    s.add("Ambient probe indirect")(rendering.ambientSystem, VisProbes)() {
+      rendering.ambientSystem.updateIndirectLight(visProbes)
     }
 
-    s.add("Check viewport")()(viewport) {
+    s.add("Model update")(rendering.modelSystem, VisMesh)(Vis) {
+      val models = rendering.modelSystem.collectVisibleModels(visEntities)
+      rendering.modelSystem.updateModels(models)
+      visMeshes = rendering.modelSystem.collectMeshInstances(models)
     }
 
-    s.add("Reset viewport")(viewport)() {
-      viewport.visibleEntities.clear()
+    s.addTo("Forward draws")(Task.Main)(rendering.forwardRenderingSystem)(VisMesh, VisProbes) {
+      forwardDraws = rendering.forwardRenderingSystem.createMeshDraws(visMeshes)
     }
 
-    s.add("Ensure empty viewport")()(viewport) {
+    s.add("Ambient point cleanup")(rendering.ambientPointLightSystem)() {
+      rendering.ambientPointLightSystem.frameCleanup()
+    }
+
+    s.add("Ambient cleanup")(rendering.ambientSystem)() {
+      rendering.ambientSystem.frameCleanup()
+    }
+
+    s.add("Model cleanup")(rendering.modelSystem)() {
+      rendering.modelSystem.frameCleanup()
     }
 
     s.finish()
@@ -755,8 +791,6 @@ object TestCableSystem extends App {
     if (AppWindow.keyEvents.exists(e => e.down && e.key == 'P')) {
       println(debugger.result)
     }
-
-    val draws = ModelSystem.getInstancedMeshDraws()
 
     renderer.beginFrame()
 
@@ -791,6 +825,7 @@ object TestCableSystem extends App {
 
     TestShadowShader.get.use()
 
+    /*
     for (draw <- draws) {
       val mesh = draw.mesh
       val part = mesh.parts.head
@@ -801,6 +836,7 @@ object TestCableSystem extends App {
       val numElems = part.numIndices
       renderer.drawElementsInstanced(draw.num, numElems, part.indexBuffer, part.vertexBuffer)
     }
+    */
 
     renderer.setRenderTarget(renderTarget)
     renderer.setDepthMode(true, true)
@@ -829,10 +865,34 @@ object TestCableSystem extends App {
       p(TestModelShader.Permutations.PerSampleShading) = resToggle
     })
 
+    /*
     for (draw <- draws) {
       val mesh = draw.mesh
       val part = mesh.parts.head
       assert(draw.mesh.parts.length == 1)
+
+      renderer.pushUniform(TestModelShader.PixelUniform, u => {
+        TestModelShader.PixelUniform.UvBounds.set(u, part.uvOffsetX, part.uvOffsetY, part.uvScaleX, part.uvScaleY)
+      })
+
+      renderer.setTexture(ModelTextures.Albedo, albedo.get.texture)
+      renderer.setTexture(ModelTextures.Normal, normal.get.texture)
+      renderer.setTexture(ModelTextures.Roughness, roughness.get.texture)
+      renderer.setTexture(ModelTextures.Metallic, metallic.get.texture)
+      renderer.setTexture(ModelTextures.AoTex, ao.get.texture)
+      renderer.setTextureTargetDepth(ModelTextures.ShadowMap, shadowTarget)
+
+      renderer.bindUniform(ModelInstanceUniform, draw.instanceUbo)
+      renderer.bindUniform(LightProbeUniform, draw.lightProbeUbo)
+
+      val numElems = part.numIndices
+      renderer.drawElementsInstanced(draw.num, numElems, part.indexBuffer, part.vertexBuffer)
+    }
+    */
+
+    for (draw <- forwardDraws.instanced) {
+      val part = draw.mesh
+      val mesh = part.mesh
 
       renderer.pushUniform(TestModelShader.PixelUniform, u => {
         TestModelShader.PixelUniform.UvBounds.set(u, part.uvOffsetX, part.uvOffsetY, part.uvScaleX, part.uvScaleY)

@@ -165,6 +165,9 @@ final class AmbientSystemImpl extends AmbientSystem {
     probe.visibleMark = true
     visibleProbes += probe
 
+    // Clear the probe's light
+    probe.irradianceProbe.clear()
+
     // Update probe position and indirect probes if it's dynamic
     if (!probe.static) {
       probe.worldPosition = probe.entity.position + probe.localPosition
@@ -203,6 +206,8 @@ final class AmbientSystemImpl extends AmbientSystem {
         probe.cachedIndirectLight = lightProbe.evaluate(up)
         lightProbe.addDirectionalScaled(down, probe.cachedIndirectLight, baseFactor)
       }
+
+      ix += 1
     }
 
     ix = 0
@@ -225,6 +230,8 @@ final class AmbientSystemImpl extends AmbientSystem {
           indIx += 1
         }
       }
+
+      ix += 1
     }
   }
 
