@@ -3,6 +3,7 @@ package core
 import java.nio.FloatBuffer
 
 import Matrix43._
+import com.sun.prism.impl.Disposer.Target
 object Matrix43 {
 
   /** Type alias for mutable matrices */
@@ -141,6 +142,33 @@ object Matrix43 {
     r.m14 = o.x
     r.m24 = o.y
     r.m34 = o.z
+  }
+
+  /**
+    * Unsafe version of `appendTranslate()`
+    * Apply translation to `a` and store result unsafely in mutable `r`.
+    *
+    * Equivalent to: `r = Matrix43.createTranslation(translation) * a`
+    */
+  def unsafeAppendTranslate(r: Matrix43, a: Matrix43, translation: Vector3): Unit = {
+    r.m11 = a.m11; r.m12 = a.m12; r.m13 = a.m13
+    r.m21 = a.m21; r.m22 = a.m22; r.m23 = a.m23
+    r.m31 = a.m31; r.m32 = a.m32; r.m33 = a.m33
+
+    r.m14 = a.m14 + translation.x
+    r.m24 = a.m24 + translation.y
+    r.m34 = a.m34 + translation.z
+  }
+
+  /**
+    * Apply translation to `a`.
+    *
+    * Equivalent to: `Matrix43.createTranslation(translation) * a`
+    */
+  def appendTranslate(a: Matrix43, translation: Vector3): Matrix43 = {
+    val r = new Matrix43.Unsafe()
+    unsafeAppendTranslate(r, a, translation)
+    r
   }
 
   /**

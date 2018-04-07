@@ -138,5 +138,57 @@ class Matrix43Test extends FlatSpec with Matchers {
     assertEqualAndAffine(res, MatAB)
   }
 
+  "appendTranslate" should "give the same result as slow translation" in {
+
+    {
+      val offset = Vector3(3.0, 5.0, -7.0)
+      val slow = Matrix43.translate(offset) * MatA
+      val fast = Matrix43.appendTranslate(MatA, offset)
+      assertEqualAndAffine(slow, fast)
+    }
+
+    {
+      val offset = Vector3(-1.0, 0.0, 0.3)
+      val slow = Matrix43.translate(offset) * MatB
+      val fast = Matrix43.appendTranslate(MatB, offset)
+      assertEqualAndAffine(slow, fast)
+    }
+
+    {
+      val offset = Vector3(1000.0, -3000.0, 0.0)
+      val slow = Matrix43.translate(offset) * Matrix43.Identity
+      val fast = Matrix43.appendTranslate(Matrix43.Identity, offset)
+      assertEqualAndAffine(slow, fast)
+    }
+
+  }
+
+  "unsafeAppendTranslate" should "give the same result as safe appendTranslation" in {
+
+    var fast = new Matrix43.Unsafe()
+
+    {
+      val offset = Vector3(3.0, 5.0, -7.0)
+      val slow = Matrix43.appendTranslate(MatA, offset)
+      Matrix43.unsafeAppendTranslate(fast, MatA, offset)
+      assertEqualAndAffine(slow, fast)
+    }
+
+    {
+      val offset = Vector3(-1.0, 0.0, 0.3)
+      val slow = Matrix43.appendTranslate(MatB, offset)
+      Matrix43.unsafeAppendTranslate(fast, MatB, offset)
+      assertEqualAndAffine(slow, fast)
+    }
+
+    {
+      val offset = Vector3(1000.0, -3000.0, 0.0)
+      val slow = Matrix43.appendTranslate(Matrix43.Identity, offset)
+      Matrix43.unsafeAppendTranslate(fast, Matrix43.Identity, offset)
+      assertEqualAndAffine(slow, fast)
+    }
+
+  }
+
 }
 
