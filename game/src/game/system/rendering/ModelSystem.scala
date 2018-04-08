@@ -80,7 +80,7 @@ object ModelSystem {
 
 }
 
-sealed trait ModelSystem {
+sealed trait ModelSystem extends EntityDeleteListener {
 
   /**
     * Called when the asset load state has changed.
@@ -113,7 +113,7 @@ sealed trait ModelSystem {
   /**
     * Collect models from a set of visible entities.
     */
-  def collectVisibleModels(visible: Array[Entity]): ArrayBuffer[ModelInstance]
+  def collectVisibleModels(visible: EntitySet): ArrayBuffer[ModelInstance]
 
   /**
     * Update a set of models. If the same model is passed to this method twice
@@ -194,13 +194,13 @@ final class ModelSystemImpl extends ModelSystem {
   }
 
   override def addModel(entity: Entity, asset: ModelAsset): ModelInstance = {
-    val next = if ((entity.flag0 & Flag0_HasModel) != 0) entityToModel(entity) else null
+    val next = if (entity.hasFlag(Flag_HasModel)) entityToModel(entity) else null
     val model = new ModelInstanceImpl(entity, asset, next)
 
     model.poolIndex = allModels.add(model)
     entityToModel(entity) = model
 
-    entity.flag0 |= Flag0_HasModel
+    entity.setFlag(Flag_HasModel)
 
     model
   }
@@ -211,11 +211,12 @@ final class ModelSystemImpl extends ModelSystem {
       allModels.remove(model.poolIndex)
       model = model.next
     } while (model != null)
+    entity.clearFlag(Flag_HasModel)
   }
 
-  override def collectVisibleModels(visible: Array[Entity]): ArrayBuffer[ModelInstance] = {
+  override def collectVisibleModels(visible: EntitySet): ArrayBuffer[ModelInstance] = {
     val result = new ArrayBuffer[ModelInstance]()
-    for (entity <- filterFlag0(visible, Flag0_HasModel)) {
+    for (entity <- visible.flag(Flag_HasModel)) {
       var model = entityToModel(entity)
       do {
         result += model
@@ -303,6 +304,7 @@ final class ModelSystemImpl extends ModelSystem {
     currentFrameIndex += 1L
   }
 
+  override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Flag_HasModel).foreach(removeModels)
 }
 
 

@@ -5,39 +5,14 @@ import game.system.base._
 
 object Entity {
 
-  val Flag0_HasModel = 1L << 0
-  val Flag0_HasPointLight = 1L << 1
-  val Flag0_HasPointLightReceiver = 1L << 2
-  val Flag0_HasCullables = 1L << 3
-  val Flag0_HasAmbientProbes = 1L << 4
-  val Flag0_HasAmbientPointLight = 1L << 5
+  val Flag_HasModel = 0
+  val Flag_HasPointLight = 1
+  val Flag_HasPointLightReceiver = 2
+  val Flag_HasCullables = 3
+  val Flag_HasAmbientProbes = 4
+  val Flag_HasAmbientPointLight = 5
 
-  class EntityFlag0Iterator(val arr: Array[Entity], val mask: Long) extends Iterator[Entity] {
-    private val arrLength = arr.length
-    private var index: Int = nextIndex(0)
-    private def nextIndex(start: Int): Int = {
-      var ix = start
-      val len = arrLength
-      while (ix < len) {
-        if ((arr(ix).flag0 & mask) != 0L) {
-          return ix
-        }
-        ix += 1
-      }
-      ix
-    }
-
-    override def hasNext: Boolean = index < arrLength
-
-    override def next(): Entity = {
-      val ix = index
-      val res = arr(ix)
-      index = nextIndex(ix + 1)
-      res
-    }
-  }
-
-  def filterFlag0(arr: Array[Entity], mask: Long): EntityFlag0Iterator = new EntityFlag0Iterator(arr, mask)
+  val Flag_HasCables = 128
 
 }
 
@@ -55,6 +30,48 @@ class Entity(val static: Boolean) {
     * Absolute position of the entity in the world.
     */
   var position: Vector3 = Vector3.Zero
+
+  def setFlag(index: Int): Unit = {
+    require(index >= 0 && index < 256, s"Flag index out of range: $index")
+
+    if (index < 64) {
+      flag0 |= 1L << index
+    } else if (index < 128) {
+      flag1 |= 1L << (index - 64)
+    } else if (index < 192) {
+      flag2 |= 1L << (index - 128)
+    } else {
+      flag3 |= 1L << (index - 192)
+    }
+  }
+
+  def clearFlag(index: Int): Unit = {
+    require(index >= 0 && index < 256, s"Flag index out of range: $index")
+
+    if (index < 64) {
+      flag0 &= ~(1L << index)
+    } else if (index < 128) {
+      flag1 &= ~(1L << (index - 64))
+    } else if (index < 192) {
+      flag2 &= ~(1L << (index - 128))
+    } else {
+      flag3 &= ~(1L << (index - 192))
+    }
+  }
+
+  def hasFlag(index: Int): Boolean = {
+    require(index >= 0 && index < 256, s"Flag index out of range: $index")
+
+    if (index < 64) {
+      (flag0 & (1L << index)) != 0
+    } else if (index < 128) {
+      (flag1 & (1L << (index - 64))) != 0
+    } else if (index < 192) {
+      (flag2 & (1L << (index - 128))) != 0
+    } else {
+      (flag3 & (1L << (index - 192))) != 0
+    }
+  }
 
   var flag0: Long = 0x0
   var flag1: Long = 0x0

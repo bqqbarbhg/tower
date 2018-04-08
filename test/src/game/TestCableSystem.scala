@@ -75,6 +75,7 @@ object TestCableSystem extends App {
 
   system.GroundSystem = new GroundSystemOld(-16, -16, 16, 16)
 
+  base.load()
   rendering.load()
 
   processResources()
@@ -729,10 +730,11 @@ object TestCableSystem extends App {
     val s = new Scheduler()
     s.attachDebugger(debugger)
 
-    var visEntities: Array[Entity] = null
     var visProbes: ArrayBuffer[rendering.AmbientSystem.Probe] = null
     var visMeshes: MeshInstanceCollection = null
     var forwardDraws: rendering.ForwardRenderingSystem.Draws = null
+
+    val visEntities = new EntitySet()
 
     object Vis
     object VisModel
@@ -744,7 +746,7 @@ object TestCableSystem extends App {
     LightSystem.finishFrame()
 
     s.add("Viewport cull")(rendering.cullingSystem, Vis)() {
-      visEntities = rendering.cullingSystem.cullEntities(viewport.frustum, rendering.CullingSystem.MaskRender)
+      rendering.cullingSystem.cullEntities(visEntities, viewport.frustum, rendering.CullingSystem.MaskRender)
     }
 
     s.add("Probe collect")(rendering.ambientSystem, VisProbes)(Vis) {

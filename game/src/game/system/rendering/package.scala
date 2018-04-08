@@ -22,6 +22,12 @@ package object rendering {
 
     // Dependency: ambientSystem
     groundSystem = new GroundSystemImpl()
+
+    base.entitySystem.addDeleteListener(cullingSystem)
+    base.entitySystem.addDeleteListener(pointLightSystem)
+    base.entitySystem.addDeleteListener(ambientSystem)
+    base.entitySystem.addDeleteListener(ambientPointLightSystem)
+    base.entitySystem.addDeleteListener(modelSystem)
   }
 
 }

@@ -2,9 +2,8 @@ package game.system.rendering
 
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable
-
 import core._
-import game.system.Entity
+import game.system.{Entity, EntityDeleteListener, EntitySet}
 import util.geometry._
 import CullingSystem._
 import CullingSystemImpl._
@@ -17,7 +16,7 @@ object CullingSystem {
 
 }
 
-sealed trait CullingSystem {
+sealed trait CullingSystem extends EntityDeleteListener {
 
   /**
     * Update the bounding areas of dynamically culled objects.
@@ -26,9 +25,9 @@ sealed trait CullingSystem {
 
   /**
     * Find all entities with bounding areas tagged with `mask` which intersect
-    * with `frustum`.
+    * with `frustum`. The resutls are gathered to `set`.
     */
-  def cullEntities(frustum: Frustum, mask: Int): Array[Entity]
+  def cullEntities(set: EntitySet, frustum: Frustum, mask: Int): Unit
 
   /** Attach an axis aligned bounding box to the entity. */
   def addAabb(entity: Entity, aabb: Aabb, mask: Int): Unit
@@ -37,7 +36,7 @@ sealed trait CullingSystem {
   def addSphere(entity: Entity, sphere: Sphere, mask: Int): Unit
 
   /** Remove an entity from the system. */
-  def removeEntity(entity: Entity): Unit
+  def removeCullables(entity: Entity): Unit
 }
 
 object CullingSystemImpl {
@@ -118,7 +117,7 @@ object CullingSystemImpl {
 
   def getOrAddCullable(entity: Entity): Cullable = {
     val cullable = entityToCullable.getOrElseUpdate(entity, {
-      entity.flag0 |= Entity.Flag0_HasCullables
+      entity.setFlag(Entity.Flag_HasCullables)
       new Cullable(entity)
     })
 
@@ -286,7 +285,7 @@ final class CullingSystemImpl extends CullingSystem {
     * Perform narrow phase culling: Go through all broad-phase survivors and cull
     * them individiually.
     */
-  def cullNarrowPhase(results: ArrayBuffer[Entity], frustum: Frustum): Unit = {
+  def cullNarrowPhase(set: EntitySet, frustum: Frustum): Unit = {
 
     // Cull AABBs
     {
@@ -295,7 +294,7 @@ final class CullingSystemImpl extends CullingSystem {
       while (ix < num) {
         val shape = narrowAabbs(ix)
         if (frustum.intersects(shape.aabb)) {
-          results += shape.cullable.entity
+          set.add(shape.cullable.entity)
         }
         ix += 1
       }
@@ -308,7 +307,7 @@ final class CullingSystemImpl extends CullingSystem {
       while (ix < num) {
         val shape = narrowSpheres(ix)
         if (frustum.intersects(shape.sphere)) {
-          results += shape.cullable.entity
+          set.add(shape.cullable.entity)
         }
         ix += 1
       }
@@ -400,11 +399,11 @@ final class CullingSystemImpl extends CullingSystem {
 
   }
 
-  override def cullEntities(frustum: Frustum, mask: Int): Array[Entity] = {
+  override def cullEntities(set: EntitySet, frustum: Frustum, mask: Int): Unit = {
     val res = new ArrayBuffer[Entity]()
     currentPass += 1
     cullBroadPhase(frustum, mask)
-    cullNarrowPhase(res, frustum)
+    cullNarrowPhase(set, frustum)
     res.toArray
   }
 
@@ -424,7 +423,7 @@ final class CullingSystemImpl extends CullingSystem {
       addShape(cullable.sphere)
   }
 
-  override def removeEntity(entity: Entity): Unit = {
+  override def removeCullables(entity: Entity): Unit = {
     val cullable = entityToCullable(entity)
 
     for (ref <- cullable.refs) ref.release()
@@ -433,7 +432,11 @@ final class CullingSystemImpl extends CullingSystem {
       dynamicCullables.remove(cullable.dynamicIndex)
 
     entityToCullable.remove(entity)
+
+    entity.clearFlag(Entity.Flag_HasCullables)
   }
+
+  override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Entity.Flag_HasCullables).foreach(removeCullables)
 
 }
 

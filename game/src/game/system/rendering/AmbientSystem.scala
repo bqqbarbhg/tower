@@ -40,7 +40,7 @@ object AmbientSystem {
 
 }
 
-sealed trait AmbientSystem {
+sealed trait AmbientSystem extends EntityDeleteListener {
 
   /**
     * Create a new probe with an absolute position.
@@ -66,14 +66,14 @@ sealed trait AmbientSystem {
   /**
     * Remove an entity with probes from the system.
     */
-  def removeProbesFrom(entity: Entity): Unit
+  def removeProbes(entity: Entity): Unit
 
   /**
     * Collect and update light probes that are visible.
     *
     * @param visible Set of visible entities
     */
-  def updateVisibleProbes(visible: Array[Entity]): Unit
+  def updateVisibleProbes(visible: EntitySet): Unit
 
   /**
     * Add indirect lighting to visible probes.
@@ -153,11 +153,12 @@ final class AmbientSystemImpl extends AmbientSystem {
 
   override def addProbeDependency(entity: Entity, probe: Probe): Unit = {
     entityToProbe(entity) :+= probe.asInstanceOf[ProbeImpl]
-    entity.flag0 |= Entity.Flag0_HasAmbientProbes
+    entity.setFlag(Flag_HasAmbientProbes)
   }
 
-  override def removeProbesFrom(entity: Entity): Unit = {
+  override def removeProbes(entity: Entity): Unit = {
     entityToProbe.remove(entity)
+    entity.clearFlag(Flag_HasAmbientProbes)
   }
 
   private def updateVisibleProbe(probe: ProbeImpl): Unit = {
@@ -180,9 +181,8 @@ final class AmbientSystemImpl extends AmbientSystem {
     }
   }
 
-  override def updateVisibleProbes(visible: Array[Entity]): Unit = {
-
-    for (entity <- filterFlag0(visible, Flag0_HasAmbientProbes)) {
+  override def updateVisibleProbes(visible: EntitySet): Unit = {
+    for (entity <- visible.flag(Flag_HasAmbientProbes)) {
       for (probe <- entityToProbe(entity)) {
         updateVisibleProbe(probe)
       }
@@ -247,5 +247,7 @@ final class AmbientSystemImpl extends AmbientSystem {
 
     visibleProbes.clear()
   }
+
+  override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Flag_HasAmbientProbes).foreach(removeProbes)
 
 }

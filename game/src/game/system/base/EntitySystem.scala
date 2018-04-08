@@ -1,25 +1,45 @@
 package game.system.base
 
-import game.system.Entity
+import game.system._
 import game.system.rendering._
+
+import scala.collection.mutable.ArrayBuffer
 
 sealed trait EntitySystem {
 
-  /** Remove an entity from the world */
+  /** Queue the removel of an entity from the world */
   def delete(entity: Entity): Unit
 
+  /** Actually remove the entities from all the systems */
+  def processDeletions(): Unit
+
+  /** Add a listener to be informed about deleted entities. */
+  def addDeleteListener(listener: EntityDeleteListener): Unit
+
+  /** Remove a previously attached deletion listener */
+  def removeDeleteListener(listener: EntityDeleteListener): Unit
 }
 
 final class EntitySystemImpl extends EntitySystem {
 
-  def delete(entity: Entity): Unit = {
-    if ((entity.flag0 & Entity.Flag0_HasModel) != 0) modelSystem.removeModels(entity)
-    if ((entity.flag0 & Entity.Flag0_HasPointLight) != 0) pointLightSystem.removeLights(entity)
-    if ((entity.flag0 & Entity.Flag0_HasPointLightReceiver) != 0) pointLightSystem.removeReceivers(entity)
-    if ((entity.flag0 & Entity.Flag0_HasCullables) != 0) cullingSystem.removeEntity(entity)
-    if ((entity.flag0 & Entity.Flag0_HasAmbientProbes) != 0) ambientSystem.removeProbesFrom(entity)
-    if ((entity.flag0 & Entity.Flag0_HasAmbientPointLight) != 0) ambientPointLightSystem.removeLights(entity)
+  val queuedDeletes = new EntitySet()
+  val deleteListeners = new ArrayBuffer[EntityDeleteListener]()
+
+  override def delete(entity: Entity): Unit = {
+    queuedDeletes.add(entity)
   }
 
-}
+  override def processDeletions(): Unit = {
+    if (queuedDeletes.nonEmpty) {
 
+      for (listener <- deleteListeners) {
+        listener.entitiesDeleted(queuedDeletes)
+      }
+
+      queuedDeletes.clear()
+    }
+  }
+
+  override def addDeleteListener(listener: EntityDeleteListener): Unit = deleteListeners += listener
+  override def removeDeleteListener(listener: EntityDeleteListener): Unit = deleteListeners -= listener
+}

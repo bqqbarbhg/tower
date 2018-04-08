@@ -2,7 +2,8 @@ package game.system.rendering
 
 import scala.collection.mutable.ArrayBuffer
 import core._
-import game.system.Entity
+import game.system._
+import game.system.Entity._
 import PointLightSystem._
 import PointLightSystemImpl._
 import util.geometry.Sphere
@@ -40,12 +41,12 @@ object PointLightSystem {
 
 }
 
-sealed trait PointLightSystem {
+sealed trait PointLightSystem extends EntityDeleteListener {
 
   /**
     * Update receiving light probes for a list of visible entities.
     */
-  def updateLightReceivers(renderableEntities: ArrayBuffer[Entity], lightEntities: ArrayBuffer[Entity]): Unit
+  def updateLightReceivers(renderableEntities: EntitySet, lightEntities: EntitySet): Unit
 
   /** Add a point light. */
   def addLight(entity: Entity, localPosition: Vector3, intensity: Vector3, radius: Double, isStatic: Boolean): PointLight
@@ -93,42 +94,26 @@ final class PointLightSystemImpl extends PointLightSystem {
   val entityToPointLight = new mutable.HashMap[Entity, PointLightImpl]()
   val entityToReceiver = new mutable.HashMap[Entity, PointLightReceiverImpl]()
 
-  override def updateLightReceivers(renderableEntities: ArrayBuffer[Entity], lightEntities: ArrayBuffer[Entity]): Unit = {
+  override def updateLightReceivers(renderableEntities: EntitySet, lightEntities: EntitySet): Unit = {
     val lights = new ArrayBuffer[PointLightImpl]()
     val receivers = new ArrayBuffer[PointLightReceiverImpl]()
 
     // Gather point lights
-    {
-      var ix = 0
-      val len = lightEntities.length
-      while (ix < len) {
-        val entity = lightEntities(ix)
-        if ((entity.flag0 & Entity.Flag0_HasPointLight) != 0) {
-          var pointLight = entityToPointLight(entity)
-          do {
-            lights += pointLight
-            pointLight = pointLight.next
-          } while (pointLight != null)
-        }
-        ix += 1
-      }
+    for (entity <- lightEntities.flag(Flag_HasPointLight)) {
+      var pointLight = entityToPointLight(entity)
+      do {
+        lights += pointLight
+        pointLight = pointLight.next
+      } while (pointLight != null)
     }
 
     // Gather receivers
-    {
-      var ix = 0
-      val len = renderableEntities.length
-      while (ix < len) {
-        val entity = renderableEntities(ix)
-        if ((entity.flag0 & Entity.Flag0_HasPointLightReceiver) != 0) {
-          var receiver = entityToReceiver(entity)
-          do {
-            receivers += receiver
-            receiver = receiver.next
-          } while (receiver != null)
-        }
-        ix += 1
-      }
+    for (entity <- lightEntities.flag(Flag_HasPointLightReceiver)) {
+      var receiver = entityToReceiver(entity)
+      do {
+        receivers += receiver
+        receiver = receiver.next
+      } while (receiver != null)
     }
 
     // Terrible O(n^2) implementation
@@ -157,11 +142,11 @@ final class PointLightSystemImpl extends PointLightSystem {
   override def addLight(entity: Entity, localPosition: Vector3, intensity: Vector3, radius: Double, isStatic: Boolean): PointLight = {
     val light = new PointLightImpl(entity, localPosition, intensity, radius, isStatic)
 
-    light.next = if ((entity.flag0 & Entity.Flag0_HasPointLight) != 0)
+    light.next = if (entity.hasFlag(Flag_HasPointLight))
       entityToPointLight(entity)
     else null
 
-    entity.flag0 |= Entity.Flag0_HasPointLight
+    entity.setFlag(Flag_HasPointLight)
 
     light
   }
@@ -169,21 +154,28 @@ final class PointLightSystemImpl extends PointLightSystem {
   override def addReceiver(entity: Entity, sphere: Sphere, isStatic: Boolean): PointLightReceiver = {
     val receiver = new PointLightReceiverImpl(entity, sphere, isStatic)
 
-    receiver.next = if ((entity.flag0 & Entity.Flag0_HasPointLightReceiver) != 0)
+    receiver.next = if (entity.hasFlag(Flag_HasPointLightReceiver))
       entityToReceiver(entity)
     else null
 
-    entity.flag0 |= Entity.Flag0_HasPointLightReceiver
+    entity.setFlag(Flag_HasPointLightReceiver)
 
     receiver
   }
 
   override def removeLights(entity: Entity): Unit = {
     entityToPointLight.remove(entity)
+    entity.clearFlag(Flag_HasPointLight)
   }
 
   override def removeReceivers(entity: Entity): Unit = {
     entityToReceiver.remove(entity)
+    entity.clearFlag(Flag_HasPointLightReceiver)
+  }
+
+  override def entitiesDeleted(entities: EntitySet): Unit = {
+    entities.flag(Flag_HasPointLight).foreach(removeLights)
+    entities.flag(Flag_HasPointLightReceiver).foreach(removeReceivers)
   }
 }
 
