@@ -104,7 +104,8 @@ class CableRenderSystemImpl extends CableRenderSystem {
     case 2 => 6
     case 3 => 8
   }
-  val MaxRingsPerDraw = 2048
+  val MaxRingsPerDraw = 128
+  val PartMaxRings = 128
 
   val indexBuffer = {
     val data = Memory.alloc(VertsPerRing * MaxRingsPerDraw * 6 * 2)
@@ -254,7 +255,9 @@ class CableRenderSystemImpl extends CableRenderSystem {
     var prevPos = points(0)
 
     val numRings = points.length
-    val numVerts = numRings * VertsPerRing
+
+    // Some slack in vertices for splitting into parts
+    val numVerts = (numRings + 2) * VertsPerRing
     val vertexData = Memory.alloc(numVerts * CableSpec.sizeInBytes)
 
     val angleStepPerVert = (math.Pi * 2.0) / VertsPerRing
@@ -291,6 +294,7 @@ class CableRenderSystemImpl extends CableRenderSystem {
       maxY += radius
       maxZ += radius
       part.aabb = Aabb.fromMinMax(Vector3(minX, minY, minZ), Vector3(maxX, maxY, maxZ))
+      minX = Double.PositiveInfinity
       minY = Double.PositiveInfinity
       minZ = Double.PositiveInfinity
       maxX = Double.NegativeInfinity
@@ -299,6 +303,8 @@ class CableRenderSystemImpl extends CableRenderSystem {
 
       parts += part
 
+      vertexData.position(0)
+      partProbes.clear()
       partNumRings = 0
     }
 
@@ -318,7 +324,7 @@ class CableRenderSystemImpl extends CableRenderSystem {
       if (ix3 < 0 && partProbes.length < MaxProbes) { ix3 = partProbes.length; partProbes += probeRet(3) }
 
       // Ran out of probe space: Emit previous and current rings again
-      if (ix0 < 0 || ix1 < 0 || ix2 < 0 || ix3 < 0) {
+      if (ix0 < 0 || ix1 < 0 || ix2 < 0 || ix3 < 0 || partNumRings >= PartMaxRings) {
         flushCurrentPart()
         appendRingVertices(prevPos, prevTangent, prevBitangent)
         appendRingVertices(pos, up, right)

@@ -584,6 +584,8 @@ object TestCableSystem extends App {
   var resToggle = false
   var zoom = 0.5
 
+  var frozenCulling: Boolean = false
+
   {
     val cables = getCablePaths(asset)
     val cable = cables.head.toBuffer
@@ -722,7 +724,11 @@ object TestCableSystem extends App {
       Matrix4.orthographic(80.0, 80.0, 0.1, 100.0)
         * Matrix43.look(Vector3(0.25, 0.75, -0.25) * 40.0, -Vector3(0.25, 0.75, -0.25)))
 
-    viewport.frustum = Frustum.fromViewProjection(viewProjection)
+    if (AppWindow.keyEvents.exists(e => e.down && e.key == 'F'))
+      frozenCulling = !frozenCulling
+
+    if (!frozenCulling)
+      viewport.frustum = Frustum.fromViewProjection(viewProjection)
 
     val tt = 0.5
     head.localTransform = Matrix43.rotateZ(math.sin(tt * 0.6) * 0.5) * Matrix43.rotateX(math.sin(tt * 0.5) * 0.2)
