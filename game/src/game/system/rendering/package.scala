@@ -31,6 +31,8 @@ package object rendering {
     base.entitySystem.addDeleteListener(ambientPointLightSystem)
     base.entitySystem.addDeleteListener(modelSystem)
     base.entitySystem.addDeleteListener(cableRenderSystem)
+
+    groundSystem.createGroundPlates()
   }
 
 }

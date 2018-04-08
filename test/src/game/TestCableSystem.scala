@@ -26,6 +26,7 @@ import task.{Scheduler, Task}
 import game.system.rendering
 import game.system.rendering.ModelSystem.{MeshInstanceCollection, ModelInstance}
 import game.system.rendering.CableRenderSystem._
+import game.system.rendering.GroundSystem.GroundPlate
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -223,6 +224,7 @@ object TestCableSystem extends App {
 
     uniform(LightProbeUniform)
     uniform(GlobalUniform)
+    uniform(GroundPlateUniform)
 
     override object Textures extends SamplerBlock {
       val Albedo = sampler2D("Albedo", Sampler.RepeatAnisotropic)
@@ -387,7 +389,6 @@ object TestCableSystem extends App {
     val vertsTotal = vertsPerChunk * numX * numY
     val groundVertSize = GroundSpec.sizeInBytes * vertsTotal
     val groundVerts = MemoryUtil.memAlloc(groundVertSize)
-
 
     patch.probes = new Array[LightProbe]((numX + 1) * (numY + 1))
 
@@ -743,6 +744,7 @@ object TestCableSystem extends App {
     var visMeshes: MeshInstanceCollection = null
     var forwardDraws: rendering.ForwardRenderingSystem.Draws = null
     var visCables: ArrayBuffer[CableMeshPart] = null
+    var visGround: ArrayBuffer[GroundPlate] = null
 
     val visEntities = new EntitySet()
 
@@ -751,6 +753,7 @@ object TestCableSystem extends App {
     object VisMesh
     object VisProbes
     object VisCables
+    object VisGround
 
     LightSystem.addDynamicLightsToCells()
     LightSystem.evaluateProbes()
@@ -785,6 +788,10 @@ object TestCableSystem extends App {
 
     s.add("Collect cables")(rendering.cableRenderSystem, VisCables)(Vis) {
       visCables = rendering.cableRenderSystem.collectCableMeshes(visEntities)
+    }
+
+    s.add("Collect ground")(rendering.cableRenderSystem, VisGround)(Vis) {
+      visGround = rendering.groundSystem.collectGroundPlates(visEntities)
     }
 
     s.addTo("Forward draws")(Task.Main)(rendering.forwardRenderingSystem)(VisMesh, VisProbes) {
@@ -959,17 +966,8 @@ object TestCableSystem extends App {
       }
     })
 
-    for (patch <- groundPatches) {
-      renderer.pushUniform(LightProbeUniform, u => {
-        val stride = LightProbeUniform.LightProbes.arrayStrideInBytes
-        var base = LightProbeUniform.LightProbes.offsetInBytes
-        val baseStride = LightProbe.SizeInVec4 * stride
-        for (probe <- patch.probes) {
-          probe.writeToUniform(u, base, stride)
-          base += baseStride
-        }
-      })
-      renderer.drawElements(groundIndices.numIndices, groundIndices, patch.vertices)
+    for (plate <- visGround) {
+      plate.draw()
     }
 
     if (justPressed('R'.toInt)) {

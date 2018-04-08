@@ -75,6 +75,7 @@ object DebugDraw {
   def drawLine2D(line: Line2D): Unit = lines2D += line
 
   def render(viewProjection: Matrix4): Unit = {
+    if (lines.isEmpty) return
 
     val numVerts = lines.length * 2
     val rb = ringBuffer.get
@@ -111,6 +112,8 @@ object DebugDraw {
   }
 
   def render2D(): Unit = {
+    if (lines2D.isEmpty) return
+
     val numVerts = lines2D.length * 2
     val rb = ringBuffer.get
     val bufferOffset = rb.push(numVerts)
