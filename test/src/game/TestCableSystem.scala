@@ -233,7 +233,7 @@ object TestCableSystem extends App {
   }
 
   object TestShadowShader extends ShaderAsset("test/instanced_shadow") {
-    uniform(ModelInstanceUniform)
+    uniform(ShadowInstanceUniform)
 
     uniform(ShadowUniform)
     object ShadowUniform extends UniformBlock("ShadowUniform") {
@@ -296,6 +296,25 @@ object TestCableSystem extends App {
       val Depth = sampler2DMS("Depth")
     }
 
+  }
+
+  object SsaoBlurShader extends ShaderAsset("shader/post/ssao_blur") {
+
+    uniform(PixelUniform)
+    object PixelUniform extends UniformBlock("PixelUniform") {
+      val TexelSize = vec4("TexelSize")
+    }
+
+    override object Textures extends SamplerBlock {
+      val Ssao = sampler2D("Ssao", Sampler.ClampBilinearNoMip)
+    }
+  }
+
+  object SsaoAddShader extends ShaderAsset("shader/post/ssao_add") {
+
+    override object Textures extends SamplerBlock {
+      val Ssao = sampler2D("Ssao", Sampler.ClampBilinearNoMip)
+    }
   }
 
   val bundle = new AssetBundle(
@@ -400,6 +419,8 @@ object TestCableSystem extends App {
 
   var renderTarget: RenderTarget = null
   var resolveTarget: RenderTarget = null
+  var ssaoTarget: RenderTarget = null
+  var ssaoBlurTarget: RenderTarget = null
   var angle = 0.0
 
   var subsampleTexture: TextureHandle = null
@@ -471,6 +492,9 @@ object TestCableSystem extends App {
       renderTarget = RenderTarget.create(width, height, Some(TexFormat.SrgbA), Some("D24S"), true, 4)
       resolveTarget = RenderTarget.create(width, height, Some(TexFormat.SrgbA), None, false)
       renderTarget.setLabel("Multisample target")
+
+      ssaoTarget = RenderTarget.create(width / 2, height / 2, Some(TexFormat.Rgba), None, false)
+      ssaoBlurTarget = RenderTarget.create(width / 2, height / 2, Some(TexFormat.Rgba), None, false)
 
       val samples = renderTarget.sampleLocations
       numSamples = samples.length
@@ -557,7 +581,7 @@ object TestCableSystem extends App {
     if (!frozenCulling)
       frustum = Frustum.fromViewProjection(viewProjection)
 
-    val tt = 0.5
+    val tt = time
     head.localTransform = Matrix43.rotateZ(math.sin(tt * 0.6) * 0.5) * Matrix43.rotateX(math.sin(tt * 0.5) * 0.2)
     barrel.localTransform = Matrix43.rotateY(tt * -15.0)
 
@@ -568,11 +592,14 @@ object TestCableSystem extends App {
 
     var visProbes: ArrayBuffer[rendering.AmbientSystem.Probe] = null
     var visMeshes: MeshInstanceCollection = null
+    var shadowMeshes: MeshInstanceCollection = null
     var forwardDraws: rendering.ForwardRenderingSystem.Draws = null
+    var shadowDraws: rendering.ShadowRenderingSystem.Draws = null
     var visCables: ArrayBuffer[CableMeshPart] = null
     var visGround: ArrayBuffer[GroundPlate] = null
 
     val visEntities = new EntitySet()
+    val shadowEntities = new EntitySet()
 
     object Vis
     object VisModel
@@ -581,8 +608,18 @@ object TestCableSystem extends App {
     object VisCables
     object VisGround
 
+    object Shadow
+    object ShadowModel
+    object ShadowMesh
+
+    val shadowFrustum = Frustum.fromViewProjection(shadowViewProjection)
+
     s.add("Viewport cull")(rendering.cullingSystem, Vis)() {
       rendering.cullingSystem.cullEntities(visEntities, frustum, rendering.CullingSystem.MaskRender)
+    }
+
+    s.add("Shadow cull")(rendering.cullingSystem, Shadow)() {
+      rendering.cullingSystem.cullEntities(shadowEntities, shadowFrustum, rendering.CullingSystem.MaskShadow)
     }
 
     s.add("Probe collect")(rendering.ambientSystem, VisProbes)(Vis) {
@@ -607,16 +644,26 @@ object TestCableSystem extends App {
       visMeshes = rendering.modelSystem.collectMeshInstances(models)
     }
 
+    s.add("Shadow model update")(rendering.modelSystem, ShadowMesh)(Shadow) {
+      val models = rendering.modelSystem.collectVisibleModels(shadowEntities)
+      rendering.modelSystem.updateModels(models)
+      shadowMeshes = rendering.modelSystem.collectMeshInstances(models)
+    }
+
     s.add("Collect cables")(rendering.cableRenderSystem, VisCables)(Vis) {
       visCables = rendering.cableRenderSystem.collectCableMeshes(visEntities)
     }
 
-    s.add("Collect ground")(rendering.cableRenderSystem, VisGround)(Vis) {
+    s.add("Collect ground")(rendering.groundSystem, VisGround)(Vis) {
       visGround = rendering.groundSystem.collectGroundPlates(visEntities)
     }
 
     s.addTo("Forward draws")(Task.Main)(rendering.forwardRenderingSystem)(VisMesh, VisProbes) {
       forwardDraws = rendering.forwardRenderingSystem.createMeshDraws(visMeshes)
+    }
+
+    s.addTo("Shadow draws")(Task.Main)(rendering.shadowRenderingSystem)(ShadowMesh) {
+      shadowDraws = rendering.shadowRenderingSystem.createMeshDraws(shadowMeshes)
     }
 
     s.add("Ambient point cleanup")(rendering.ambientPointLightSystem)() {
@@ -670,18 +717,15 @@ object TestCableSystem extends App {
 
     TestShadowShader.get.use()
 
-    /*
-    for (draw <- draws) {
-      val mesh = draw.mesh
-      val part = mesh.parts.head
-      assert(draw.mesh.parts.length == 1)
+    for (draw <- shadowDraws.instanced) {
+      val part = draw.mesh
+      val mesh = part.mesh
 
-      renderer.bindUniform(ModelInstanceUniform, draw.instanceUbo)
+      renderer.bindUniform(ShadowInstanceUniform, draw.instanceUbo)
 
       val numElems = part.numIndices
       renderer.drawElementsInstanced(draw.num, numElems, part.indexBuffer, part.vertexBuffer)
     }
-    */
 
     renderer.setRenderTarget(renderTarget)
     renderer.setDepthMode(true, true)
@@ -892,6 +936,35 @@ object TestCableSystem extends App {
 
     DebugDraw.render(viewProjection)
 
+    renderer.setBlend(Renderer.BlendNone)
+    renderer.setWriteSrgb(false)
+    renderer.setRenderTarget(ssaoTarget)
+
+    renderer.pushUniform(SsaoGenShader.SsaoUniform, u => {
+      val m33 = proj.m33.toFloat
+      val m34 = proj.m34.toFloat
+
+      SsaoGenShader.SsaoUniform.TextureScale.set(u, width.toFloat, height.toFloat, 0.0f, 0.0f)
+      SsaoGenShader.SsaoUniform.DepthPlanes.set(u, m33, m34, 0.0f, 0.0f)
+      SsaoGenShader.SsaoUniform.Projection.set(u, proj)
+      SsaoGenShader.SsaoUniform.InvProjection.set(u, proj.inverse)
+      for ((s, i) <- ssaoSamples.zipWithIndex) {
+        SsaoGenShader.SsaoUniform.Samples.set(u, i, s, 0.0f)
+      }
+    })
+    renderer.setTextureTargetDepth(SsaoGenShader.Textures.Depth, renderTarget)
+    SsaoGenShader.get.use()
+    renderer.drawQuad()
+
+    renderer.setRenderTarget(ssaoBlurTarget)
+
+    renderer.pushUniform(SsaoBlurShader.PixelUniform, u => {
+      SsaoBlurShader.PixelUniform.TexelSize.set(u, 1.0f / ssaoTarget.width.toFloat, 1.0f / ssaoTarget.height.toFloat, 0.0f, 0.0f)
+    })
+    renderer.setTextureTargetColor(SsaoBlurShader.Textures.Ssao, ssaoTarget, 0)
+    SsaoBlurShader.get.use()
+    renderer.drawQuad()
+
     renderer.setRenderTarget(RenderTarget.Backbuffer)
 
     renderer.clear(Some(Color.Black), Some(1.0))
@@ -921,23 +994,9 @@ object TestCableSystem extends App {
       renderer.setRenderTarget(RenderTarget.Backbuffer)
     }
 
-    renderer.pushUniform(SsaoGenShader.SsaoUniform, u => {
-      val m33 = proj.m33.toFloat
-      val m34 = proj.m34.toFloat
-
-      SsaoGenShader.SsaoUniform.TextureScale.set(u, width.toFloat, height.toFloat, 0.0f, 0.0f)
-      SsaoGenShader.SsaoUniform.DepthPlanes.set(u, m33, m34, 0.0f, 0.0f)
-      SsaoGenShader.SsaoUniform.Projection.set(u, proj)
-      SsaoGenShader.SsaoUniform.InvProjection.set(u, proj.inverse)
-      for ((s, i) <- ssaoSamples.zipWithIndex) {
-        SsaoGenShader.SsaoUniform.Samples.set(u, i, s, 0.0f)
-      }
-    })
-    renderer.setTextureTargetDepth(SsaoGenShader.Textures.Depth, renderTarget)
-    SsaoGenShader.get.use()
-
     renderer.setBlend(Renderer.BlendMultiply)
-    renderer.setWriteSrgb(false)
+    renderer.setTextureTargetColor(SsaoAddShader.Textures.Ssao, ssaoBlurTarget, 0)
+    SsaoAddShader.get.use()
     renderer.drawQuad()
 
     renderer.setBlend(Renderer.BlendAlpha)
