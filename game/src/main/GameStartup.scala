@@ -88,8 +88,6 @@ object GameStartup {
 
     RenderingSystem.unload()
 
-    game.system.unload()
-
     EngineStartup.softStop()
   }
 
@@ -97,7 +95,7 @@ object GameStartup {
     softStop()
     iconTask.get.unload()
     EngineStartup.stop()
-    AudioSystem.joinAudioThread()
+    game.system.audio.audioSystem.joinAudioThread()
   }
 
   def restart(): Unit = {

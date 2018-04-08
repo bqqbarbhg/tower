@@ -9,13 +9,14 @@ import io.Toml
 import io.content._
 import _root_.main.EngineStartup
 import game.TestModelSystem.TestModelShader.PixelUniform
-import CullingSystem.Viewport
 import platform.AppWindow
 import platform.AppWindow.WindowStyle
 import res.runner.{RunOptions, Runner}
 import ui.DebugDraw
 import util.geometry.{Aabb, Frustum, Sphere}
 import game.shader._
+import game.system._
+import game.system.rendering._
 
 object TestModelSystem extends App {
 
@@ -59,6 +60,9 @@ object TestModelSystem extends App {
   val windowStyle = new WindowStyle(1280, 720, false, false, -1, None)
   EngineStartup.softStart(windowStyle)
 
+  game.system.base.load()
+  game.system.rendering.load()
+
   var prevWidth = -1
   var prevHeight = -1
 
@@ -66,36 +70,33 @@ object TestModelSystem extends App {
 
   val probeOffset = Vector3(0.0, 2.0, 0.0)
 
-  val viewport = new Viewport()
-  viewport.viewportMask = 1
-
   for {
     y <- -5 to 5
     x <- -5 to 5
   } {
     if (x != 0 || y != 0) {
       val entity = new Entity(true, "StaticModel")
-      val model = ModelSystem.addModel(entity, asset)
+      val model = modelSystem.addModel(entity, asset)
       entity.position = Vector3(x * 8.0, 0.0, y * 8.0)
 
-      val probe = LightSystem.addStaticProbe(entity.position + probeOffset)
-      model.lightProbe = probe.probe
+      val probe = ambientSystem.addProbe(entity, probeOffset)
+      model.lightProbe = probe.irradianceProbe
 
       if ((x + y) % 2 == 0) {
-        CullingSystem.addStaticAABB(entity, Aabb(Vector3(0.0, 3.0, 0.0), Vector3(3.0, 3.0, 3.0)), 1)
+        cullingSystem.addAabb(entity, Aabb(Vector3(0.0, 3.0, 0.0), Vector3(3.0, 3.0, 3.0)), CullingSystem.MaskRender)
       } else {
-        CullingSystem.addStaticSphere(entity, Sphere(Vector3(0.0, 3.0, 0.0), 3.0), 1)
+        cullingSystem.addSphere(entity, Sphere(Vector3(0.0, 3.0, 0.0), 3.0), CullingSystem.MaskRender)
       }
     }
   }
 
   val entity = new Entity(false, "DynamicModel")
-  val model = ModelSystem.addModel(entity, asset)
+  val model = modelSystem.addModel(entity, asset)
   entity.position = Vector3(0.0, 0.0, 0.0)
-  val probe = LightSystem.addStaticProbe(entity.position + probeOffset)
-  model.lightProbe = probe.probe
+  val probe = ambientSystem.addProbe(entity, probeOffset)
+  model.lightProbe = probe.irradianceProbe
 
-  CullingSystem.addStaticAABB(entity, Aabb(Vector3.Zero, Vector3(3.0, 3.0, 3.0)), 1)
+  cullingSystem.addAabb(entity, Aabb(Vector3.Zero, Vector3(3.0, 3.0, 3.0)), CullingSystem.MaskRender)
 
   val radar = model.findNode(Identifier("Radar"))
 
@@ -122,12 +123,17 @@ object TestModelSystem extends App {
 
   TestModelShader.load()
 
-  LightSystem.globalProbe.addDirectional(Vector3(1.0, 1.0, -1.0).normalize, Vector3(0.05, 0.05, 0.1))
+  ambientSystem.globalProbe.addDirectional(Vector3(1.0, 1.0, -1.0).normalize, Vector3(0.05, 0.05, 0.1))
 
-  LightSystem.addStaticLight(Vector3(0.0, 30.0, 0.0), Vector3(0.4, 0.4, 0.4), 100.0)
-  val light = LightSystem.addDynamicLight(Vector3.Zero, Vector3(0.8, 0.4, 0.4), 50.0)
+  val lightEntity = new Entity(true, "Light")
+  ambientPointLightSystem.addLight(lightEntity, Vector3(0.0, 30.0, 0.0), Vector3(0.4, 0.4, 0.4), 100.0)
+
+  val dynamicLight = new Entity(false, "Dynamic light")
+  val light = ambientPointLightSystem.addLight(dynamicLight, Vector3.Zero, Vector3(0.8, 0.4, 0.4), 50.0)
 
   var renderTarget: RenderTarget = null
+
+  var frustum: Frustum = null
 
   val startTime = AppWindow.currentTime
   while (AppWindow.running) {
@@ -139,7 +145,7 @@ object TestModelSystem extends App {
 
     radar.localTransform = Matrix43.rotateZ(time)
 
-    light.position = Vector3(math.cos(time), 0.0, math.sin(time)) * 30.0 + Vector3(0.0, 10.0, 0.0)
+    light.localPosition = Vector3(math.cos(time), 0.0, math.sin(time)) * 30.0 + Vector3(0.0, 10.0, 0.0)
 
     val viewWidth = AppWindow.width
     val viewHeight = AppWindow.height
@@ -168,34 +174,40 @@ object TestModelSystem extends App {
     renderer.setWriteSrgb(true)
     renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
 
-    viewport.frustum = Frustum.fromViewProjection(viewProjectionSway)
+    frustum = Frustum.fromViewProjection(viewProjectionSway)
 
-    CullingSystem.update(viewport)
+    val entities = new EntitySet()
+    cullingSystem.updateDynamicCullables()
+    cullingSystem.cullEntities(entities, frustum, CullingSystem.MaskRender)
 
-    LightSystem.addDynamicLightsToCells()
-    LightSystem.evaluateProbes()
-    LightSystem.finishFrame()
-    ModelSystem.collectVisibleModels(viewport.visibleEntities)
-    ModelSystem.updateMatrices()
-    ModelSystem.collectMeshInstances()
-    ModelSystem.setupUniforms()
-    val draws = ModelSystem.getInstancedMeshDraws()
+    ambientPointLightSystem.updateDynamicLights()
+
+    val probes = ambientSystem.updateVisibleProbes(entities)
+    ambientPointLightSystem.updateVisibleProbes(probes)
+    ambientSystem.updateIndirectLight(probes)
+
+    val models = modelSystem.collectVisibleModels(entities)
+    modelSystem.updateModels(models)
+    val meshes = modelSystem.collectMeshInstances(models)
+    val draws = forwardRenderingSystem.createMeshDraws(meshes)
+
+    ambientSystem.frameCleanup(probes)
+    ambientPointLightSystem.frameCleanup()
+    modelSystem.frameCleanup()
 
     renderer.pushUniform(GlobalUniform, u => {
       GlobalUniform.ViewProjection.set(u, viewProjection)
     })
 
-    CullingSystem.debugDrawQuadTree(viewport.frustum)
 
     renderer.setCull(true)
 
     val shader = TestModelShader.get
     shader.use()
 
-    for (draw <- draws) {
-      val mesh = draw.mesh
-      val part = mesh.parts.head
-      assert(draw.mesh.parts.length == 1)
+    for (draw <- draws.instanced) {
+      val part = draw.mesh
+      val mesh = part.mesh
 
       renderer.pushUniform(PixelUniform, u => {
         PixelUniform.UvBounds.set(u, part.uvOffsetX, part.uvOffsetY, part.uvScaleX, part.uvScaleY)
@@ -213,7 +225,7 @@ object TestModelSystem extends App {
     if (AppWindow.keyEvents.exists(e => e.down && e.key == 'R'.toInt)) {
       processResources()
       AssetLoader.reloadEverything()
-      ModelSystem.assetsLoaded()
+      modelSystem.assetsLoaded()
     }
 
     DebugDraw.render(viewProjection)

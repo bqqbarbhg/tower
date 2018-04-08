@@ -73,7 +73,7 @@ sealed trait AmbientSystem extends EntityDeleteListener {
     *
     * @param visible Set of visible entities
     */
-  def updateVisibleProbes(visible: EntitySet): Unit
+  def updateVisibleProbes(visible: EntitySet): ArrayBuffer[Probe]
 
   /**
     * Add indirect lighting to visible probes.
@@ -81,15 +81,12 @@ sealed trait AmbientSystem extends EntityDeleteListener {
   def updateIndirectLight(probes: ArrayBuffer[Probe]): Unit
 
   /**
-    * Ambient probes that are currently visible. Valid after calling
-    * `updateVisibleProbes()`.
-    */
-  def currentlyVisibleProbes: ArrayBuffer[Probe]
-
-  /**
     * Clean-up after all the frame processing has been done.
     */
-  def frameCleanup(): Unit
+  def frameCleanup(visibleProbes: ArrayBuffer[Probe]): Unit
+
+  /** Default light probe base for everything */
+  def globalProbe: LightProbe
 
 }
 
@@ -112,6 +109,8 @@ final class AmbientSystemImpl extends AmbientSystem {
   val entityToProbe = new mutable.HashMap[Entity, Array[ProbeImpl]]().withDefaultValue(Array[ProbeImpl]())
 
   var visibleProbes = new ArrayBuffer[Probe]()
+
+  override val globalProbe = LightProbe.make()
 
   private def linkIndirectProbes(probe: ProbeImpl): Unit = {
     groundSystem.getProbesAndWeights(probe.worldPosition, probe.indirectProbes, probe.indirectWeights)
@@ -161,13 +160,13 @@ final class AmbientSystemImpl extends AmbientSystem {
     entity.clearFlag(Flag_AmbientProbes)
   }
 
-  private def updateVisibleProbe(probe: ProbeImpl): Unit = {
+  private def updateVisibleProbe(result: ArrayBuffer[Probe], probe: ProbeImpl): Unit = {
     if (probe.visibleMark) return
     probe.visibleMark = true
-    visibleProbes += probe
+    result += probe
 
     // Clear the probe's light
-    probe.irradianceProbe.clear()
+    probe.irradianceProbe.copyFrom(globalProbe)
 
     // Update probe position and indirect probes if it's dynamic
     if (!probe.static) {
@@ -177,16 +176,18 @@ final class AmbientSystemImpl extends AmbientSystem {
 
     // Recursively mark indirect probes this probe depends on
     for (probe <- probe.indirectProbes) {
-      updateVisibleProbe(probe.asInstanceOf[ProbeImpl])
+      updateVisibleProbe(result, probe.asInstanceOf[ProbeImpl])
     }
   }
 
-  override def updateVisibleProbes(visible: EntitySet): Unit = {
+  override def updateVisibleProbes(visible: EntitySet): ArrayBuffer[Probe] = {
+    val result = new ArrayBuffer[Probe]()
     for (entity <- visible.flag(Flag_AmbientProbes)) {
       for (probe <- entityToProbe(entity)) {
-        updateVisibleProbe(probe)
+        updateVisibleProbe(result, probe)
       }
     }
+    result
   }
 
   override def updateIndirectLight(probes: ArrayBuffer[Probe]): Unit = {
@@ -235,17 +236,13 @@ final class AmbientSystemImpl extends AmbientSystem {
     }
   }
 
-  override def currentlyVisibleProbes: ArrayBuffer[Probe] = visibleProbes
-
-  override def frameCleanup(): Unit = {
+  override def frameCleanup(visibleProbes: ArrayBuffer[Probe]): Unit = {
     var ix = 0
     val len = visibleProbes.length
     while (ix < len) {
       visibleProbes(ix).asInstanceOf[ProbeImpl].visibleMark = false
       ix += 1
     }
-
-    visibleProbes.clear()
   }
 
   override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Flag_AmbientProbes).foreach(removeProbes)

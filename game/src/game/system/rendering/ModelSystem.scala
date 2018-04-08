@@ -116,6 +116,11 @@ sealed trait ModelSystem extends EntityDeleteListener {
   def collectVisibleModels(visible: EntitySet): ArrayBuffer[ModelInstance]
 
   /**
+    * Collect models from a set of visible entities.
+    */
+  def collectVisibleModels(visible: Iterable[Entity]): ArrayBuffer[ModelInstance]
+
+  /**
     * Update a set of models. If the same model is passed to this method twice
     * in a frame only the first update is processed.
     */
@@ -217,6 +222,18 @@ final class ModelSystemImpl extends ModelSystem {
   override def collectVisibleModels(visible: EntitySet): ArrayBuffer[ModelInstance] = {
     val result = new ArrayBuffer[ModelInstance]()
     for (entity <- visible.flag(Flag_Model)) {
+      var model = entityToModel(entity)
+      do {
+        result += model
+        model = model.next
+      } while (model != null)
+    }
+    result
+  }
+
+  override def collectVisibleModels(visible: Iterable[Entity]): ArrayBuffer[ModelInstance] = {
+    val result = new ArrayBuffer[ModelInstance]()
+    for (entity <- visible.filter(_.hasFlag(Flag_Model))) {
       var model = entityToModel(entity)
       do {
         result += model

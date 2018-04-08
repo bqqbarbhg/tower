@@ -9,6 +9,7 @@ import platform.AppWindow
 import task.Task
 import LoadingState._
 import game.system._
+import game.system.audio._
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -58,7 +59,6 @@ class LoadingState extends GameState {
 
   override def start(): Unit = {
 
-    systemLoadTask = game.system.deferredLoad()
     loadingAssets = AssetLoader.startLoading()
     numAssetsBegin = loadingAssets.length
     numAssetsLeft = numAssetsBegin
@@ -70,12 +70,12 @@ class LoadingState extends GameState {
   override def stop(): Unit = {
     loadingAssets = null
 
-    AudioSystem.acquireHighLatency()
+    audioSystem.acquireHighLatency()
 
     // Collect garbage after loading
     System.gc()
 
-    AudioSystem.releaseHighLatency()
+    audioSystem.releaseHighLatency()
   }
 
   def tryFinishOneAsset(): Unit = {

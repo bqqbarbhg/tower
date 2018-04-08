@@ -7,8 +7,7 @@ import asset._
 import game.shader._
 import platform.AppWindow
 import MenuState._
-import game.system.{ModelSystem, RenderingSystem, SoundRef}
-import game.system.ModelSystem.ModelRef
+import game.system.RenderingSystem
 import gfx.Material
 import menu.{DebugMenu, OptionsMenu}
 import ui._
@@ -17,8 +16,13 @@ import ui.InputSet.InputArea
 import io.property._
 import org.lwjgl.system.MemoryUtil
 import game.system._
+import game.system.audio.AudioSystem.SoundRef
+import game.system.rendering.ModelSystem.ModelInstance
+import game.system.rendering._
+import game.system.audio._
 import locale.LocaleString._
 import main.GameStartup
+import util.geometry.Frustum
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -66,7 +70,7 @@ object MenuState {
 
 class MenuState extends GameState {
 
-  var turretModel: ModelRef = _
+  var turretModel: ModelInstance = _
   var startTime = 0.0
 
   val canvas = new Canvas()
@@ -82,6 +86,7 @@ class MenuState extends GameState {
   var optionsMenu: Option[OptionsMenu] = None
 
   var music: SoundRef = null
+  var modelEntity: Entity = null
 
   override def load(): Unit = {
     menuAssets.acquire()
@@ -89,10 +94,12 @@ class MenuState extends GameState {
   }
 
   override def start(): Unit = {
-    turretModel = ModelSystem.addModel(null, StatueModel)
-    turretModel.useManualDraws = true
+    modelEntity = new Entity(true, "Mainmenu Model")
+    turretModel = modelSystem.addModel(modelEntity, StatueModel)
+
+
     startTime = AppWindow.currentTime
-    music = AudioSystem.play(MenuMusic, AudioChannel.Music)
+    music = audioSystem.play(MenuMusic, AudioSystem.Music)
     music.instance.setFullLoop()
   }
 
@@ -113,11 +120,6 @@ class MenuState extends GameState {
     renderer.clear(Some(Color.rgb(0x707070)), Some(1.0))
     renderer.setBlend(Renderer.BlendNone)
 
-    ModelSystem.collectVisibleModels(ArrayBuffer[Entity]())
-    ModelSystem.updateMatrices()
-    ModelSystem.collectMeshInstances()
-    ModelSystem.setupUniforms()
-    AudioSystem.update()
 
     inputSet.update()
 
@@ -186,16 +188,22 @@ class MenuState extends GameState {
       SimpleMeshShader.GlobalUniform.ViewProjection.set(u, viewProj)
     })
 
-    for (draw <- turretModel.manualDraws) {
-      for (part <- draw.mesh.parts) {
-        renderer.setTexture(SimpleMeshShader.Textures.Texture, draw.mesh.material.albedoTex.texture)
-        renderer.pushUniform(SimpleMeshShader.InstanceUniform, u => {
-          SimpleMeshShader.InstanceUniform.World.set(u, draw.worldTransform)
-          SimpleMeshShader.InstanceUniform.UvBounds.set(u, part.uvOffsetX, part.uvOffsetY, part.uvScaleX, part.uvScaleY)
-        })
+    val visibleSet = new EntitySet()
+    visibleSet.add(modelEntity)
+    val models = modelSystem.collectVisibleModels(Some(modelEntity))
+    val meshes = modelSystem.collectMeshInstances(models)
 
-        part.draw()
-      }
+    for {
+      (part, instances) <- meshes.meshes
+      instance <- instances
+    } {
+      renderer.setTexture(SimpleMeshShader.Textures.Texture, part.mesh.material.albedoTex.texture)
+      renderer.pushUniform(SimpleMeshShader.InstanceUniform, u => {
+        SimpleMeshShader.InstanceUniform.World.set(u, instance.worldTransform)
+        SimpleMeshShader.InstanceUniform.UvBounds.set(u, part.uvOffsetX, part.uvOffsetY, part.uvScaleX, part.uvScaleY)
+      })
+
+      part.draw()
     }
 
 

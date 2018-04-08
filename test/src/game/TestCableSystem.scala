@@ -13,7 +13,6 @@ import res.runner.{RunOptions, Runner}
 import ui.{DebugDraw, SpriteBatch}
 import game.lighting.LightProbe
 import game.state.LoadingState
-import CullingSystem.Viewport
 import gfx.Shader
 import org.lwjgl.system.MemoryUtil
 import platform.AppWindow.WindowStyle
@@ -72,10 +71,6 @@ object TestCableSystem extends App {
 
   val windowStyle = new WindowStyle(1280, 720, false, false, -1, None)
   EngineStartup.softStart(windowStyle)
-
-  system.deferredLoad().get
-
-  system.GroundSystem = new GroundSystemOld(-16, -16, 16, 16)
 
   base.load()
   rendering.load()
@@ -336,14 +331,6 @@ object TestCableSystem extends App {
   val head = model.findNode(Identifier("Head"))
   val barrel = model.findNode(Identifier("Barrel"))
 
-  LightSystem.addDynamicLight(Vector3(40.0, 50.0, 20.0), Vector3(1.0, 0.0, 0.0) * 3.7, 150.0)
-  LightSystem.addStaticLight(Vector3(100.0, 80.0, 20.0), Vector3(0.6, 0.5, 0.5) * 2.7, 100.0)
-  LightSystem.addStaticLight(Vector3(-20.0, 50.0, -20.0), Vector3(0.5, 0.5, 0.8) * 3.4, 150.0)
-
-  // LightSystem.addStaticLight(Vector3(-10.0, 20.0, 20.0), Vector3(1.0, 1.0, 1.0) * 2.0, 60.0)
-  //LightSystem.addStaticLight(Vector3(20.0, 20.0, 20.0), Vector3(0.5, 0.5, 3.0) * 2.0, 60.0)
-
-
   val ambientAmount = 1.0
   val groundColor = Color.rgb(0x8a857f)
   val groundIntensity = Vector3(groundColor.r, groundColor.g, groundColor.b) * ambientAmount
@@ -364,168 +351,8 @@ object TestCableSystem extends App {
     Attrib(4, UN8, Identifier("ProbeWeight")),
   ))
 
-  class GroundNode(val x: Double, val y: Double) {
-    val probe = LightSystem.addStaticProbe(Vector3(x, 0.0, y))
-  }
-
-  val groundMap = new mutable.HashMap[(Int, Int), GroundNode]()
-
-  def getGroundNode(x: Int, y: Int): GroundNode = {
-    groundMap.getOrElseUpdate((x, y), {
-      val xx = x.toDouble * 16.0
-      val yy = y.toDouble * 16.0
-      new GroundNode(xx, yy)
-    })
-  }
-
-  class GroundPatch {
-    var probes: Array[LightProbe] = null
-    var vertices: VertexBuffer = null
-  }
-
-  def createGroundPatch(startX: Int, startY: Int, res: Int, numX: Int, numY: Int): GroundPatch = {
-    val patch = new GroundPatch()
-    val vertsPerChunk = (res + 1) * (res + 1)
-    val vertsTotal = vertsPerChunk * numX * numY
-    val groundVertSize = GroundSpec.sizeInBytes * vertsTotal
-    val groundVerts = MemoryUtil.memAlloc(groundVertSize)
-
-    patch.probes = new Array[LightProbe]((numX + 1) * (numY + 1))
-
-    for {
-      chunkY <- 0 to numY
-      chunkX <- 0 to numX
-    } {
-      patch.probes(chunkY * (numX + 1) + chunkX) = getGroundNode(chunkX + startX, chunkY + startY).probe.probe
-    }
-
-    val invRes = 1.0 / res.toDouble
-
-    for {
-      chunkY <- 0 until numY
-      chunkX <- 0 until numX
-    } {
-      val baseVert = (chunkY * numX + chunkX) * vertsPerChunk
-
-      val x0 = getGroundNode(chunkX + startX, chunkY + startY).x
-      val x1 = getGroundNode(chunkX + startX + 1, chunkY + startY).x
-      val y0 = getGroundNode(chunkX + startX, chunkY + startY).y
-      val y1 = getGroundNode(chunkX + startX, chunkY + startY + 1).y
-
-      val probeA = ((chunkY + 0) * (numX + 1) + (chunkX + 0))
-      val probeB = ((chunkY + 0) * (numX + 1) + (chunkX + 1))
-      val probeC = ((chunkY + 1) * (numX + 1) + (chunkX + 0))
-      val probeD = ((chunkY + 1) * (numX + 1) + (chunkX + 1))
-
-      val probeI = probeA | probeB << 8 | probeC << 16 | probeD << 24
-
-      var vertY = 0
-      var dy = 0.0
-      while (vertY <= res) {
-        val b = groundVerts
-        b.position((baseVert + vertY * (res + 1)) * GroundSpec.sizeInBytes)
-
-        val yf = if (vertY == res)
-            y1.toFloat
-          else
-            (y0 * (1.0 - dy) + y1 * dy).toFloat
-
-        var vertX = 0
-        var dx = 0.0
-        while (vertX <= res) {
-
-          if (vertX == res)
-            b.putFloat(x1.toFloat)
-          else
-            b.putFloat((x0 * (1.0 - dx) + x1 * dx).toFloat)
-          b.putFloat(0.0f)
-          b.putFloat(yf)
-          b.putFloat(0.0f)
-          b.putFloat(1.0f)
-          b.putFloat(0.0f)
-
-          b.putInt(probeI)
-
-          val nx = dx
-          val ny = dy
-          val px = 1.0 - nx
-          val py = 1.0 - ny
-
-          b.put((px * py * 255.0).toByte)
-          b.put((nx * py * 255.0).toByte)
-          b.put((px * ny * 255.0).toByte)
-          b.put((nx * ny * 255.0).toByte)
-
-          vertX += 1
-          dx += invRes
-        }
-        vertY += 1
-        dy += invRes
-      }
-    }
-
-    groundVerts.position(0)
-    patch.vertices = VertexBuffer.createStatic(GroundSpec, groundVerts)
-
-    MemoryUtil.memFree(groundVerts)
-
-    patch
-  }
-
-  def createGroundIndexBuffer(res: Int, numX: Int, numY: Int): IndexBuffer = {
-    val numQuads = numX * numY * res * res
-    val groundIndices = MemoryUtil.memAlloc(numQuads * 6 * 2)
-    val vertsPerChunk = (res + 1) * (res + 1)
-
-    for {
-      chunkY <- 0 until numY
-      chunkX <- 0 until numX
-    } {
-      val baseVert = (chunkY * numX + chunkX) * vertsPerChunk
-
-      var vertY = 0
-      while (vertY < res) {
-        var base = baseVert + vertY * (res + 1)
-
-        var vertX = 0
-        while (vertX < res) {
-
-          val a = base.toShort
-          val b = (base + 1).toShort
-          val c = (base + (res + 1)).toShort
-          val d = (base + 1 + (res + 1)).toShort
-
-          groundIndices.putShort(c)
-          groundIndices.putShort(b)
-          groundIndices.putShort(a)
-          groundIndices.putShort(b)
-          groundIndices.putShort(c)
-          groundIndices.putShort(d)
-
-          base += 1
-          vertX += 1
-        }
-        vertY += 1
-      }
-
-    }
-
-    groundIndices.position(0)
-    val indexBuffer = IndexBuffer.createStatic(groundIndices)
-
-    MemoryUtil.memFree(groundIndices)
-
-    indexBuffer
-  }
 
   AssetLoader.preloadAtlases()
-
-  val groundIndices = createGroundIndexBuffer(16, 3, 3)
-
-  val groundPatches = for {
-    x <- -10 to 10 by 3
-    y <- -10 to 10 by 3
-  } yield createGroundPatch(x, y, 16, 3, 3)
 
   val QuadSpec = VertexSpec(Vector(
     Attrib(2, F32, Identifier("Position"))
@@ -557,9 +384,6 @@ object TestCableSystem extends App {
     IndexBuffer.createStatic(buffer)
   }
 
-  val viewport = new Viewport()
-  viewport.viewportMask = 1
-
   TestModelShader.load()
   TestShadowShader.load()
 
@@ -586,6 +410,8 @@ object TestCableSystem extends App {
   var zoom = 0.5
 
   var frozenCulling: Boolean = false
+
+  var frustum: Frustum = null
 
   {
     val cables = getCablePaths(asset)
@@ -729,7 +555,7 @@ object TestCableSystem extends App {
       frozenCulling = !frozenCulling
 
     if (!frozenCulling)
-      viewport.frustum = Frustum.fromViewProjection(viewProjection)
+      frustum = Frustum.fromViewProjection(viewProjection)
 
     val tt = 0.5
     head.localTransform = Matrix43.rotateZ(math.sin(tt * 0.6) * 0.5) * Matrix43.rotateX(math.sin(tt * 0.5) * 0.2)
@@ -755,17 +581,12 @@ object TestCableSystem extends App {
     object VisCables
     object VisGround
 
-    LightSystem.addDynamicLightsToCells()
-    LightSystem.evaluateProbes()
-    LightSystem.finishFrame()
-
     s.add("Viewport cull")(rendering.cullingSystem, Vis)() {
-      rendering.cullingSystem.cullEntities(visEntities, viewport.frustum, rendering.CullingSystem.MaskRender)
+      rendering.cullingSystem.cullEntities(visEntities, frustum, rendering.CullingSystem.MaskRender)
     }
 
     s.add("Probe collect")(rendering.ambientSystem, VisProbes)(Vis) {
-      rendering.ambientSystem.updateVisibleProbes(visEntities)
-      visProbes = rendering.ambientSystem.currentlyVisibleProbes.clone
+      visProbes = rendering.ambientSystem.updateVisibleProbes(visEntities)
     }
 
     s.add("Ambient point dynamic")(rendering.ambientPointLightSystem)() {
@@ -802,8 +623,8 @@ object TestCableSystem extends App {
       rendering.ambientPointLightSystem.frameCleanup()
     }
 
-    s.add("Ambient cleanup")(rendering.ambientSystem)() {
-      rendering.ambientSystem.frameCleanup()
+    s.add("Ambient cleanup")(rendering.ambientSystem, visProbes)() {
+      rendering.ambientSystem.frameCleanup(visProbes)
     }
 
     s.add("Model cleanup")(rendering.modelSystem)() {
@@ -973,7 +794,7 @@ object TestCableSystem extends App {
     if (justPressed('R'.toInt)) {
       processResources()
       AssetLoader.reloadEverything()
-      ModelSystem.assetsLoaded()
+      rendering.modelSystem.assetsLoaded()
     }
 
     if (isDown('A'.toInt)) {
@@ -1144,7 +965,6 @@ object TestCableSystem extends App {
     AppWindow.swapBuffers()
   }
 
-  game.system.unload()
   EngineStartup.softStop()
   EngineStartup.stop()
 }

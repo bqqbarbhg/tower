@@ -3,7 +3,8 @@ package game.system.rendering
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable
 import core._
-import game.system.{Entity, EntityDeleteListener, EntitySet}
+import game.system._
+import game.system.Entity._
 import util.geometry._
 import CullingSystem._
 import CullingSystemImpl._
@@ -34,6 +35,9 @@ sealed trait CullingSystem extends EntityDeleteListener {
 
   /** Attach a bounding sphere to the entity. */
   def addSphere(entity: Entity, sphere: Sphere, mask: Int): Unit
+
+  /** Add an entity that is always visible */
+  def addAlwaysVisible(entity: Entity, mask: Int): Unit
 
   /** Remove an entity from the system. */
   def removeCullables(entity: Entity): Unit
@@ -66,6 +70,7 @@ object CullingSystemImpl {
     var lastPassAdded: Int = -1
 
     var dynamicIndex: Int = -1
+    var alwaysVisibleIndex: Int = -1
   }
 
   final class ShapeAabb(val cullable: Cullable, var localAabb: Aabb, var aabb: Aabb, var mask: Int, val next: ShapeAabb) {
@@ -74,6 +79,9 @@ object CullingSystemImpl {
 
   final class ShapeSphere(val cullable: Cullable, var localSphere: Sphere, var sphere: Sphere, var mask: Int, val next: ShapeSphere) {
     var lastPassAdded: Int = -1
+  }
+
+  final class AlwaysVisible(val cullable: Cullable, var mask: Int) {
   }
 
   final class CullableContainer {
@@ -112,12 +120,17 @@ object CullingSystemImpl {
     def numShapes: Int = aabbList.size + sphereList.size
   }
 
+}
+
+final class CullingSystemImpl extends CullingSystem {
+
   val entityToCullable = new mutable.HashMap[Entity, Cullable]()
   val dynamicCullables = new ArrayPool[Cullable]()
+  val alwaysVisible = new ArrayPool[AlwaysVisible]()
 
   def getOrAddCullable(entity: Entity): Cullable = {
     val cullable = entityToCullable.getOrElseUpdate(entity, {
-      entity.setFlag(Entity.Flag_Cullables)
+      entity.setFlag(Flag_Cullables)
       new Cullable(entity)
     })
 
@@ -127,9 +140,6 @@ object CullingSystemImpl {
 
     cullable
   }
-}
-
-final class CullingSystemImpl extends CullingSystem {
 
   val narrowAabbs = new ArrayBuffer[ShapeAabb]()
   val narrowSpheres = new ArrayBuffer[ShapeSphere]()
@@ -264,6 +274,12 @@ final class CullingSystemImpl extends CullingSystem {
     }
   }
 
+  def addCullableToSet(set: EntitySet, cullable: Cullable): Unit = {
+    if (cullable.lastPassAdded == currentPass) return
+    cullable.lastPassAdded = currentPass
+    set.add(cullable.entity)
+  }
+
   /**
     * Perform broad phase culling: Go through all the high-level CullableContainers
     * and add their contents to the narrow pahse if they are visible.
@@ -285,7 +301,7 @@ final class CullingSystemImpl extends CullingSystem {
     * Perform narrow phase culling: Go through all broad-phase survivors and cull
     * them individiually.
     */
-  def cullNarrowPhase(set: EntitySet, frustum: Frustum): Unit = {
+  def cullNarrowPhase(set: EntitySet, frustum: Frustum, mask: Int): Unit = {
 
     // Cull AABBs
     {
@@ -294,7 +310,7 @@ final class CullingSystemImpl extends CullingSystem {
       while (ix < num) {
         val shape = narrowAabbs(ix)
         if (frustum.intersects(shape.aabb)) {
-          set.add(shape.cullable.entity)
+          addCullableToSet(set, shape.cullable)
         }
         ix += 1
       }
@@ -307,9 +323,21 @@ final class CullingSystemImpl extends CullingSystem {
       while (ix < num) {
         val shape = narrowSpheres(ix)
         if (frustum.intersects(shape.sphere)) {
-          set.add(shape.cullable.entity)
+          addCullableToSet(set, shape.cullable)
         }
         ix += 1
+      }
+    }
+
+    // Always visible
+    {
+      var ix = 0
+      val num = alwaysVisible.sparseData.length
+      while (ix < num) {
+        val always = alwaysVisible.sparseData(ix)
+        if ((always.mask & mask) != 0) {
+          addCullableToSet(set, always.cullable)
+        }
       }
     }
 
@@ -403,7 +431,7 @@ final class CullingSystemImpl extends CullingSystem {
     val res = new ArrayBuffer[Entity]()
     currentPass += 1
     cullBroadPhase(frustum, mask)
-    cullNarrowPhase(set, frustum)
+    cullNarrowPhase(set, frustum, mask)
     res.toArray
   }
 
@@ -423,6 +451,14 @@ final class CullingSystemImpl extends CullingSystem {
       addShape(cullable.sphere)
   }
 
+  override def addAlwaysVisible(entity: Entity, mask: Int): Unit = {
+    val cullable = getOrAddCullable(entity)
+
+    if (cullable.alwaysVisibleIndex < 0) {
+      cullable.alwaysVisibleIndex = alwaysVisible.add(new AlwaysVisible(cullable, mask))
+    }
+  }
+
   override def removeCullables(entity: Entity): Unit = {
     val cullable = entityToCullable(entity)
 
@@ -431,12 +467,15 @@ final class CullingSystemImpl extends CullingSystem {
     if (cullable.dynamicIndex >= 0)
       dynamicCullables.remove(cullable.dynamicIndex)
 
+    if (cullable.alwaysVisibleIndex >= 0)
+      alwaysVisible.remove(cullable.alwaysVisibleIndex)
+
     entityToCullable.remove(entity)
 
-    entity.clearFlag(Entity.Flag_Cullables)
+    entity.clearFlag(Flag_Cullables)
   }
 
-  override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Entity.Flag_Cullables).foreach(removeCullables)
+  override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Flag_Cullables).foreach(removeCullables)
 
 }
 
