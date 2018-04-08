@@ -99,7 +99,7 @@ final class PointLightSystemImpl extends PointLightSystem {
     val receivers = new ArrayBuffer[PointLightReceiverImpl]()
 
     // Gather point lights
-    for (entity <- lightEntities.flag(Flag_HasPointLight)) {
+    for (entity <- lightEntities.flag(Flag_PointLight)) {
       var pointLight = entityToPointLight(entity)
       do {
         lights += pointLight
@@ -108,7 +108,7 @@ final class PointLightSystemImpl extends PointLightSystem {
     }
 
     // Gather receivers
-    for (entity <- lightEntities.flag(Flag_HasPointLightReceiver)) {
+    for (entity <- lightEntities.flag(Flag_PointLightReceiver)) {
       var receiver = entityToReceiver(entity)
       do {
         receivers += receiver
@@ -142,11 +142,11 @@ final class PointLightSystemImpl extends PointLightSystem {
   override def addLight(entity: Entity, localPosition: Vector3, intensity: Vector3, radius: Double, isStatic: Boolean): PointLight = {
     val light = new PointLightImpl(entity, localPosition, intensity, radius, isStatic)
 
-    light.next = if (entity.hasFlag(Flag_HasPointLight))
+    light.next = if (entity.hasFlag(Flag_PointLight))
       entityToPointLight(entity)
     else null
 
-    entity.setFlag(Flag_HasPointLight)
+    entity.setFlag(Flag_PointLight)
 
     light
   }
@@ -154,28 +154,28 @@ final class PointLightSystemImpl extends PointLightSystem {
   override def addReceiver(entity: Entity, sphere: Sphere, isStatic: Boolean): PointLightReceiver = {
     val receiver = new PointLightReceiverImpl(entity, sphere, isStatic)
 
-    receiver.next = if (entity.hasFlag(Flag_HasPointLightReceiver))
+    receiver.next = if (entity.hasFlag(Flag_PointLightReceiver))
       entityToReceiver(entity)
     else null
 
-    entity.setFlag(Flag_HasPointLightReceiver)
+    entity.setFlag(Flag_PointLightReceiver)
 
     receiver
   }
 
   override def removeLights(entity: Entity): Unit = {
     entityToPointLight.remove(entity)
-    entity.clearFlag(Flag_HasPointLight)
+    entity.clearFlag(Flag_PointLight)
   }
 
   override def removeReceivers(entity: Entity): Unit = {
     entityToReceiver.remove(entity)
-    entity.clearFlag(Flag_HasPointLightReceiver)
+    entity.clearFlag(Flag_PointLightReceiver)
   }
 
   override def entitiesDeleted(entities: EntitySet): Unit = {
-    entities.flag(Flag_HasPointLight).foreach(removeLights)
-    entities.flag(Flag_HasPointLightReceiver).foreach(removeReceivers)
+    entities.flag(Flag_PointLight).foreach(removeLights)
+    entities.flag(Flag_PointLightReceiver).foreach(removeReceivers)
   }
 }
 

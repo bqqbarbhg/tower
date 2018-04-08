@@ -117,7 +117,7 @@ object CullingSystemImpl {
 
   def getOrAddCullable(entity: Entity): Cullable = {
     val cullable = entityToCullable.getOrElseUpdate(entity, {
-      entity.setFlag(Entity.Flag_HasCullables)
+      entity.setFlag(Entity.Flag_Cullables)
       new Cullable(entity)
     })
 
@@ -433,10 +433,10 @@ final class CullingSystemImpl extends CullingSystem {
 
     entityToCullable.remove(entity)
 
-    entity.clearFlag(Entity.Flag_HasCullables)
+    entity.clearFlag(Entity.Flag_Cullables)
   }
 
-  override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Entity.Flag_HasCullables).foreach(removeCullables)
+  override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Entity.Flag_Cullables).foreach(removeCullables)
 
 }
 

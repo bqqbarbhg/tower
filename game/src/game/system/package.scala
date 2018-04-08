@@ -7,7 +7,7 @@ import scala.collection.mutable.ArrayBuffer
 package object system {
 
   var AudioSystem: AudioSystem = null
-  var CableRenderSystem: CableRenderSystem = null
+  var CableRenderSystem: legacy.CableRenderSystem = null
   var GroundSystem: GroundSystemOld = null
 
   def deferredLoad(): Task[Unit] = {
@@ -24,7 +24,7 @@ package object system {
     })
 
     tasks += Task.Main.add(() => {
-      CableRenderSystem = new CableRenderSystem()
+      CableRenderSystem = new legacy.CableRenderSystem()
     })
 
     Task.Main.add(tasks, (_: Seq[Unit]) => ())

@@ -23,7 +23,7 @@ trait GroundSystem {
 }
 
 class GroundSystemImpl extends GroundSystem {
-  val TileSize = 16.0
+  val TileSize = 10.0
   val InvTileSize = 1.0 / TileSize
 
   val GridWidth = 64
@@ -43,8 +43,8 @@ class GroundSystemImpl extends GroundSystem {
   def getProbe(x: Int, y: Int): Probe = probes(y * (GridWidth + 1) + x)
 
   override def getProbesAndWeights(x: Double, z: Double, probes: Array[Probe], weights: Array[Double]): Unit = {
-    val cx = clamp((x + OffsetX) * InvTileSize, 0.0, GridWidth.toDouble - 0.001)
-    val cz = clamp((z + OffsetZ) * InvTileSize, 0.0, GridHeight.toDouble - 0.001)
+    val cx = clamp((x - OffsetX) * InvTileSize, 0.0, GridWidth.toDouble - 0.001)
+    val cz = clamp((z - OffsetZ) * InvTileSize, 0.0, GridHeight.toDouble - 0.001)
 
     val ix = cx.toInt
     val iz = cz.toInt
@@ -57,10 +57,10 @@ class GroundSystemImpl extends GroundSystem {
     probes(2) = getProbe(ix + 0, iz + 1)
     probes(3) = getProbe(ix + 1, iz + 1)
 
-    val px = cx - ix.toDouble
-    val pz = cz - iz.toDouble
-    val nx = 1.0 - px
-    val nz = 1.0 - pz
+    val nx = cx - ix.toDouble
+    val nz = cz - iz.toDouble
+    val px = 1.0 - nx
+    val pz = 1.0 - nz
     weights(0) = px * pz
     weights(1) = nx * pz
     weights(2) = px * nz

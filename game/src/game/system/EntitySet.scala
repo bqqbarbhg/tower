@@ -20,7 +20,7 @@ class EntitySet {
       val index = java.lang.Long.numberOfTrailingZeros(maskBits)
       maskBits &= (maskBits - 1)
 
-      flag(index) += entity
+      flag(base + index) += entity
     }
   }
 

@@ -5,14 +5,17 @@ import game.system.base._
 
 object Entity {
 
-  val Flag_HasModel = 0
-  val Flag_HasPointLight = 1
-  val Flag_HasPointLightReceiver = 2
-  val Flag_HasCullables = 3
-  val Flag_HasAmbientProbes = 4
-  val Flag_HasAmbientPointLight = 5
+  val Flag_Model = 0
+  val Flag_PointLight = 1
+  val Flag_PointLightReceiver = 2
+  val Flag_Cullables = 3
+  val Flag_AmbientProbes = 4
+  val Flag_AmbientPointLight = 5
+  val Flag_Children = 6
+  val Flag_Parent = 7
+  val Flag_Deleted = 8
 
-  val Flag_HasCables = 128
+  val Flag_CablePart = 128
 
 }
 
@@ -24,7 +27,7 @@ object Entity {
   *               it's position never changes and it's system-specific reference
   *               properties, eg. local position offsets, are never modified.
   */
-class Entity(val static: Boolean) {
+class Entity(val static: Boolean, var name: String) {
 
   /**
     * Absolute position of the entity in the world.

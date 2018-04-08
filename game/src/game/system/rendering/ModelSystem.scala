@@ -194,13 +194,13 @@ final class ModelSystemImpl extends ModelSystem {
   }
 
   override def addModel(entity: Entity, asset: ModelAsset): ModelInstance = {
-    val next = if (entity.hasFlag(Flag_HasModel)) entityToModel(entity) else null
+    val next = if (entity.hasFlag(Flag_Model)) entityToModel(entity) else null
     val model = new ModelInstanceImpl(entity, asset, next)
 
     model.poolIndex = allModels.add(model)
     entityToModel(entity) = model
 
-    entity.setFlag(Flag_HasModel)
+    entity.setFlag(Flag_Model)
 
     model
   }
@@ -211,12 +211,12 @@ final class ModelSystemImpl extends ModelSystem {
       allModels.remove(model.poolIndex)
       model = model.next
     } while (model != null)
-    entity.clearFlag(Flag_HasModel)
+    entity.clearFlag(Flag_Model)
   }
 
   override def collectVisibleModels(visible: EntitySet): ArrayBuffer[ModelInstance] = {
     val result = new ArrayBuffer[ModelInstance]()
-    for (entity <- visible.flag(Flag_HasModel)) {
+    for (entity <- visible.flag(Flag_Model)) {
       var model = entityToModel(entity)
       do {
         result += model
@@ -304,7 +304,7 @@ final class ModelSystemImpl extends ModelSystem {
     currentFrameIndex += 1L
   }
 
-  override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Flag_HasModel).foreach(removeModels)
+  override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Flag_Model).foreach(removeModels)
 }
 
 

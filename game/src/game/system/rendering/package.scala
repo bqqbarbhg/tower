@@ -10,6 +10,7 @@ package object rendering {
   var modelSystem: ModelSystem = null
   var forwardRenderingSystem: ForwardRenderingSystem = null
   var shadowRenderingSystem: ShadowRenderingSystem = null
+  var cableRenderSystem: CableRenderSystem = null
 
   def load(): Unit = {
     cullingSystem = new CullingSystemImpl()
@@ -19,6 +20,7 @@ package object rendering {
     modelSystem = new ModelSystemImpl()
     forwardRenderingSystem = new ForwardRenderingSystemImpl()
     shadowRenderingSystem = new ShadowRenderingSystemImpl()
+    cableRenderSystem = new CableRenderSystemImpl()
 
     // Dependency: ambientSystem
     groundSystem = new GroundSystemImpl()
@@ -28,6 +30,7 @@ package object rendering {
     base.entitySystem.addDeleteListener(ambientSystem)
     base.entitySystem.addDeleteListener(ambientPointLightSystem)
     base.entitySystem.addDeleteListener(modelSystem)
+    base.entitySystem.addDeleteListener(cableRenderSystem)
   }
 
 }

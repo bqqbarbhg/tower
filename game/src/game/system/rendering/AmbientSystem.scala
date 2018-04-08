@@ -153,12 +153,12 @@ final class AmbientSystemImpl extends AmbientSystem {
 
   override def addProbeDependency(entity: Entity, probe: Probe): Unit = {
     entityToProbe(entity) :+= probe.asInstanceOf[ProbeImpl]
-    entity.setFlag(Flag_HasAmbientProbes)
+    entity.setFlag(Flag_AmbientProbes)
   }
 
   override def removeProbes(entity: Entity): Unit = {
     entityToProbe.remove(entity)
-    entity.clearFlag(Flag_HasAmbientProbes)
+    entity.clearFlag(Flag_AmbientProbes)
   }
 
   private def updateVisibleProbe(probe: ProbeImpl): Unit = {
@@ -182,7 +182,7 @@ final class AmbientSystemImpl extends AmbientSystem {
   }
 
   override def updateVisibleProbes(visible: EntitySet): Unit = {
-    for (entity <- visible.flag(Flag_HasAmbientProbes)) {
+    for (entity <- visible.flag(Flag_AmbientProbes)) {
       for (probe <- entityToProbe(entity)) {
         updateVisibleProbe(probe)
       }
@@ -248,6 +248,6 @@ final class AmbientSystemImpl extends AmbientSystem {
     visibleProbes.clear()
   }
 
-  override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Flag_HasAmbientProbes).foreach(removeProbes)
+  override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Flag_AmbientProbes).foreach(removeProbes)
 
 }

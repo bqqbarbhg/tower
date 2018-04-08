@@ -4,7 +4,7 @@ import core._
 
 object Aabb {
 
-  def fromMinMax(min: Vector3, max: Vector3): Unit = {
+  def fromMinMax(min: Vector3, max: Vector3): Aabb = {
     val c = (max + min) * 0.5
     val h = (max - min) * 0.5
     Aabb(c, h)

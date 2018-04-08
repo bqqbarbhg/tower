@@ -171,7 +171,7 @@ final class AmbientPointLightSystemImpl extends AmbientPointLightSystem {
   }
 
   override def addLight(entity: Entity, localPosition: Vector3, intensity: Vector3, radius: Double): AmbientPointLight = {
-    val next = if (entity.hasFlag(Flag_HasAmbientPointLight)) {
+    val next = if (entity.hasFlag(Flag_AmbientPointLight)) {
       entityToLight(entity)
     } else null
 
@@ -186,7 +186,7 @@ final class AmbientPointLightSystemImpl extends AmbientPointLightSystem {
       light.dynamicIndex = dynamicLights.add(light)
     }
 
-    entity.setFlag(Flag_HasAmbientPointLight)
+    entity.setFlag(Flag_AmbientPointLight)
 
     entityToLight(entity) = light
 
@@ -207,7 +207,7 @@ final class AmbientPointLightSystemImpl extends AmbientPointLightSystem {
     }
     entityToLight.remove(entity)
 
-    entity.clearFlag(Flag_HasAmbientPointLight)
+    entity.clearFlag(Flag_AmbientPointLight)
   }
 
   override def updateDynamicLights(): Unit = {
@@ -242,6 +242,6 @@ final class AmbientPointLightSystemImpl extends AmbientPointLightSystem {
     cellsWithDynamicLights.clear()
   }
 
-  override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Flag_HasAmbientPointLight).foreach(removeLights)
+  override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Flag_AmbientPointLight).foreach(removeLights)
 }
 

@@ -19,12 +19,13 @@ import org.lwjgl.system.MemoryUtil
 import platform.AppWindow.WindowStyle
 import render.VertexSpec.Attrib
 import render.VertexSpec.DataFmt._
-import util.geometry.{Frustum, Sphere}
+import util.geometry.{Aabb, Frustum, Sphere}
 import game.shader._
 import task.debug.SchedulerDotWriter
 import task.{Scheduler, Task}
 import game.system.rendering
 import game.system.rendering.ModelSystem.{MeshInstanceCollection, ModelInstance}
+import game.system.rendering.CableRenderSystem._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -316,7 +317,7 @@ object TestCableSystem extends App {
   bundle.load()
 
 
-  val entity = new Entity(true)
+  val entity = new Entity(true, "Turret")
   val model = rendering.modelSystem.addModel(entity, asset)
   entity.position = Vector3(0.0, 0.0, 0.0)
 
@@ -325,7 +326,7 @@ object TestCableSystem extends App {
   val probe = rendering.ambientSystem.addProbe(entity, Vector3(0.0, 0.5, 0.0))
   model.lightProbe = probe.irradianceProbe
 
-  val lightEntity = new Entity(true)
+  val lightEntity = new Entity(true, "Lights")
   rendering.ambientPointLightSystem.addLight(lightEntity, Vector3(40.0, 50.0, 20.0), Vector3(1.0, 0.0, 0.0) * 3.7, 150.0)
   rendering.ambientPointLightSystem.addLight(lightEntity, Vector3(100.0, 80.0, 20.0), Vector3(0.6, 0.5, 0.5) * 2.7, 100.0)
   rendering.ambientPointLightSystem.addLight(lightEntity, Vector3(-20.0, 50.0, -20.0), Vector3(0.5, 0.5, 0.8) * 3.4, 150.0)
@@ -583,14 +584,16 @@ object TestCableSystem extends App {
   var resToggle = false
   var zoom = 0.5
 
-  val cableMesh: CableMesh = {
+  {
     val cables = getCablePaths(asset)
     val cable = cables.head.toBuffer
     cable += new CableNode(Vector3(4.0, 0.2, 5.0), Vector3(5.0, 0.0, 0.0))
     cable += new CableNode(Vector3(8.0, 0.2, 3.0), Vector3(2.0, 0.0, -3.0))
     cable += new CableNode(Vector3(12.0, 0.2, 1.0), Vector3(10.0, 0.0, 0.0))
     cable += new CableNode(Vector3(40.0, 0.2, 5.0), Vector3(30.0, 0.0, 0.0))
-    CableRenderSystem.createCableMesh(cable, 0.2)
+
+    val cableEntity = new Entity(true, "Cable")
+    rendering.cableRenderSystem.createCable(cableEntity, cable, 0.2)
   }
 
   val random = new Random()
@@ -733,6 +736,7 @@ object TestCableSystem extends App {
     var visProbes: ArrayBuffer[rendering.AmbientSystem.Probe] = null
     var visMeshes: MeshInstanceCollection = null
     var forwardDraws: rendering.ForwardRenderingSystem.Draws = null
+    var visCables: ArrayBuffer[CableMeshPart] = null
 
     val visEntities = new EntitySet()
 
@@ -740,6 +744,7 @@ object TestCableSystem extends App {
     object VisModel
     object VisMesh
     object VisProbes
+    object VisCables
 
     LightSystem.addDynamicLightsToCells()
     LightSystem.evaluateProbes()
@@ -751,7 +756,7 @@ object TestCableSystem extends App {
 
     s.add("Probe collect")(rendering.ambientSystem, VisProbes)(Vis) {
       rendering.ambientSystem.updateVisibleProbes(visEntities)
-      visProbes = rendering.ambientSystem.currentlyVisibleProbes
+      visProbes = rendering.ambientSystem.currentlyVisibleProbes.clone
     }
 
     s.add("Ambient point dynamic")(rendering.ambientPointLightSystem)() {
@@ -770,6 +775,10 @@ object TestCableSystem extends App {
       val models = rendering.modelSystem.collectVisibleModels(visEntities)
       rendering.modelSystem.updateModels(models)
       visMeshes = rendering.modelSystem.collectMeshInstances(models)
+    }
+
+    s.add("Collect cables")(rendering.cableRenderSystem, VisCables)(Vis) {
+      visCables = rendering.cableRenderSystem.collectCableMeshes(visEntities)
     }
 
     s.addTo("Forward draws")(Task.Main)(rendering.forwardRenderingSystem)(VisMesh, VisProbes) {
@@ -921,7 +930,10 @@ object TestCableSystem extends App {
     })
 
     renderer.setTextureTargetDepth(TestCableShader.Textures.ShadowMap, shadowTarget)
-    cableMesh.draw()
+
+    for (cable <- visCables) {
+      cable.draw()
+    }
 
     renderer.setTexture(TestGroundShader.Textures.Albedo, ground_albedo.get.texture)
     renderer.setTexture(TestGroundShader.Textures.Normal, ground_normal.get.texture)
