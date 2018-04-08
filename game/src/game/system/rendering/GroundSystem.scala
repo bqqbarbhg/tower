@@ -60,6 +60,7 @@ trait GroundSystem {
     */
   def getProbesAndWeights(x: Double, z: Double, probes: Array[Probe], weights: Array[Double]): Unit
 
+  /** Gather a list of ground plates from a visible entities */
   def collectGroundPlates(visible: EntitySet): ArrayBuffer[GroundPlate]
 }
 

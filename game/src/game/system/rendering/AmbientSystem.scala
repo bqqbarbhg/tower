@@ -196,8 +196,8 @@ final class AmbientSystemImpl extends AmbientSystem {
     var ix = 0
     val numProbes = probes.length
 
-    val falloff = 0.5
-    val baseFactor = 0.35
+    val falloff = 0.2
+    val baseFactor = 0.3
 
     while (ix < numProbes) {
       val probe = probes(ix).asInstanceOf[ProbeImpl]
@@ -225,7 +225,7 @@ final class AmbientSystemImpl extends AmbientSystem {
 
           val factor = baseFactor / (1.0 + math.abs(indProbe.worldPosition.y - posY) * falloff)
 
-          lightProbe.addDirectionalScaled(down, indProbe.cachedIndirectLight, factor)
+          lightProbe.addDirectionalScaled(down, indProbe.cachedIndirectLight, factor * indWeight)
 
           indIx += 1
         }

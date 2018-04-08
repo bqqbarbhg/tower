@@ -155,9 +155,24 @@ final class AmbientPointLightSystemImpl extends AmbientPointLightSystem {
   }
 
   def addLightToProbe(probe: Probe, light: AmbientPointLightImpl): Unit = {
-    // TODO: Do this better
-    val dir = (light.worldPosition - probe.worldPosition).normalize
-    probe.irradianceProbe.addDirectional(dir, light.intensity)
+    val dir = (light.worldPosition - probe.worldPosition)
+    val length = dir.length
+
+    if (length < light.radius) {
+      val falloffDist = 1.0 - length / light.radius
+      val falloff = falloffDist * falloffDist
+
+      var ratio = 1.0
+      if (length <= 0.5) {
+        ratio = math.max((length - 0.5) * 2.0, 0.0)
+        probe.irradianceProbe.addGlobal(light.intensity * (1.0 - ratio) * falloff)
+      }
+      if (length >= 0.5) {
+        val falloff = falloffDist * falloffDist
+        val normal = dir / length
+        probe.irradianceProbe.addDirectionalScaled(normal, light.intensity, ratio * falloff)
+      }
+    }
   }
 
   def addLightsToProbe(probe: Probe, lights: ArrayBuffer[AmbientPointLightImpl]): Unit = {
