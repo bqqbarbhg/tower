@@ -768,7 +768,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
 
   def update(): Unit = {
     val screen = Layout.screen720p.padAround(50.0)
-    val parent = screen.containSnapped(500.0, 550.0,
+    val parent = screen.containSnapped(650.0, 550.0,
       snapScale = 1.0, magScale = 2.0, minScale = 8.0)
 
     val unit = parent.unit

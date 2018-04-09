@@ -132,9 +132,14 @@ class MenuState extends GameState {
 
     inputSet.update()
 
+    if (ContinueButton.input.clicked) {
+      finished = true
+      GameState.push(new PlayState(true))
+    }
+
     if (NewGameButton.input.clicked) {
       finished = true
-      GameState.push(new PlayState())
+      GameState.push(new PlayState(false))
     }
 
     if (OptionsButton.input.clicked) {

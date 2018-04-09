@@ -132,7 +132,7 @@ object Font {
   case class TextDraw(text: String, offset: Int, length: Int, position: Vector2, height: Double, color: Color, outline: Double, order: Int) {
 
     /** Sort order depending on preferred order and approximage mergability */
-    def sortKey: Long = order.toLong << 32 | (color.hashCode ^ outline.hashCode ^ height.hashCode)
+    val sortKey: Long = (order.toLong << 32L) | ((color.hashCode ^ outline.hashCode ^ height.hashCode).toLong & 0xFFFFFFFFL)
 
     /** Can `this` and `other` be drawn in a signle draw-call */
     def canMerge(other: TextDraw): Boolean = {

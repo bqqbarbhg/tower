@@ -177,6 +177,15 @@ class Canvas {
     position.y + style.height
   }
 
+  def drawTextWrapped(layer: Int, style: TextStyle, layout: Layout, text: String): Double = {
+    drawTextWrapped(layer, style, layout, text, 0, text.length)
+  }
+
+  def drawTextWrapped(layer: Int, style: TextStyle, layout: Layout, text: String, offset: Int, length: Int): Double = {
+    val sizedStyle = style.scaled(layout.unit.y)
+    drawTextWrapped(layer, sizedStyle, Vector2(layout.x0, layout.y0), Vector2(layout.widthPx, layout.heightPx), text, offset, length)
+  }
+
   def drawTextWrapped(layer: Int, style: TextStyle, position: Vector2, bounds: Vector2, text: String): Double =
     drawTextWrapped(layer, style, position, bounds, text, 0, text.length)
   def drawTextWrapped(layer: Int, style: TextStyle, position: Vector2, bounds: Vector2, text: String, offset: Int, length: Int): Double = {
@@ -186,7 +195,7 @@ class Canvas {
     val lines = WordWrap.wrapText(style.font.get, style.height, bounds.x, text, offset, length,
       hyphenateThreshold = Some(100.0))
 
-    val endY = bounds.y - position.y
+    val endY = bounds.y + position.y
     var y = position.y
     for (line <- lines) {
       if (y + style.height > endY) return y

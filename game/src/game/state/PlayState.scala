@@ -10,6 +10,7 @@ import platform.{AppWindow, KeyEvent}
 import game.system
 import game.system.base._
 import game.system.rendering._
+import game.system.gameplay._
 import game.shader._
 import menu.{DebugMenu, PauseMenu}
 import PlayState._
@@ -32,12 +33,13 @@ object PlayState {
 
   val Assets = new AssetBundle("PlayState",
     PauseMenu.Assets,
+    TutorialSystem.Assets,
     GroundTexture,
     Colorgrade,
   )
 }
 
-class PlayState extends GameState {
+class PlayState(val loadExisting: Boolean) extends GameState {
 
   val inputs = new InputSet()
   val canvas = new Canvas()
@@ -55,10 +57,12 @@ class PlayState extends GameState {
     system.base.loadState()
     system.rendering.loadState()
     system.rendering.loadGame()
+    system.gameplay.loadGame()
 
     prevTime = AppWindow.currentTime
 
-    loadGame()
+    if (loadExisting)
+      loadGame()
   }
 
   override def stop(): Unit = {
@@ -66,6 +70,7 @@ class PlayState extends GameState {
 
     entitySystem.deleteAllEntities()
 
+    system.gameplay.unloadGame()
     system.rendering.unloadGame()
     system.rendering.unloadState()
     system.base.unloadState()
@@ -228,9 +233,12 @@ class PlayState extends GameState {
 
     val len = move.length
     if (len > 0.0) {
+      tutorialSystem.progress(TutorialSystem.MoveCamera, dt)
+
       move /= len
 
       val boost = if (AppWindow.keyDown(CameraBind.Boost)) {
+        tutorialSystem.progress(TutorialSystem.MoveBoost, dt)
         CameraTweak.moveBoostAmount
       } else {
         1.0
@@ -378,8 +386,11 @@ class PlayState extends GameState {
     updateDebugMenu()
 
     if (!isPaused) {
+      tutorialSystem.update(dt)
       updateCameraMovement(dt)
     }
+
+    tutorialSystem.render(canvas)
 
     val renderer = Renderer.get
 

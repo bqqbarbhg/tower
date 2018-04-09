@@ -165,11 +165,11 @@ class Layout(var unit: Vector2, var x0: Double, var y0: Double, var x1: Double, 
     if (targetAspect > ownAspect) {
       scale = doSnap(widthPx / targetWidth)
       resWidth = targetWidth * scale
-      resHeight = resWidth * targetAspect
+      resHeight = resWidth / targetAspect
     } else {
       scale = doSnap(heightPx / targetHeight)
       resHeight = targetHeight * scale
-      resWidth = resHeight / targetAspect
+      resWidth = resHeight * targetAspect
     }
 
     val u = Vector2(scale, scale)
