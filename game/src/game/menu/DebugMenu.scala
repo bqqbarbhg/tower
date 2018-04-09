@@ -147,6 +147,18 @@ class DebugMenu(val inputs: InputSet, val canvas: Canvas, val propObj: PropertyC
             override def setText(newValue: String): Unit = p.set(obj, newValue)
           }
 
+        case p: DoubleProp =>
+          elements += new Label(InfoLabel) {
+            override def text: String = prop.name
+          }
+
+          elements += new TextBox(NormalTextBox) {
+            override def currentText: String = p.get(obj).toString
+            override def setText(newValue: String): Unit = {
+              for (v <- Try(newValue.toDouble).toOption) p.set(obj, v)
+            }
+          }
+
         case p: ProductProp =>
           elements += new Label(SectionLabel) {
             override val text: String = p.name

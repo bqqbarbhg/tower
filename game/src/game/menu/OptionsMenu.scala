@@ -556,6 +556,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
     addBind("cameraDown", opt.cameraDown, opt.cameraDown_=)
     addBind("cameraLeft", opt.cameraLeft, opt.cameraLeft_=)
     addBind("cameraRight", opt.cameraRight, opt.cameraRight_=)
+    addBind("cameraBoost", opt.cameraBoost, opt.cameraBoost_=)
 
     elements
   }

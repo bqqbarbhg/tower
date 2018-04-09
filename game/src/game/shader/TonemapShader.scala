@@ -5,7 +5,7 @@ import asset._
 import game.options.Options
 import gfx.Shader
 
-object TonemapShader extends ShaderAsset("shader/tonemap") {
+object TonemapShader extends ShaderAsset("shader/post/tonemap") {
 
   override object Defines extends Shader.Defines {
     frag("MsaaSamples", Options.current.graphics.quality.antialias)

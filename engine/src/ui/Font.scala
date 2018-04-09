@@ -90,7 +90,7 @@ object Font {
   val MaxBatchCount: Int = 32
 
 
-  object FontShader extends ShaderAsset("shader/font") {
+  object FontShader extends ShaderAsset("shader/ui/font") {
 
     override object Textures extends SamplerBlock {
       val Texture = sampler2D("Texture", Sampler.ClampBilinearNoMip)

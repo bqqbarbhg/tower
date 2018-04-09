@@ -294,6 +294,7 @@ class RendererGl {
 
       for (uniform <- activeShader.uniforms) {
         val ref = activeUniforms(uniform.serial)
+        assert(ref != null, s"${UniformBlock.blockBySerial(uniform.serial).name} not bound!")
         glBindBufferRange(GL_UNIFORM_BUFFER, uniform.shaderIndex, ref.buffer, ref.offset, ref.size)
       }
 

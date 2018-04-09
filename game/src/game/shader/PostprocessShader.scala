@@ -5,7 +5,7 @@ import asset._
 import game.options.Options
 import gfx.Shader
 
-object PostprocessShader extends ShaderAsset("shader/postprocess") {
+object PostprocessShader extends ShaderAsset("shader/post/postprocess") {
 
   override object Textures extends SamplerBlock {
     val Backbuffer = sampler2D("Backbuffer", Sampler.ClampBilinearNoMip)

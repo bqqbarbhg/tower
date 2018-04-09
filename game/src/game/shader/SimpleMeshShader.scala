@@ -4,7 +4,7 @@ import render._
 import asset._
 import gfx.Shader
 
-object SimpleMeshShader extends ShaderAsset("shader/simple_mesh") {
+object SimpleMeshShader extends ShaderAsset("shader/mesh/simple_mesh") {
 
   uniform(GlobalUniform)
   object GlobalUniform extends UniformBlock("GlobalUniform") {

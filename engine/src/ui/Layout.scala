@@ -17,6 +17,13 @@ object Layout {
     new Layout(unit, 0.0, 0.0, width, height)
   }
 
+  def screen: Layout = {
+    val width = RenderTarget.Backbuffer.width.toDouble
+    val height = RenderTarget.Backbuffer.height.toDouble
+    val unit = Vector2(1.0, 1.0)
+    new Layout(unit, 0.0, 0.0, width, height)
+  }
+
   def debug(x0: Double, y0: Double, x1: Double, y1: Double): Unit = {
     if (debug) {
       LayoutDebugger.addLine(x0, y0, x1, y1)

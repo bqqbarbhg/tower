@@ -18,8 +18,10 @@ abstract class BoolProp(name: String) extends Property(name) with BinarySerializ
   override def writeToBinary(inst: PropertyContainer, buf: ByteBuffer): Unit = {
     buf.put(if (get(inst)) 1.toByte else 0.toByte)
   }
-  override def readFromBinary(inst: PropertyContainer, buf: ByteBuffer, offset: Int): Unit = {
-    set(inst, buf.get(offset) != 0)
+  override def readFromBinary(inst: PropertyContainer, buf: ByteBuffer): Unit = {
+    set(inst, buf.get() != 0)
   }
+
+  override def sizeInBytes: Int = 1
 }
 

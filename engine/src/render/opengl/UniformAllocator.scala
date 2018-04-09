@@ -61,7 +61,7 @@ class UniformAllocator(val bufferSize: Int) {
   def push(size: Int, writeData: ByteBuffer => Unit): UniformBlockRefGl = withStack {
     val alignedSize = uniformAlign(size)
     if (offset + alignedSize > alignedBufferSize) {
-      assert(frameIndex > lastWrapFrame + 4)
+      assert(frameIndex > lastWrapFrame + 4, s"Wrapped too fast: current frame $frameIndex, last wrap was at $lastWrapFrame")
       lastWrapFrame = frameIndex
       offset = 0
     }

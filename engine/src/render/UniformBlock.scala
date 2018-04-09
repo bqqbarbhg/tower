@@ -177,16 +177,20 @@ object UniformBlock {
     }
   }
 
+  private val blocks = new ArrayBuffer[UniformBlock]()
   private var serialCounter: Int = 0
-  def nextSerial(): Int = UniformBlock.synchronized {
+  def nextSerial(ubo: UniformBlock): Int = UniformBlock.synchronized {
+    blocks += ubo
     serialCounter += 1
     serialCounter - 1
   }
   def maxSerial: Int = UniformBlock.synchronized { serialCounter }
+
+  def blockBySerial(serial: Int): UniformBlock = blocks(serial)
 }
 
 class UniformBlock(val name: String) {
-  val serial = UniformBlock.nextSerial()
+  val serial = UniformBlock.nextSerial(this)
 
   def sizeInBytes: Int = layoutPosition
   val uniforms = ArrayBuffer[Uniform]()

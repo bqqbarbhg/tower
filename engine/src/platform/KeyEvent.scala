@@ -12,6 +12,8 @@ object KeyEvent {
   val Home = GLFW_KEY_HOME
   val End = GLFW_KEY_END
 
+  val LeftShift = GLFW_KEY_LEFT_SHIFT
+
   val Left = GLFW_KEY_LEFT
   val Right = GLFW_KEY_RIGHT
   val Up = GLFW_KEY_UP

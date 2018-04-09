@@ -11,7 +11,7 @@ import scala.collection.mutable.ArrayBuffer
 
 object DebugDraw {
 
-  object LineShader extends ShaderAsset("shader/debug_line") {
+  object LineShader extends ShaderAsset("shader/debug/debug_line") {
     uniform(VertexUniform)
     object VertexUniform extends UniformBlock("VertexUniform") {
       val ViewProjection = mat4("ViewProjection")

@@ -18,8 +18,9 @@ abstract class DoubleProp(name: String) extends Property(name) with BinarySerial
   override def writeToBinary(inst: PropertyContainer, buf: ByteBuffer): Unit = {
     buf.putDouble(get(inst))
   }
-  override def readFromBinary(inst: PropertyContainer, buf: ByteBuffer, offset: Int): Unit = {
+  override def readFromBinary(inst: PropertyContainer, buf: ByteBuffer): Unit = {
     set(inst, buf.getDouble())
   }
+  override def sizeInBytes: Int = 8
 }
 

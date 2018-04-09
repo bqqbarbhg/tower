@@ -18,7 +18,7 @@ object SpriteBatch {
   val BatchMaxSprites = 1024
   val FrameMaxSprites = 64*1024
 
-  object SpriteShader extends ShaderAsset("shader/sprite") {
+  object SpriteShader extends ShaderAsset("shader/ui/sprite") {
 
     override object Textures extends SamplerBlock {
       val TexArray = sampler2DArray("TexArray", Sampler.RepeatBilinear)

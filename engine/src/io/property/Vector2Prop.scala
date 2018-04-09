@@ -1,7 +1,10 @@
 package io.property
 
+import java.nio.ByteBuffer
+
 import core._
 import io.property.Vector2Prop.ProductInst
+import io.serialization.BinarySerializable
 
 object Vector2Prop {
   type Type = Vector2
@@ -24,7 +27,7 @@ object Vector2Prop {
   ))
 }
 
-abstract class Vector2Prop(name: String) extends ProductProp(name, Vector2Prop.productProps) {
+abstract class Vector2Prop(name: String) extends ProductProp(name, Vector2Prop.productProps) with BinarySerializable {
   override def makeProductInstance: PropertyContainer = new ProductInst()
 
   override def genericToProduct(generic: Any): PropertyContainer = {
@@ -44,5 +47,17 @@ abstract class Vector2Prop(name: String) extends ProductProp(name, Vector2Prop.p
 
   def get(inst: PropertyContainer): Vector2
   def set(inst: PropertyContainer, value: Vector2): Unit
+
+  override def writeToBinary(inst: PropertyContainer, buf: ByteBuffer): Unit = {
+    val v = get(inst)
+    buf.putDouble(v.x)
+    buf.putDouble(v.y)
+  }
+  override def readFromBinary(inst: PropertyContainer, buf: ByteBuffer): Unit = {
+    val x = buf.getDouble()
+    val y = buf.getDouble()
+    set(inst, Vector2(x, y))
+  }
+  override def sizeInBytes: Int = 16
 }
 
