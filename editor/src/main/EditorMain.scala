@@ -4,11 +4,11 @@ import render._
 import core._
 import asset.AssetLoader
 import game.state._
-import game.system.{ModelSystem, RenderingSystem}
 import platform.AppWindow
 import io.content._
 import ui.Layout
 import util.BufferUtils._
+import game.system.rendering._
 
 object EditorMain extends App {
 
@@ -121,7 +121,7 @@ object EditorMain extends App {
     GameState.push(new MenuState())
 
     while (AppWindow.running && !GameStartup.restartRequested && !GameStartup.exitRequested) {
-      RenderingSystem.updateScreenSize(AppWindow.width, AppWindow.height)
+      globalRenderSystem.updateScreenSize(AppWindow.width, AppWindow.height)
       GameState.update()
 
       if (AppWindow.keyEvents.exists(e => e.down == true && e.control && e.key == 'F')) {
@@ -131,7 +131,7 @@ object EditorMain extends App {
       if (AppWindow.keyEvents.exists(e => e.down == true && e.control && e.key == 'R')) {
         processResources()
         AssetLoader.reloadEverything()
-        ModelSystem.assetsLoaded()
+        modelSystem.assetsLoaded()
       }
       if (AppWindow.keyEvents.exists(e => e.down == true && e.control && e.key == 'L')) {
         dumpColorLookup()

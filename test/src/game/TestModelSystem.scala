@@ -60,8 +60,10 @@ object TestModelSystem extends App {
   val windowStyle = new WindowStyle(1280, 720, false, false, -1, None)
   EngineStartup.softStart(windowStyle)
 
-  game.system.base.load()
-  game.system.rendering.load()
+  game.system.rendering.loadGlobal()
+  game.system.base.loadState()
+  game.system.rendering.loadState()
+  game.system.rendering.loadGame()
 
   var prevWidth = -1
   var prevHeight = -1

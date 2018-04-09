@@ -23,6 +23,7 @@ import scala.util.Try
 
 object OptionsMenu {
 
+  val MenuAtlas = AtlasAsset("atlas/menu.s2at")
   val MainFont = FontAsset("font/catamaran/Catamaran-SemiBold.ttf.s2ft")
   val TitleFont = FontAsset("font/catamaran/Catamaran-Bold.ttf.s2ft")
   val TooltipFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
@@ -111,6 +112,15 @@ object OptionsMenu {
   val ColTabBg = Color.rgba(0x555555, 0.5)
   val ColTabHover = Color.rgba(0x333333, 0.5)
   val ColTabUnselected = Color.rgba(0x222222, 0.5)
+
+  val Assets = Vector(
+    MenuAtlas,
+    MainFont,
+    TooltipFont,
+    TitleFont,
+    TooltipFont,
+    TextBoxFont,
+  )
 }
 
 class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {

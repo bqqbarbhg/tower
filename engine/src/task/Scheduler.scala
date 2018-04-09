@@ -81,12 +81,28 @@ class Scheduler {
   }
 
   /**
+    * Shorthand for adding an unnamed task on the main thread with no dependencies.
+    *
+    * @param func Callback function to run on main thread
+    */
+  def defer(func: => Unit): Unit = {
+    addTo("Defer")(Task.Main)()()(func)
+  }
+
+  /**
+    * Return a task that completes when all tasks have finished.
+    */
+  def deferredFinish(): Task[Unit] = {
+    val blockerTask = Task.Worker.addWithManualDependencies(allTasks.length, () => ())
+    for (task <- allTasks) task.linkDependent(blockerTask)
+    blockerTask
+  }
+
+  /**
     * Wait that all the tasks have finished.
     */
   def finish(): Unit = {
-    val blockerTask = Task.Worker.addWithManualDependencies(allTasks.length, () => ())
-    for (task <- allTasks) task.linkDependent(blockerTask)
-    blockerTask.get
+    deferredFinish().get
   }
 
 }

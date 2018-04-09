@@ -6,7 +6,7 @@ import render._
 import ui._
 import ui.Canvas._
 import platform.AppWindow
-import task.Task
+import task.{Scheduler, Task}
 import LoadingState._
 import game.system._
 import game.system.audio._
@@ -58,6 +58,17 @@ class LoadingState extends GameState {
   }
 
   override def start(): Unit = {
+
+    val s = new Scheduler()
+    s.addTo("Join audio")(Task.Io)(s)() {
+      game.system.audio.joinAudioThread()
+    }
+
+    s.add("Global systems")(s)() {
+      game.system.audio.loadGlobal()
+    }
+
+    systemLoadTask = s.deferredFinish()
 
     loadingAssets = AssetLoader.startLoading()
     numAssetsBegin = loadingAssets.length
@@ -165,6 +176,6 @@ class LoadingState extends GameState {
     AppWindow.swapBuffers()
   }
 
-  override def done: Boolean = numAssetsLeft == 0 && isLoading
+  override def done: Boolean = numAssetsLeft == 0 && isLoading && systemLoadTask.isCompleted
 
 }

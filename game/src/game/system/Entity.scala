@@ -30,6 +30,9 @@ object Entity {
   */
 class Entity(val static: Boolean, var name: String) {
 
+  /** Index in the entity pool */
+  val poolIndex = entitySystem.registerEntity(this)
+
   /**
     * Absolute position of the entity in the world.
     */

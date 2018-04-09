@@ -80,13 +80,16 @@ object GameStartup {
     val windowStyle = new WindowStyle(resX, resY, fullscreen, borderless, opt.monitor, Some(iconTask.get))
 
     EngineStartup.softStart(windowStyle)
+
+    game.system.rendering.loadGlobal()
   }
 
   private def softStop(): Unit = {
     val map = SMap.read(Options.current)
     Toml.formatFile(map, "options.toml")
 
-    RenderingSystem.unload()
+    rendering.unloadGlobal()
+    audio.unloadGlobal()
 
     EngineStartup.softStop()
   }

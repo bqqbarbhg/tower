@@ -62,6 +62,9 @@ trait GroundSystem {
 
   /** Gather a list of ground plates from a visible entities */
   def collectGroundPlates(visible: EntitySet): ArrayBuffer[GroundPlate]
+
+  /** Free used resources */
+  def unload(): Unit
 }
 
 object GroundSystemImpl {
@@ -293,6 +296,11 @@ class GroundSystemImpl extends GroundSystem {
 
   override def collectGroundPlates(visible: EntitySet): ArrayBuffer[GroundPlate] = {
     visible.flag(Flag_GroundPlate).map(entityToPlate)
+  }
+
+  override def unload(): Unit = {
+    plateVertexBuffer.free()
+    plateIndexBuffer.free()
   }
 
 }

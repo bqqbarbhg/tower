@@ -72,8 +72,10 @@ object TestCableSystem extends App {
   val windowStyle = new WindowStyle(1280, 720, false, false, -1, None)
   EngineStartup.softStart(windowStyle)
 
-  base.load()
-  rendering.load()
+  rendering.loadGlobal()
+  base.loadState()
+  rendering.loadState()
+  rendering.loadGame()
 
   processResources()
 

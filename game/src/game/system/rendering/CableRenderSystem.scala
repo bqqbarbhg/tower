@@ -76,6 +76,9 @@ trait CableRenderSystem extends EntityDeleteListener {
   /** Collect all the cables from a set of visible entities. */
   def collectCableMeshes(visible: EntitySet): ArrayBuffer[CableMeshPart]
 
+  /** Free used resources */
+  def unload(): Unit
+
 }
 
 object CableRenderSystemImpl {
@@ -434,15 +437,6 @@ class CableRenderSystemImpl extends CableRenderSystem {
     mesh
   }
 
-  def unload(): Unit = {
-    for (part <- entityToCablePart.valuesIterator) {
-      part.unload()
-    }
-    entityToCablePart.clear()
-
-    indexBuffer.free()
-  }
-
   override def createCable(entity: Entity, nodes: Seq[CableNode], radius: Double): Unit = {
     val mesh = createCableMesh(nodes, radius)
 
@@ -476,5 +470,9 @@ class CableRenderSystemImpl extends CableRenderSystem {
     }
   }
 
+  override def unload(): Unit = {
+    assert(entityToCablePart.isEmpty)
+    indexBuffer.free()
+  }
 }
 

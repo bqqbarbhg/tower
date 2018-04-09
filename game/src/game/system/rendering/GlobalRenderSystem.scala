@@ -1,19 +1,27 @@
-package game.system
+package game.system.rendering
 
 import game.options.Options
 import render._
 
-object RenderingSystem {
+sealed abstract class GlobalRenderSystem {
 
   var renderingEnabled: Boolean = true
   var msaa: Int = 0
 
   var screenWidth: Int = -1
   var screenHeight: Int = -1
-  var MainTargetMsaa: RenderTarget = null
-  var MsaaResolveTarget: RenderTarget = null
+  var mainTargetMsaa: RenderTarget = null
+  var msaaResolveTarget: RenderTarget = null
 
-  def updateScreenSize(width: Int, height: Int): Unit = {
+  def updateScreenSize(width: Int, height: Int): Unit
+  def unload(): Unit
+
+}
+
+final class GlobalRenderSystemImpl extends GlobalRenderSystem {
+
+
+  override def updateScreenSize(width: Int, height: Int): Unit = {
     if (width == screenWidth && height == screenHeight) return
 
     if (width == 0 || height == 0) {
@@ -30,12 +38,12 @@ object RenderingSystem {
   }
 
   def unloadTargets(): Unit = {
-    if (MainTargetMsaa != null)
-      MainTargetMsaa.unload()
-    if (MsaaResolveTarget != null)
-      MsaaResolveTarget.unload()
-    MainTargetMsaa = null
-    MsaaResolveTarget = null
+    if (mainTargetMsaa != null)
+      mainTargetMsaa.unload()
+    if (msaaResolveTarget != null)
+      msaaResolveTarget.unload()
+    mainTargetMsaa = null
+    msaaResolveTarget = null
   }
 
   def createTargets(width: Int, height: Int): Unit = {
@@ -47,11 +55,11 @@ object RenderingSystem {
     val targetWidth = (scale * width).toInt
     val targetHeight = (scale * height).toInt
 
-    MainTargetMsaa = RenderTarget.create(targetWidth, targetHeight, Some(format), Some(TexFormat.D24S8), false, msaa)
-    MsaaResolveTarget = RenderTarget.create(targetWidth, targetHeight, Some(TexFormat.Rgba), None, false)
+    mainTargetMsaa = RenderTarget.create(targetWidth, targetHeight, Some(format), Some(TexFormat.D24S8), false, msaa)
+    msaaResolveTarget = RenderTarget.create(targetWidth, targetHeight, Some(TexFormat.Rgba), None, false)
   }
 
-  def unload(): Unit = {
+  override def unload(): Unit = {
     unloadTargets()
     screenWidth = -1
     screenHeight = -1

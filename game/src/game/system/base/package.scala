@@ -5,9 +5,12 @@ package object base {
   var entitySystem: EntitySystem = null
   var parentingSystem: ParentingSystem = null
 
-  def load(): Unit = {
+  def loadState(): Unit = {
     entitySystem = new EntitySystemImpl()
     parentingSystem = new ParentingSystemImpl()
+  }
+
+  def unloadState(): Unit = {
   }
 
 }

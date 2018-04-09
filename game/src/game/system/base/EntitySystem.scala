@@ -1,5 +1,6 @@
 package game.system.base
 
+import core.ArrayPool
 import game.system._
 import game.system.rendering._
 import game.system.Entity._
@@ -7,6 +8,9 @@ import game.system.Entity._
 import scala.collection.mutable.ArrayBuffer
 
 sealed trait EntitySystem {
+
+  /** Register entity into the system */
+  def registerEntity(entity: Entity): Int
 
   /** Queue the removel of an entity from the world */
   def delete(entity: Entity): Unit
@@ -19,13 +23,19 @@ sealed trait EntitySystem {
 
   /** Remove a previously attached deletion listener */
   def removeDeleteListener(listener: EntityDeleteListener): Unit
+
+  /** Remove all entities from all systems */
+  def deleteAllEntities(): Unit
 }
 
 final class EntitySystemImpl extends EntitySystem {
 
+  val allEntities = new ArrayPool[Entity]()
   val setToDelete = new EntitySet()
   val queuedDeletes = new ArrayBuffer[Entity]()
   val deleteListeners = new ArrayBuffer[EntityDeleteListener]()
+
+  override def registerEntity(entity: Entity): Int = allEntities.add(entity)
 
   override def delete(entity: Entity): Unit = {
     if (entity.hasFlag(Flag_Deleted)) return
@@ -41,6 +51,10 @@ final class EntitySystemImpl extends EntitySystem {
         setToDelete.add(entity)
       queuedDeletes.clear()
 
+      for (e <- setToDelete.all) {
+        allEntities.remove(e.poolIndex)
+      }
+
       for (listener <- deleteListeners) {
         listener.entitiesDeleted(setToDelete)
       }
@@ -51,4 +65,12 @@ final class EntitySystemImpl extends EntitySystem {
 
   override def addDeleteListener(listener: EntityDeleteListener): Unit = deleteListeners += listener
   override def removeDeleteListener(listener: EntityDeleteListener): Unit = deleteListeners -= listener
+
+  override def deleteAllEntities(): Unit = {
+    for (entity <- allEntities) {
+      entity.delete()
+    }
+
+    processDeletions()
+  }
 }

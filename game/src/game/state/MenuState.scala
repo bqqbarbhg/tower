@@ -7,7 +7,6 @@ import asset._
 import game.shader._
 import platform.AppWindow
 import MenuState._
-import game.system.RenderingSystem
 import gfx.Material
 import menu.{DebugMenu, OptionsMenu}
 import ui._
@@ -39,8 +38,7 @@ object MenuState {
 
   private val lMain = 0
 
-  val menuAssets = new AssetBundle(
-    "MenuState",
+  val Assets = Vector(
     StatueModel,
     MainFont,
     SimpleMeshShader,
@@ -50,6 +48,8 @@ object MenuState {
     MainColorgrade,
     MenuMusic,
   )
+
+  val menuAssets = new AssetBundle("MenuState", Assets ++ OptionsMenu.Assets)
 
   class Button(val localeKey: String) {
     val text = lc"menu.mainmenu.button.$localeKey"
@@ -94,9 +94,11 @@ class MenuState extends GameState {
   }
 
   override def start(): Unit = {
+    base.loadState()
+    rendering.loadState()
+
     modelEntity = new Entity(true, "Mainmenu Model")
     turretModel = modelSystem.addModel(modelEntity, StatueModel)
-
 
     startTime = AppWindow.currentTime
     music = audioSystem.play(MenuMusic, AudioSystem.Music)
@@ -104,6 +106,12 @@ class MenuState extends GameState {
   }
 
   override def stop(): Unit = {
+
+    base.entitySystem.deleteAllEntities()
+
+    rendering.unloadState()
+    base.unloadState()
+
     menuAssets.release()
     music.stop()
 }
@@ -115,7 +123,7 @@ class MenuState extends GameState {
 
     val renderer = Renderer.get
     renderer.beginFrame()
-    renderer.setRenderTarget(RenderingSystem.MainTargetMsaa)
+    renderer.setRenderTarget(globalRenderSystem.mainTargetMsaa)
     renderer.setDepthMode(true, true)
     renderer.clear(Some(Color.rgb(0x707070)), Some(1.0))
     renderer.setBlend(Renderer.BlendNone)
@@ -191,6 +199,7 @@ class MenuState extends GameState {
     val visibleSet = new EntitySet()
     visibleSet.add(modelEntity)
     val models = modelSystem.collectVisibleModels(Some(modelEntity))
+    modelSystem.updateModels(models)
     val meshes = modelSystem.collectMeshInstances(models)
 
     for {
@@ -210,14 +219,14 @@ class MenuState extends GameState {
     renderer.setDepthMode(false, false)
     renderer.setCull(false)
     renderer.setBlend(Renderer.BlendNone)
-    renderer.setRenderTarget(RenderingSystem.MsaaResolveTarget)
+    renderer.setRenderTarget(globalRenderSystem.msaaResolveTarget)
 
     TonemapShader.get.use()
 
-    if (RenderingSystem.msaa > 1)
-      renderer.setTextureTargetColor(TonemapShader.Textures.BackbufferMsaa, RenderingSystem.MainTargetMsaa, 0)
+    if (globalRenderSystem.msaa > 1)
+      renderer.setTextureTargetColor(TonemapShader.Textures.BackbufferMsaa, globalRenderSystem.mainTargetMsaa, 0)
     else
-      renderer.setTextureTargetColor(TonemapShader.Textures.Backbuffer, RenderingSystem.MainTargetMsaa, 0)
+      renderer.setTextureTargetColor(TonemapShader.Textures.Backbuffer, globalRenderSystem.mainTargetMsaa, 0)
 
     renderer.setTexture(TonemapShader.Textures.ColorLookup, MainColorgrade.get.texture)
 
@@ -228,7 +237,7 @@ class MenuState extends GameState {
 
     PostprocessShader.get.use()
 
-    renderer.setTextureTargetColor(TonemapShader.Textures.Backbuffer, RenderingSystem.MsaaResolveTarget, 0)
+    renderer.setTextureTargetColor(TonemapShader.Textures.Backbuffer, globalRenderSystem.msaaResolveTarget, 0)
 
     renderer.drawQuad()
 
