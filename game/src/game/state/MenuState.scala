@@ -108,13 +108,15 @@ class MenuState extends GameState {
 
   override def stop(): Unit = {
 
+    music.stop()
+    audioSystem.update()
+
     base.entitySystem.deleteAllEntities()
 
     rendering.unloadState()
     base.unloadState()
 
     Assets.release()
-    music.stop()
 }
 
   override def update(): Unit = {
@@ -206,6 +208,8 @@ class MenuState extends GameState {
     renderer.pushUniform(SimpleMeshShader.GlobalUniform, u => {
       SimpleMeshShader.GlobalUniform.ViewProjection.set(u, viewProj)
     })
+
+    audioSystem.update()
 
     val visibleSet = new EntitySet()
     visibleSet.add(modelEntity)

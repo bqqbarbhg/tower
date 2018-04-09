@@ -11,11 +11,13 @@ import game.system
 import game.system.base._
 import game.system.rendering._
 import game.system.gameplay._
+import game.system.audio._
 import game.shader._
 import menu.{DebugMenu, PauseMenu}
 import PlayState._
 import game.options.Options
 import game.system.EntitySet
+import game.system.audio.AudioSystem.SoundRef
 import game.system.rendering.AmbientSystem.Probe
 import io.property._
 import io.serialization.{BinaryReader, BinaryWriter}
@@ -30,6 +32,8 @@ object PlayState {
 
   val GroundTexture = TextureAsset("game/ground/ground_albedo.png.s2tx")
   val Colorgrade = TextureAsset("colorgrade/ingame.png.s2tx")
+
+  val IdleMusic = SoundAsset("audio/music/ingame.ogg.s2au")
 
   val Assets = new AssetBundle("PlayState",
     PauseMenu.Assets,
@@ -47,6 +51,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   var prevTime = 0.0
   var finished: Boolean = false
 
+  var music: SoundRef = null
+
   override def load(): Unit = {
     Assets.acquire()
     GameState.push(new LoadingState())
@@ -61,11 +67,17 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     prevTime = AppWindow.currentTime
 
+    music = audioSystem.play(IdleMusic, AudioSystem.Music)
+    music.instance.setFullLoop()
+
     if (loadExisting)
       loadGame()
   }
 
   override def stop(): Unit = {
+    music.stop()
+    audioSystem.update()
+
     saveGame()
 
     entitySystem.deleteAllEntities()
@@ -389,6 +401,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       tutorialSystem.update(dt)
       updateCameraMovement(dt)
     }
+
+    audioSystem.update()
 
     tutorialSystem.render(canvas)
 
