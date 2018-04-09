@@ -29,7 +29,7 @@ import scala.collection.mutable.ArrayBuffer
 object PlayState {
 
   val GroundTexture = TextureAsset("game/ground/ground_albedo.png.s2tx")
-  val Colorgrade = TextureAsset("colorgrade/mainmenu.png.s2tx")
+  val Colorgrade = TextureAsset("colorgrade/ingame.png.s2tx")
 
   val Assets = new AssetBundle("PlayState",
     PauseMenu.Assets,
