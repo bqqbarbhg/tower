@@ -128,7 +128,6 @@ class MenuState extends GameState {
     renderer.clear(Some(Color.rgb(0x707070)), Some(1.0))
     renderer.setBlend(Renderer.BlendNone)
 
-
     inputSet.update()
 
     if (OptionsButton.input.clicked) {
@@ -201,6 +200,7 @@ class MenuState extends GameState {
     val models = modelSystem.collectVisibleModels(Some(modelEntity))
     modelSystem.updateModels(models)
     val meshes = modelSystem.collectMeshInstances(models)
+    modelSystem.frameCleanup()
 
     for {
       (part, instances) <- meshes.meshes

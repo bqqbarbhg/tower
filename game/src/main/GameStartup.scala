@@ -98,7 +98,7 @@ object GameStartup {
     softStop()
     iconTask.get.unload()
     EngineStartup.stop()
-    game.system.audio.audioSystem.joinAudioThread()
+    game.system.audio.joinAudioThread()
   }
 
   def restart(): Unit = {
