@@ -2,6 +2,7 @@ package game.system
 
 package object audio {
 
+  var audioIsLoaded: Boolean = false
   var audioSystem: AudioSystem = null
 
   def joinAudioThread(): Unit = {
@@ -14,9 +15,11 @@ package object audio {
   def loadGlobal(): Unit = {
     assert(audioSystem == null)
     audioSystem = new AudioSystemImpl()
+    audioIsLoaded = true
   }
 
   def unloadGlobal(): Unit = {
+    audioIsLoaded = false
     audioSystem.unload()
   }
 

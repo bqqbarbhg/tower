@@ -38,7 +38,7 @@ object MenuState {
 
   private val lMain = 0
 
-  val Assets = Vector(
+  val Assets = new AssetBundle("MenuState",
     StatueModel,
     MainFont,
     SimpleMeshShader,
@@ -47,9 +47,8 @@ object MenuState {
     Material.shared,
     MainColorgrade,
     MenuMusic,
+    OptionsMenu.Assets,
   )
-
-  val menuAssets = new AssetBundle("MenuState", Assets ++ OptionsMenu.Assets)
 
   class Button(val localeKey: String) {
     val text = lc"menu.mainmenu.button.$localeKey"
@@ -88,8 +87,10 @@ class MenuState extends GameState {
   var music: SoundRef = null
   var modelEntity: Entity = null
 
+  var finished: Boolean = false
+
   override def load(): Unit = {
-    menuAssets.acquire()
+    Assets.acquire()
     GameState.push(new LoadingState())
   }
 
@@ -112,7 +113,7 @@ class MenuState extends GameState {
     rendering.unloadState()
     base.unloadState()
 
-    menuAssets.release()
+    Assets.release()
     music.stop()
 }
 
@@ -123,12 +124,18 @@ class MenuState extends GameState {
 
     val renderer = Renderer.get
     renderer.beginFrame()
+    renderer.setWriteSrgb(false)
     renderer.setRenderTarget(globalRenderSystem.mainTargetMsaa)
     renderer.setDepthMode(true, true)
     renderer.clear(Some(Color.rgb(0x707070)), Some(1.0))
     renderer.setBlend(Renderer.BlendNone)
 
     inputSet.update()
+
+    if (NewGameButton.input.clicked) {
+      finished = true
+      GameState.push(new PlayState())
+    }
 
     if (OptionsButton.input.clicked) {
       optionsMenu = Some(new OptionsMenu(inputSet, canvas))
@@ -218,6 +225,7 @@ class MenuState extends GameState {
 
     renderer.setDepthMode(false, false)
     renderer.setCull(false)
+    renderer.setWriteSrgb(false)
     renderer.setBlend(Renderer.BlendNone)
     renderer.setRenderTarget(globalRenderSystem.msaaResolveTarget)
 
@@ -235,12 +243,14 @@ class MenuState extends GameState {
     renderer.setRenderTarget(RenderTarget.Backbuffer)
     renderer.clear(Some(Color.Black), None)
 
+    renderer.setWriteSrgb(false)
     PostprocessShader.get.use()
 
     renderer.setTextureTargetColor(TonemapShader.Textures.Backbuffer, globalRenderSystem.msaaResolveTarget, 0)
 
     renderer.drawQuad()
 
+    renderer.setWriteSrgb(true)
     canvas.render()
 
     LayoutDebugger.render()
@@ -250,7 +260,7 @@ class MenuState extends GameState {
     AppWindow.swapBuffers()
   }
 
-  override def done: Boolean = false
+  override def done: Boolean = finished
 
 }
 

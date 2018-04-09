@@ -51,7 +51,7 @@ class LoadingState extends GameState {
   var frameCount = 0
   var isLoading = false
   val canvas = new Canvas()
-  var systemLoadTask: Task[Unit] = null
+  var systemLoadTask: Option[Task[Unit]] = None
 
   override def load(): Unit = {
     LoadingState.assetBundle.load()
@@ -60,15 +60,18 @@ class LoadingState extends GameState {
   override def start(): Unit = {
 
     val s = new Scheduler()
-    s.addTo("Join audio")(Task.Io)(s)() {
-      game.system.audio.joinAudioThread()
-    }
 
-    s.add("Global systems")(s)() {
-      game.system.audio.loadGlobal()
-    }
+    if (!game.system.audio.audioIsLoaded) {
+      s.addTo("Join audio")(Task.Io)(s)() {
+        game.system.audio.joinAudioThread()
+      }
 
-    systemLoadTask = s.deferredFinish()
+      s.add("Global systems")(s)() {
+        game.system.audio.loadGlobal()
+      }
+
+      systemLoadTask = Some(s.deferredFinish())
+    }
 
     loadingAssets = AssetLoader.startLoading()
     numAssetsBegin = loadingAssets.length
@@ -124,6 +127,7 @@ class LoadingState extends GameState {
     val time = AppWindow.currentTime
 
     renderer.beginFrame()
+    renderer.setWriteSrgb(true)
     renderer.setRenderTarget(RenderTarget.Backbuffer)
     renderer.clear(Some(Color.rgb(0x333333)), None)
 
@@ -176,6 +180,6 @@ class LoadingState extends GameState {
     AppWindow.swapBuffers()
   }
 
-  override def done: Boolean = numAssetsLeft == 0 && isLoading && systemLoadTask.isCompleted
+  override def done: Boolean = numAssetsLeft == 0 && isLoading && systemLoadTask.forall(_.isCompleted)
 
 }

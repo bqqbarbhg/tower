@@ -3,6 +3,7 @@ package main
 import core.Identifier
 import game.options.GraphicsOptions.OpenGlOptions
 import game.options.Options
+import game.state.GameState
 import game.system._
 import gfx.OptsGfx
 import io.SimpleSerialization.SMap
@@ -87,6 +88,8 @@ object GameStartup {
   private def softStop(): Unit = {
     val map = SMap.read(Options.current)
     Toml.formatFile(map, "options.toml")
+
+    GameState.unload()
 
     rendering.unloadGlobal()
     audio.unloadGlobal()

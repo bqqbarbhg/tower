@@ -113,7 +113,7 @@ object OptionsMenu {
   val ColTabHover = Color.rgba(0x333333, 0.5)
   val ColTabUnselected = Color.rgba(0x222222, 0.5)
 
-  val Assets = Vector(
+  val Assets = new AssetBundle("OptionsMenu",
     MenuAtlas,
     MainFont,
     TooltipFont,

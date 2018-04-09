@@ -54,6 +54,12 @@ object GameState {
 
     current.update()
   }
+
+  def unload(): Unit = {
+    while (stateStack.size > 1) {
+      stateStack.pop().stop()
+    }
+  }
 }
 
 trait GameState {

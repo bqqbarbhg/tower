@@ -54,6 +54,7 @@ object AppWindow {
   private class KeyboardEventQueue {
     val keyEvents = new ArrayBuffer[KeyEvent]()
     val charEvents = new ArrayBuffer[CharEvent]()
+    var downEvents = new ArrayBuffer[KeyEvent]()
   }
 
   private val glfwCallbackQueue = new KeyboardEventQueue()
@@ -169,6 +170,9 @@ object AppWindow {
 
   /** Key events for the current frame */
   def keyEvents: Seq[KeyEvent] = readQueue.keyEvents
+
+  /** Key events with `down == true` for the current frame */
+  def keyDownEvents: Seq[KeyEvent] = readQueue.downEvents
 
   /** Character events for the current frame */
   def charEvents: Seq[CharEvent] = readQueue.charEvents
@@ -359,6 +363,7 @@ object AppWindow {
       readQueue.charEvents.clear()
       readQueue.keyEvents ++= glfwCallbackQueue.keyEvents
       readQueue.charEvents ++= glfwCallbackQueue.charEvents
+      readQueue.downEvents = readQueue.keyEvents.filter(_.down)
       glfwCallbackQueue.keyEvents.clear()
       glfwCallbackQueue.charEvents.clear()
     }

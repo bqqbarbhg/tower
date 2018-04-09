@@ -153,6 +153,7 @@ object Config {
       /** How to process the page textures */
       var texture = new Texture()
       texture.premultiplyAlpha = true
+      texture.readAsLinear = true
 
       override def visit(v: SimpleVisitor): Unit = {
         packingAlgorithm = v.field("packingAlgorithm", packingAlgorithm)
