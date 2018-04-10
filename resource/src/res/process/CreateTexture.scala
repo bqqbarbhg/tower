@@ -120,7 +120,13 @@ object CreateTexture {
         val hasAlpha = levels.headOption.exists(_.hasAlpha)
 
         if (config.compressed) {
-          levels.map(level => CompressDxt.compressDxt(level, hasAlpha))
+          config.channels match {
+            case 4 => levels.map(level => CompressDxt.compressDxt(level, hasAlpha))
+            case 3 => levels.map(level => CompressDxt.compressDxt(level, false))
+            case 2 => levels.map(level => CompressDxt.compressBcAlpha(level, 2))
+            case 1 => levels.map(level => CompressDxt.compressBcAlpha(level, 1))
+          }
+
         } else {
           if (config.colorDepth == 8) {
             levels.map(level => toRgba8(level))

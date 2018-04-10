@@ -187,6 +187,9 @@ object Config {
       /** Bits per pixel of the texture */
       var colorDepth: Int = 8
 
+      /** Number of channels in the resulting image in RGBA order */
+      var channels: Int = 4
+
       override def visit(v: SimpleVisitor): Unit = {
         semantic = v.field("semantic", semantic)
         compressed = v.field("compressed", compressed)
@@ -195,6 +198,7 @@ object Config {
         premultiplyAlpha = v.field("premultiplyAlpha", premultiplyAlpha)
         noDownscale = v.field("noDownscale", noDownscale)
         colorDepth = v.field("colorDepth", colorDepth)
+        channels = v.field("channels", channels)
       }
     }
 

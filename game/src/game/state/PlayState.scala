@@ -17,9 +17,10 @@ import menu.{DebugMenu, PauseMenu}
 import PlayState._
 import game.menu.HotbarMenu
 import game.options.Options
-import game.system.EntitySet
+import game.system.{Entity, EntitySet}
 import game.system.audio.AudioSystem.SoundRef
 import game.system.rendering.AmbientSystem.Probe
+import game.system.rendering.ModelSystem.ModelInstance
 import io.property._
 import io.serialization.{BinaryReader, BinaryWriter}
 import menu.gui.TextBox
@@ -35,6 +36,10 @@ object PlayState {
   val Colorgrade = TextureAsset("colorgrade/ingame.png.s2tx")
 
   val IdleMusic = SoundAsset("audio/music/ingame.ogg.s2au")
+
+  val TestPlaceModel = ModelAsset("game/tower/turret_basic/tower_turret.fbx.s2md")
+  val TestPlaceMask = TextureAsset("game/tower/turret_basic/placemask.png.s2tx")
+  val NoiseTex = TextureAsset("effect/noise.png.s2tx")
 
   val Assets = new AssetBundle("PlayState",
     PauseMenu.Assets,
@@ -59,6 +64,9 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
   var music: SoundRef = null
 
+  var testPlaceModelEntity: Entity = null
+  var testPlaceModelInstance: ModelInstance = null
+
   override def load(): Unit = {
     Assets.acquire()
     GameState.push(new LoadingState())
@@ -73,8 +81,11 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     prevTime = AppWindow.currentTime
 
-    music = audioSystem.play(IdleMusic, AudioSystem.Music)
-    music.instance.setFullLoop()
+    // music = audioSystem.play(IdleMusic, AudioSystem.Music)
+    // music.instance.setFullLoop()
+
+    testPlaceModelEntity = new Entity(false, "Test place")
+    testPlaceModelInstance = modelSystem.addModel(testPlaceModelEntity, TestPlaceModel)
 
     if (loadExisting)
       loadGame()
@@ -318,10 +329,13 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
   object CameraTweak extends PropertyContainer {
     private val arr = MacroPropertySet.make[CameraTweak.type]()
-    override val propertySet: PropertySet = new PropertySet("CameraTweak", arr)
+    override val propertySet: PropertySet = new PropertySet("CameraTweak", arr) {
+      range("fov", 30.0, 100.0)
+      range("pitch", 0.0, 2.0)
+    }
 
-    var fov: DoubleProp.Type = 90.0
-    var moveSpeed: Vector2Prop.Type = Vector2(25.0, 35.0)
+    var fov: DoubleProp.Type = 45.0
+    var moveSpeed: Vector2Prop.Type = Vector2(35.0, 35.0)
     var moveBoostAmount: DoubleProp.Type = 2.0
     var stopSpeed: DoubleProp.Type = 1.5
 
@@ -331,6 +345,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     var zoomInterpolateLinear: DoubleProp.Type = 5.0
     var zoomInterpolateExponential: DoubleProp.Type = 0.2
+
+    var pitch: DoubleProp.Type = 0.5
   }
 
   var cameraPos = Vector3.Zero
@@ -415,11 +431,14 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     s.finish()
 
+
     val renderer = Renderer.get
 
+    renderer.setCull(true)
+    renderer.setDepthMode(true, true)
     renderer.setWriteSrgb(false)
     renderer.setRenderTarget(globalRenderSystem.mainTargetMsaa)
-    renderer.clear(Some(Color.Black), None)
+    renderer.clear(Some(Color.Black), Some(1.0))
 
     renderer.pushUniform(GlobalSceneUniform, u => {
       GlobalSceneUniform.ViewProjection.set(u, viewProjection)
@@ -432,6 +451,42 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     for (ground <- visibleGround) {
       ground.draw()
     }
+
+    val placeMeshes = {
+      val models = modelSystem.collectVisibleModels(Some(testPlaceModelEntity))
+      modelSystem.updateModels(models)
+      modelSystem.collectMeshInstances(models)
+    }
+
+    renderer.setDepthMode(false, true)
+    renderer.setBlend(Renderer.BlendAddAlpha)
+    PlaceMeshShader.get.use()
+
+    for {
+      (mesh, insts) <- placeMeshes.meshes
+      inst <- insts
+    } {
+
+      renderer.setTexture(PlaceMeshShader.Textures.Placemask, TestPlaceMask.get.texture)
+      renderer.setTexture(PlaceMeshShader.Textures.Noise, NoiseTex.get.texture)
+
+      renderer.pushUniform(PlaceMeshShader.PixelUniform, u => {
+        import PlaceMeshShader.PixelUniform._
+        val time = prevTime.toFloat
+        UvOffset.set(u, time, 0.0f, 0.0f, 0.0f)
+      })
+
+      renderer.pushUniform(PlaceMeshShader.VertexUniform, u => {
+        import PlaceMeshShader.VertexUniform._
+        World.set(u, inst.worldTransform)
+        UvBounds.set(u, mesh.uvOffsetX, mesh.uvOffsetY, mesh.uvScaleX, mesh.uvScaleY)
+      })
+
+      mesh.draw()
+
+    }
+
+    renderer.setBlend(Renderer.BlendNone)
 
   }
 
@@ -463,13 +518,13 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     renderer.beginFrame()
 
     val screenWidth = globalRenderSystem.screenWidth
-    val screenHeight = globalRenderSystem.screenWidth
+    val screenHeight = globalRenderSystem.screenHeight
     val aspectRatio = screenWidth.toDouble / screenHeight.toDouble
 
     val cameraPos = Vector3(Camera.position.x, cameraHeight, Camera.position.y)
     val fov = math.toRadians(CameraTweak.fov)
 
-    view = Matrix43.look(cameraPos, Vector3(0.0, -5.0, -1.0))
+    view = Matrix43.look(cameraPos, Vector3(0.0, -1.0, -CameraTweak.pitch))
     projection = Matrix4.perspective(aspectRatio, fov, 1.0, 200.0)
     viewProjection = projection * view
 
@@ -504,6 +559,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     renderer.drawQuad()
 
+    renderer.setCull(false)
     renderer.setWriteSrgb(true)
     canvas.render()
 

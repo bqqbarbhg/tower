@@ -36,9 +36,12 @@ object HotbarMenu {
   val IconPad = 5.0
   val CellSize = IconSize + IconPad * 2.0
 
-  class Category(val icon: Identifier, val bind: Int) {
-    val bindName = KeyEvent.KeyToName.get(bind).flatMap(b => Locale.getSimpleOption(s"key.$b")).getOrElse("")
+  class Item(val icon: Identifier) {
+    val input = new InputArea()
+  }
 
+  class Category(val icon: Identifier) {
+    var items: Vector[Item] = Vector[Item]()
     val input = new InputArea()
   }
 
@@ -65,11 +68,20 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
     KeyEvent.NameToKey.get(binds.bar5).getOrElse('5'.toInt),
   )
 
+  val hotkeyNames = hotkeys.map(bind => {
+    KeyEvent.KeyToName.get(bind).flatMap(b => Locale.getSimpleOption(s"key.$b")).getOrElse("")
+  })
+
+
   val categories = Vector(
-    new Category(Identifier("gui/bar/icon_turret.png"), hotkeys(0)),
-    new Category(Identifier("gui/bar/icon_radar.png"), hotkeys(1)),
-    new Category(Identifier("gui/bar/icon_cable.png"), hotkeys(2)),
-    new Category(Identifier("gui/bar/icon_structure.png"), hotkeys(3)),
+    new Category(Identifier("gui/bar/icon_turret.png")),
+    new Category(Identifier("gui/bar/icon_radar.png")),
+    new Category(Identifier("gui/bar/icon_cable.png")),
+    new Category(Identifier("gui/bar/icon_structure.png")),
+  )
+
+  categories(0).items = Vector(
+    new Item(Identifier("game/tower/turret_basic/bar_icon.png")),
   )
 
   var openCategory: Option[Category] = None
@@ -89,16 +101,16 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
       }
     }
 
-    openCategory match {
-      case Some(cat) =>
-      case None =>
-        for (key <- AppWindow.keyDownEvents) {
-          for (cat <- categories) {
-            if (key.key == cat.bind) {
-              openCategory = Some(cat)
-            }
-          }
+    for (e <- AppWindow.keyDownEvents) {
+      val ix = hotkeys.indexOf(e.key)
+      if (ix >= 0) {
+        openCategory match {
+          case Some(cat) =>
+          case None =>
+            if (ix < categories.length)
+              openCategory = Some(categories(ix))
         }
+      }
     }
 
     val rightClick = AppWindow.mouseButtonDown(1)
@@ -115,7 +127,7 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
     canvas.draw(0, Quad, bottom, CatBgColor)
 
     val mutBottom = bottom.copy
-    for (cat <- categories) {
+    for ((cat, index) <- categories.zipWithIndex) {
       val button = mutBottom.pushLeft(CellSize)
       val iconPad = button.copy.padAround(IconPad)
 
@@ -129,7 +141,7 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
 
       val hotkeyStyle = if (openCategory.isEmpty) HotkeyStyleActive else HotkeyStyleInactive
       val hotkeyArea = button.copy.pushTop(hotkeyStyle.height).padLeft(HotkeyLeftPadding)
-      canvas.drawText(1, hotkeyStyle, hotkeyArea, cat.bindName)
+      canvas.drawText(1, hotkeyStyle, hotkeyArea, hotkeyNames(index))
 
       val color = if (openCategory.contains(cat)) IconOpenColor
       else if (cat.input.focused && openCategory.nonEmpty) IconFocusInactiveColor
@@ -138,6 +150,26 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
       else IconIdleColor
 
       canvas.draw(1, cat.icon, iconPad, color)
+    }
+
+    for (cat <- openCategory) {
+
+      val mutTop = top.copy
+      for ((item, index) <- cat.items.zipWithIndex) {
+        val button = mutTop.pushLeft(CellSize)
+        val iconPad = button.copy.padAround(IconPad)
+
+        inputs.add(0, item.input, button)
+
+        val hotkeyStyle = HotkeyStyleActive
+        val hotkeyArea = button.copy.pushTop(hotkeyStyle.height).padLeft(HotkeyLeftPadding)
+        canvas.drawText(1, hotkeyStyle, hotkeyArea, hotkeyNames(index))
+
+        val color = if (item.input.focused) IconFocusColor
+        else IconIdleColor
+
+        canvas.draw(1, item.icon, iconPad, color)
+      }
     }
 
   }
