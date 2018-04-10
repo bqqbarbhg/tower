@@ -15,6 +15,7 @@ import game.system.audio._
 import game.shader._
 import menu.{DebugMenu, PauseMenu}
 import PlayState._
+import game.menu.HotbarMenu
 import game.options.Options
 import game.system.EntitySet
 import game.system.audio.AudioSystem.SoundRef
@@ -38,6 +39,8 @@ object PlayState {
   val Assets = new AssetBundle("PlayState",
     PauseMenu.Assets,
     TutorialSystem.Assets,
+    HotbarMenu.Assets,
+
     GroundTexture,
     Colorgrade,
     GroundShader,
@@ -50,6 +53,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   val inputs = new InputSet()
   val canvas = new Canvas()
   val pauseMenu = new PauseMenu(inputs, canvas)
+  val hotbarMenu = new HotbarMenu(inputs, canvas)
   var prevTime = 0.0
   var finished: Boolean = false
 
@@ -139,6 +143,11 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     def processEscape(): Unit = {
       if (debugMenu.isDefined) {
         debugUnselect()
+        return
+      }
+
+      if (hotbarMenu.openCategory.nonEmpty) {
+        hotbarMenu.openCategory = None
         return
       }
 
@@ -242,6 +251,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     if (CameraBind.invertZoom) zoomDelta = -zoomDelta
 
     if (math.abs(zoomDelta) >= 0.001) {
+      tutorialSystem.progress(TutorialSystem.MoveZoom, math.abs(AppWindow.mouseScroll) * 0.2)
       zoomDelta = clamp(zoomDelta, -3.0, 3.0)
       Camera.zoom += zoomDelta * CameraTweak.zoomSpeed
       Camera.zoom = clamp(Camera.zoom, CameraTweak.minZoom, CameraTweak.maxZoom)
@@ -445,6 +455,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     audioSystem.update()
 
     tutorialSystem.render(canvas)
+
+    hotbarMenu.update(dt)
 
     val renderer = Renderer.get
 

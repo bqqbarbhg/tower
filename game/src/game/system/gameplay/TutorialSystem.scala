@@ -5,6 +5,7 @@ import ui.{Canvas, Layout}
 import TutorialSystem._
 import game.options.Options
 import locale.Locale
+import locale.LocaleString._
 import ui.Canvas.{Outline, TextStyle}
 import asset._
 import core.Vector2
@@ -16,6 +17,7 @@ object TutorialSystem {
 
   val MoveCamera = 0
   val MoveBoost = 1
+  val MoveZoom = 2
 
   val Assets = new AssetBundle("TutorialSystem",
     TutorialFont,
@@ -51,6 +53,8 @@ final class TutorialSystemImpl extends TutorialSystem {
 
         if (currentPhase == MoveCamera) {
           nextPhase = MoveBoost
+        } else if (currentPhase == MoveBoost) {
+            nextPhase = MoveZoom
         } else {
           nextPhase = -1
         }
@@ -89,6 +93,8 @@ final class TutorialSystemImpl extends TutorialSystem {
     } else if (currentPhase == MoveBoost) {
       val keyText = bindToText(binds.cameraBoost)
       Locale.getExpression("tutorial.boostCamera", "keys" -> keyText)
+    } else if (currentPhase == MoveZoom) {
+      lc"tutorial.zoomCamera"
     } else {
       ""
     }

@@ -824,8 +824,8 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
     cancelButton.update(cancelPos)
 
     for {
-      focusedInput <- inputs.focused.orElse(inputs.dragged)
-      focusedArea <- inputs.focusedArea.orElse(inputs.draggedArea)
+      focusedInput <- inputs.focused
+      focusedArea <- inputs.focusedArea
     } {
       for {
         tooltip <- tooltips.get(focusedInput._1)

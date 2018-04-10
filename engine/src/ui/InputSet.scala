@@ -14,11 +14,11 @@ object InputSet {
 
     def exists: Boolean = ownerSet != null && ownerSet.updateTick == updateTick
 
-    def focusIndex: Int = {
-      if (!exists || !(ownerSet.focusedInput eq this)) return -1
-      ownerSet.focusedIndex
+    def hoverIndex: Int = {
+      if (!exists || !(ownerSet.hoveredInput eq this)) return -1
+      ownerSet.hoveredIndex
     }
-    def focused: Boolean = focusIndex >= 0
+    def hovered: Boolean = hoverIndex >= 0
 
     def dragIndex: Int = {
       if (!exists || !(ownerSet.draggedInput eq this)) return -1
@@ -33,6 +33,13 @@ object InputSet {
     }
     def clicked: Boolean = clickIndex >= 0
 
+    def focusIndex: Int = {
+      val hoverIx = hoverIndex
+      if (hoverIx >= 0) return hoverIx
+      dragIndex
+    }
+    def focused: Boolean = focusIndex >= 0
+
   }
 
   private[ui] case class InputWithLayout(layer: Int, input: InputArea, layout: Layout, index: Int, distance: Double)
@@ -45,9 +52,9 @@ class InputSet {
   private[ui] var updateTick: Int = 0
   private[ui] val inputs = ArrayBuffer[InputWithLayout]()
 
-  private[ui] var focusedInput: InputArea = null
-  private[ui] var focusedIndex: Int = -1
-  private[ui] var focusedAreaLayout: Layout = null
+  private[ui] var hoveredInput: InputArea = null
+  private[ui] var hoveredIndex: Int = -1
+  private[ui] var hoveredAreaLayout: Layout = null
 
   private[ui] var draggedInput: InputArea = null
   private[ui] var draggedIndex: Int = -1
@@ -56,11 +63,14 @@ class InputSet {
   private[ui] var didClick: Boolean = false
   private[ui] var prevDown: Boolean = false
 
-  def focused: Option[(InputArea, Int)] = if (focusedInput != null) Some((focusedInput, focusedIndex)) else None
-  def focusedArea: Option[Layout] = Option(focusedAreaLayout)
+  def hovered: Option[(InputArea, Int)] = if (hoveredInput != null) Some((hoveredInput, hoveredIndex)) else None
+  def hoveredArea: Option[Layout] = Option(hoveredAreaLayout)
 
   def dragged: Option[(InputArea, Int)] = if (draggedInput != null) Some((draggedInput, draggedIndex)) else None
   def draggedArea: Option[Layout] = Option(draggedAreaLayout)
+
+  def focused: Option[(InputArea, Int)] = hovered.orElse(dragged)
+  def focusedArea: Option[Layout] = hoveredArea.orElse(draggedArea)
 
   def dragPosition: Vector2 = AppWindow.mousePosition
 
@@ -93,9 +103,9 @@ class InputSet {
       draggedAreaLayout = null
     }
 
-    focusedInput = null
-    focusedIndex = -1
-    focusedAreaLayout = null
+    hoveredInput = null
+    hoveredIndex = -1
+    hoveredAreaLayout = null
 
     val orderedInputs = inputs.sortBy(input => {
       val base = input.layer * -2
@@ -123,9 +133,9 @@ class InputSet {
           if (input.input == BlockerArea) {
             return
           } else if (dist < bestDist) {
-            focusedInput = input.input
-            focusedIndex = input.index
-            focusedAreaLayout = input.layout
+            hoveredInput = input.input
+            hoveredIndex = input.index
+            hoveredAreaLayout = input.layout
             bestDist = dist
           }
         }
@@ -136,9 +146,9 @@ class InputSet {
       findFocused()
 
     if (didClick) {
-      draggedInput = focusedInput
-      draggedIndex = focusedIndex
-      draggedAreaLayout = focusedAreaLayout
+      draggedInput = hoveredInput
+      draggedIndex = hoveredIndex
+      draggedAreaLayout = hoveredAreaLayout
     }
   }
 

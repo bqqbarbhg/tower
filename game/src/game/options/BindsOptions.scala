@@ -11,6 +11,16 @@ class BindsOptions extends SimpleSerializable {
   var cameraRight: String = "D"
   var cameraBoost: String = "LeftShift"
 
+  var bar1: String = "Num1"
+  var bar2: String = "Num2"
+  var bar3: String = "Num3"
+  var bar4: String = "Num4"
+  var bar5: String = "Num5"
+  var bar6: String = "Num6"
+  var bar7: String = "Num7"
+  var bar8: String = "Num8"
+  var bar9: String = "Num9"
+
   var invertScroll: Boolean = false
 
   override def visit(v: SimpleVisitor): Unit = {

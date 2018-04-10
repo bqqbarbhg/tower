@@ -144,14 +144,16 @@ class Layout(var unit: Vector2, var x0: Double, var y0: Double, var x1: Double, 
     res
   }
 
-  def containSnapped(targetWidth: Double, targetHeight: Double, snapScale: Double = 1.0, magScale: Double = 1.0, minScale: Double = 1.0, anchor: Vector2 = Vector2(0.5, 0.5)): Layout = {
+  def containSnapped(targetWidth: Double, targetHeight: Double, snapScale: Double = 1.0, magScale: Double = 1.0, minScale: Double = 1.0, anchor: Vector2 = Vector2(0.5, 0.5), relativeScale: Double = 1.0): Layout = {
     val targetAspect = targetWidth / targetHeight
     val ownAspect = widthPx / heightPx
     var scale = 0.0
     var resWidth = 0.0
     var resHeight = 0.0
 
-    def doSnap(scale: Double): Double = {
+    def doSnap(fullScale: Double) = {
+      val scale = fullScale * relativeScale
+
       if (scale < 1.0) {
         val min = math.floor(scale * minScale) / minScale
         if (min > 0.0) min else scale
