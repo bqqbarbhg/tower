@@ -11,12 +11,15 @@ class BindsOptions extends SimpleSerializable {
   var cameraRight: String = "D"
   var cameraBoost: String = "LeftShift"
 
+  var invertScroll: Boolean = false
+
   override def visit(v: SimpleVisitor): Unit = {
     cameraUp = v.field("cameraUp", cameraUp)
     cameraDown = v.field("cameraDown", cameraDown)
     cameraLeft = v.field("cameraLeft", cameraLeft)
     cameraRight = v.field("cameraRight", cameraRight)
     cameraBoost = v.field("cameraBoost", cameraBoost)
+    invertScroll = v.field("invertScroll", invertScroll)
   }
 
 }

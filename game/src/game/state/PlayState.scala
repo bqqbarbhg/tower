@@ -232,9 +232,28 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     val Right = KeyEvent.NameToKey.get(binds.cameraRight).getOrElse('D'.toInt)
     val Boost = KeyEvent.NameToKey.get(binds.cameraBoost).getOrElse(KeyEvent.LeftShift)
 
+    val invertZoom = binds.invertScroll
+
   }
 
   def updateCameraMovement(dt: Double): Unit = {
+
+    var zoomDelta = -AppWindow.mouseScroll
+    if (CameraBind.invertZoom) zoomDelta = -zoomDelta
+
+    if (math.abs(zoomDelta) >= 0.001) {
+      zoomDelta = clamp(zoomDelta, -3.0, 3.0)
+      Camera.zoom += zoomDelta * CameraTweak.zoomSpeed
+      Camera.zoom = clamp(Camera.zoom, CameraTweak.minZoom, CameraTweak.maxZoom)
+    }
+
+    {
+      val maxLinear = CameraTweak.zoomInterpolateLinear * dt
+      Camera.interpolatedZoom += math.pow(CameraTweak.zoomInterpolateExponential, dt / (1.0 / 60.0)) * (Camera.zoom - Camera.interpolatedZoom)
+      Camera.interpolatedZoom += clamp(Camera.zoom - Camera.interpolatedZoom, -maxLinear, maxLinear)
+    }
+
+    cameraHeight = math.pow(1.1, Camera.interpolatedZoom)
 
     var move = Vector2.Zero
 
@@ -259,9 +278,18 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       }
 
       cameraVel *= math.pow(0.5, dt / (1.0 / 60.0))
-      cameraVel += move *@ CameraTweak.moveSpeed * boost * dt
+      cameraVel += move *@ CameraTweak.moveSpeed * boost * cameraHeight * dt
     } else {
       cameraVel *= math.pow(0.8, dt / (1.0 / 60.0))
+    }
+
+
+    val velReduce = dt * CameraTweak.stopSpeed * cameraHeight
+    val velLength = cameraVel.length
+    if (velLength > velReduce) {
+      cameraVel -= (cameraVel / velLength) * velReduce
+    } else {
+      cameraVel = Vector2.Zero
     }
 
     Camera.position += cameraVel * dt
@@ -274,7 +302,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     override val propertySet: PropertySet = new PropertySet("Camera", arr)
 
     var position: Vector2Prop.Type = Vector2.Zero
-    var zoom: DoubleProp.Type = 20.0
+    var zoom: DoubleProp.Type = 30.0
+    var interpolatedZoom: DoubleProp.Type = 30.0
   }
 
   object CameraTweak extends PropertyContainer {
@@ -282,13 +311,22 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     override val propertySet: PropertySet = new PropertySet("CameraTweak", arr)
 
     var fov: DoubleProp.Type = 90.0
-    var moveSpeed: Vector2Prop.Type = Vector2(400.0, 500.0)
+    var moveSpeed: Vector2Prop.Type = Vector2(25.0, 35.0)
     var moveBoostAmount: DoubleProp.Type = 2.0
+    var stopSpeed: DoubleProp.Type = 1.5
+
+    var zoomSpeed: DoubleProp.Type = 3.0
+    var minZoom: DoubleProp.Type = 20.0
+    var maxZoom: DoubleProp.Type = 35.0
+
+    var zoomInterpolateLinear: DoubleProp.Type = 5.0
+    var zoomInterpolateExponential: DoubleProp.Type = 0.2
   }
 
   var cameraPos = Vector3.Zero
   var cameraVel = Vector2.Zero
 
+  var cameraHeight = 0.0
   var view = Matrix43.Identity
   var projection = Matrix4.Identity
   var viewProjection = Matrix4.Identity
@@ -416,7 +454,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     val screenHeight = globalRenderSystem.screenWidth
     val aspectRatio = screenWidth.toDouble / screenHeight.toDouble
 
-    val cameraPos = Vector3(Camera.position.x, Camera.zoom, Camera.position.y)
+    val cameraPos = Vector3(Camera.position.x, cameraHeight, Camera.position.y)
     val fov = math.toRadians(CameraTweak.fov)
 
     view = Matrix43.look(cameraPos, Vector3(0.0, -5.0, -1.0))

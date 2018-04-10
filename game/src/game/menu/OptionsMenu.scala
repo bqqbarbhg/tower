@@ -558,6 +558,13 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
     addBind("cameraRight", opt.cameraRight, opt.cameraRight_=)
     addBind("cameraBoost", opt.cameraBoost, opt.cameraBoost_=)
 
+    elements += new Padding(10.0)
+
+    elements += new SimpleCheckbox("input.binds.invertScroll") {
+      def isChecked: Boolean = opt.invertScroll
+      def setChecked(checked: Boolean): Unit =  opt.invertScroll = checked
+    }
+
     elements
   }
 

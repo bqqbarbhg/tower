@@ -4,6 +4,7 @@ import core._
 import org.lwjgl.glfw.GLFW._
 import org.lwjgl.glfw.GLFWKeyCallbackI
 import org.lwjgl.glfw.GLFWCharCallbackI
+import org.lwjgl.glfw.GLFWScrollCallbackI
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11._
 import org.lwjgl.system.MemoryUtil.NULL
@@ -39,7 +40,7 @@ object AppWindow {
   }
 
   /**
-    * GLFW callbacks may be called outside the `glfwPolLEvents()` function.
+    * GLFW callbacks may be called outside the `glfwPollEvents()` function.
     * This is terrifying as we don't even necessary know which thread will call
     * them. So buffer the key events in this way:
     * - GLFW callbacks always write to `glfwCallbackQueue`
@@ -55,6 +56,8 @@ object AppWindow {
     val keyEvents = new ArrayBuffer[KeyEvent]()
     val charEvents = new ArrayBuffer[CharEvent]()
     var downEvents = new ArrayBuffer[KeyEvent]()
+
+    var mouseScroll: Double = 0.0
   }
 
   private val glfwCallbackQueue = new KeyboardEventQueue()
@@ -72,6 +75,14 @@ object AppWindow {
     override def invoke(window: Long, codepoint: Int): Unit = {
       glfwCallbackQueue.synchronized {
         glfwCallbackQueue.charEvents += new CharEvent(codepoint)
+      }
+    }
+  }
+
+  private val scrollCallback = new GLFWScrollCallbackI {
+    override def invoke(window: Long, xoffset: Double, yoffset: Double): Unit = {
+      glfwCallbackQueue.synchronized {
+        glfwCallbackQueue.mouseScroll += yoffset
       }
     }
   }
@@ -160,6 +171,7 @@ object AppWindow {
 
     glfwSetKeyCallback(window, keyCallback)
     glfwSetCharCallback(window, charCallback)
+    glfwSetScrollCallback(window, scrollCallback)
 
     if (debug && GL.getCapabilities.GL_KHR_debug) {
       OptsGl.useDebug = true
@@ -176,6 +188,9 @@ object AppWindow {
 
   /** Character events for the current frame */
   def charEvents: Seq[CharEvent] = readQueue.charEvents
+
+  /** Mouse scroll in click-increments */
+  def mouseScroll: Double = readQueue.mouseScroll
 
   /** Is a key currently pressed down */
   def keyDown(key: Int): Boolean = glfwGetKey(window, key) == GLFW_PRESS
@@ -364,8 +379,10 @@ object AppWindow {
       readQueue.keyEvents ++= glfwCallbackQueue.keyEvents
       readQueue.charEvents ++= glfwCallbackQueue.charEvents
       readQueue.downEvents = readQueue.keyEvents.filter(_.down)
+      readQueue.mouseScroll = glfwCallbackQueue.mouseScroll
       glfwCallbackQueue.keyEvents.clear()
       glfwCallbackQueue.charEvents.clear()
+      glfwCallbackQueue.mouseScroll = 0.0
     }
   }
 
