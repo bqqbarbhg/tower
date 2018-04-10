@@ -43,6 +43,7 @@ object MenuState {
     MainFont,
     SimpleMeshShader,
     TonemapShader,
+    PostprocessShader,
     MenuAtlas,
     Material.shared,
     MainColorgrade,

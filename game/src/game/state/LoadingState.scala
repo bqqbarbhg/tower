@@ -35,6 +35,9 @@ object LoadingState {
       SpriteBatch.SpriteShader,
       MainFont,
       LoadingAtlas,
+      Canvas.shared,
+      SharedQuadIndexBuffer,
+      Font.ringBuffer,
     )
 
     bundle.acquire()
@@ -54,6 +57,7 @@ class LoadingState extends GameState {
   var systemLoadTask: Option[Task[Unit]] = None
 
   override def load(): Unit = {
+    LoadingState.assetBundle.queueLoad()
     LoadingState.assetBundle.load()
   }
 

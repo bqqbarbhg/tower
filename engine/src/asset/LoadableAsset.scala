@@ -10,6 +10,8 @@ object LoadableAsset {
   val StateLoadQueued = 3
   val StateLoading = 4
   val StateLoaded = 5
+
+  private var debugForceIndentation = 0
 }
 
 /**
@@ -95,7 +97,7 @@ abstract class LoadableAsset {
     */
   final def load(): Unit = {
     if (state == StateUnloaded || state == StatePreloaded) {
-      // println(s"Force load asset: $debugName")
+      println(s"Force load asset: $debugName")
     }
 
     startLoading()

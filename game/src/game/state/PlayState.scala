@@ -40,6 +40,8 @@ object PlayState {
     TutorialSystem.Assets,
     GroundTexture,
     Colorgrade,
+    GroundShader,
+    IdleMusic,
   )
 }
 

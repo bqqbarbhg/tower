@@ -15,7 +15,7 @@ import scala.collection.mutable.ArrayBuffer
 
 object Canvas {
 
-  private class Shared extends Unloadable{
+  class Shared extends Unloadable{
     val spriteBatch = new SpriteBatch()
 
     def unload(): Unit = {
@@ -23,7 +23,7 @@ object Canvas {
     }
   }
 
-  private val shared = DynamicAsset("Canvas.Shared", new Shared)
+  val shared = DynamicAsset("Canvas.Shared", new Shared)
 
   case class Outline(size: Double, color: Color = Color.Black)
   val NoOutline = Outline(0.0, Color.TransparentBlack)
