@@ -285,6 +285,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       if (AppWindow.keyDown(CameraBind.Right)) move += Vector2(+1.0, 0.0)
     }
 
+    val relHeight = (Camera.interpolatedZoom - CameraTweak.minZoom) / (CameraTweak.maxZoom - CameraTweak.minZoom)
+
     val len = move.length
     if (len > 0.0) {
       tutorialSystem.progress(TutorialSystem.MoveCamera, dt)
@@ -298,14 +300,17 @@ class PlayState(val loadExisting: Boolean) extends GameState {
         1.0
       }
 
+      val moveSpeed = lerp(CameraTweak.moveSpeedLow, CameraTweak.moveSpeedHigh, relHeight)
+
       cameraVel *= math.pow(0.5, dt / (1.0 / 60.0))
-      cameraVel += move *@ CameraTweak.moveSpeed * boost * cameraHeight * dt
+      cameraVel += move * moveSpeed * boost * dt
     } else {
       cameraVel *= math.pow(0.8, dt / (1.0 / 60.0))
     }
 
+    val stopSpeed = lerp(CameraTweak.stopSpeedLow, CameraTweak.stopSpeedHigh, relHeight)
 
-    val velReduce = dt * CameraTweak.stopSpeed * cameraHeight
+    val velReduce = dt * stopSpeed
     val velLength = cameraVel.length
     if (velLength > velReduce) {
       cameraVel -= (cameraVel / velLength) * velReduce
@@ -336,9 +341,11 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     }
 
     var fov: DoubleProp.Type = 45.0
-    var moveSpeed: Vector2Prop.Type = Vector2(35.0, 35.0)
+    var moveSpeedLow: DoubleProp.Type = 600.0
+    var moveSpeedHigh: DoubleProp.Type = 1000.0
+    var stopSpeedLow: DoubleProp.Type = 6.0
+    var stopSpeedHigh: DoubleProp.Type = 10.0
     var moveBoostAmount: DoubleProp.Type = 2.0
-    var stopSpeed: DoubleProp.Type = 1.5
 
     var zoomSpeed: DoubleProp.Type = 3.0
     var minZoom: DoubleProp.Type = 35.0
