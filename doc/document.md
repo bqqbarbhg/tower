@@ -261,14 +261,198 @@ There is one exception to the mapping of buffers: If OpenGL compatability mode
 is requested, for example with `--gl-compat` __everything__ is mapped with
 `glBufferSubData()`. This is due to it being the most foolproof API.
 
+## Post-mortem
+
+In this section I evaluate the technical choices I have made during the project
+and look at what worked and what could have been done differently. The topics
+listed will be in roughly chronological implementation order.
+
+#### Multi-project setup
+
+Right at the start I wanted to separate the project into sub-projects that could
+be build independently. This differs from just doing sub-packages by giving more
+control over name visibility (eg. `engine` project has absolutely no way to
+access anything from `game`). The project structure also allows the containment of external
+libraries with the most important case being the asset importing libraries used by
+the `resource` project. As the final game project should have no dependency on
+`resource` so the (usually big or awkwardly licensed) asset libraries can be
+omitted from the final distribution.
+
+At the start I decided _not_ to do a top-level package for each project to make
+it easier to refactor components from project to project. In the end this probably
+was not the best idea and the final real project `game` got its own top-level
+package.
+
+#### TOML
+
+When starting to build the prototype asset processing pipeline it turned out
+that configuration files are a necessity. The options for the file format were
+[JSON][json], [YAML][yaml], [TOML][gh-toml], and some custom format. I discarded
+JSON first as it doesn't have comments and has an unfortunate amount of line-noise
+for simple configuration purposes. YAML on the other hand looks pretty nice but
+is overly complicated. TOML is a very minimalistic .ini-inspired _config file format_,
+which seemed like a nice match. TOML still lacked some features which almost caused
+me to develop a custom domain-specific configuration format, but the gains from it
+were outweighed by the technical complexity of having a custom language in system.
+The project contains a very minimalistic TOML-subset parser initially meant for
+testing the asset system, but it has worked well enough that it never needed to be
+replaced.
+
+#### SimpleSerialization
+
+Now that we have the ability to read configuration files it would be nice to be
+able to deserialize them into some kind of structures in the code. I dabbled for
+a while with macros and Java-based reflection but didn't like how magical those
+solutions turned out to be so I made the simplest thing possible: A visitor that
+manually goes through every field. This works alright but caused some bugs to
+appear every now and then by forgetting to update the `visit()` method. Still
+these bugs were minor enough and quick to diagnose so the system stood the test
+of time.
+
+For example here's an abridged source snippet from the top-level asset config
+structure:
+```scala
+/** Root of the asset configuration file */
+class Config extends SimpleSerializable {
+  var filter = new ArrayBuffer[Filter]()
+  var importer = new Importer()
+  var res = new Res()
+  var priority = 0.0
+
+  override def visit(v: SimpleVisitor): Unit = {
+    filter = v.field("filter", filter, new Filter)
+    importer = v.field("importer", importer)
+    res = v.field("res", res)
+    priority = v.field("priority", priority)
+  }
+}
+```
+
+The `SimpleSerialization` also worked for binary serialization, which is used
+to generate hashes of the configuration files for asset processing caching.
+
+#### Asset processing
+
+The asset processing is based on importers which import asset files into an
+intermediate representation, processes which operate on said intermediate objects,
+and output formats which serialize the asset to an engine-readable form. This
+structure was flexible enough to support most of what needed to be done. Still
+some features that I wanted to do were blocked by this structure. Sharing meshes
+between different models didn't really work out. Pre-processing shaders imports
+on process-time didn't work because of the dependency system. [Fixing texture UV seams][sylvan-uvopt]
+would have been hard to fit as models and textures are independent, in addition to
+the algorithm being a ton of work. On the positive side tacking on multithreading
+onto the resource processer was trivial.
+
+#### OpenGL wrapper
+
+I'm very happy of the abstraction that built around OpenGL in the engine. It
+grew quite organically around the current needs of whatever I was doing, but
+it still turned out pretty flexible. The shader specification heavily uses Scala's
+`object`-singletons to define blocks of information. The trick that made the
+vertex specification API nice in my opinion is the lack of having to manually
+keep track of strides and offsets. This works by the engine contiguously layouting
+the vertex elements by their size. To support gaps you can create attributes with
+type `PAD`, but this was never necessary in actual use-cases.
+
+```scala
+object UpsampleMsaaShader extends ShaderAsset("shader/msaa_upsample") {
+
+  uniform(VertexUniform)
+  object VertexUniform extends UniformBlock("VertexUniform") {
+    val TextureScale = vec4("TextureScale")
+  }
+
+  override object Permutations extends Shader.Permutations {
+    val SampleCount = frag("SampleCount", Array(2, 4, 8, 16))
+  }
+
+  override object Textures extends SamplerBlock {
+    val Multisample = sampler2DMS("Multisample")
+    val SubsampleWeights = sampler2DArray("SubsampleWeights", Sampler.ClampBilinearNoMip)
+  }
+}
+
+val GroundSpec = VertexSpec(Vector(
+  Attrib(3, F32, Identifier("Position")),
+  Attrib(3, F32, Identifier("Normal")),
+  Attrib(4, UI8, Identifier("ProbeIndex")),
+  Attrib(4, UN8, Identifier("ProbeWeight")),
+))
+```
+
+#### UI rendering
+
+When making the font implementation I had one goal: Readable subpixel small fonts.
+I spent a lot of time with `stb_truetype`s [font oversampling][gh-stb-oversample].
+Sadly in the end after I got it working artifact-free it looked worse than simple
+SDF implementation with large textures. The oversample-codepath still exists, but
+is not used by any font. Otherwise the font rendering turned out fine, and using
+uniform buffers it's able to squeeze a lot of text to different draw-calls.
+
+To reduce the amount of draw-calls used by the 2D rendering, I made the observation
+that the way I generate the atlases makes some amount of full-size pages and one
+left-over texture page. Instead of creating a new draw-call every time a sprite is
+rendered from another page I joined the first pages into one array texture and keep
+the last one as separate. When rendering the sprites there is a  branch on whether
+to use the array texture or the final one. This goes against the wisdom of no
+branching in shaders, but it should be fine as the branch is very uniform.
+
+#### Word wrapping
+
+When I decided to add word-wrapping support to the text rendering I got the idea
+of adding [soft hyphens][wiki-shy] to the localized text at processing time. First
+idea was to use a dictionary for each language. This worked for English but after
+some searching I couldn't find a Finnish one, so I adapted the hyphenation algorithm
+from [`vepasto/finnish-hyphenator`][gh-finnish-hyphenator]. The first implementation
+hyphenated at every chance which made the text a little hard to read, so I added a
+tweakable threshold controlling how much empty space created if the word would be
+wrapped as a whole.
+
+#### Shading system
+
+This is probably my biggest gripe with the engine. From the first render output
+I got it became apparent that this game seriously needs antialiasing with the
+small but polygonal towers. I decided to use [MSAA][wiki-msaa], since it's easy to
+implement while resulting in good quality. Another option would be to use some
+post-process antialiasing like [FXAA][wiki-fxaa], but I don't like the blurring it introduces.
+Temporal antialiasing could have worked out but I didn't want to implement it for
+this project. MSAA has one big drawback: it is very memory intensive for the render
+targets, which means [deferred shading][wiki-deferred] is not really an option, since it requires
+very fat G-buffers as well. Deferred texturing could have worked as an alternative,
+but it requires the engine to be built around it. I would have wanted to use [clustered shading][pdf-clustered],
+but since I wanted the game to require only OpenGL 3.3 it would have been very impractical
+to implement without compute shaders. This left me with forward shading, which is
+not a good solution to the combinatoric problem of lights and objects.
+
+#### Systems and scheduler
+
+This is another thing in the engine that I'm pretty happy about. The entities
+of the scene is split into systems. The systems can be updated on multiple
+threads using the `Scheduler` API and specifying the dependencies between different
+update phases. This worked wonderfully and could be extended further with adding
+possibilities to splitting updates into overlapping tasks and creating some sort
+of mutual exclusion dependency, for when tasks `A` and `B` may not run at the same time,
+but `A -> B` and `B -> A` are both valid.
+
 [wiki-sprite-sheet]: https://en.wikipedia.org/wiki/Texture_atlas
 [wiki-texture-compression]: https://en.wikipedia.org/wiki/Texture_compression
 [wiki-mipmap]: https://en.wikipedia.org/wiki/Mipmap
 [wiki-wc]: https://en.wikipedia.org/wiki/Write_combining
+[wiki-yaml]: https://en.wikipedia.org/wiki/YAML
+[wiki-shy]: https://en.wikipedia.org/wiki/Soft_hyphen
+[wiki-msaa]: https://en.wikipedia.org/wiki/Multisample_anti-aliasing
+[wiki-fxaa]: https://en.wikipedia.org/wiki/Fast_approximate_anti-aliasing
+[wiki-deferred]: https://en.wikipedia.org/wiki/Deferred_shading
 [gh-toml]: https://github.com/toml-lang/toml
+[gh-stb-oversample]: https://github.com/nothings/stb/tree/master/tests/oversample
+[gh-finnish-hyphenator]: https://github.com/vepasto/finnish-hyphenator
 [about-opengl]: https://www.opengl.org/about/
 [gl-uniform]: https://www.khronos.org/opengl/wiki/Uniform_(GLSL)
 [gl-ubo]: https://www.khronos.org/opengl/wiki/Uniform_Buffer_Object
 [gl-persistent]: https://www.khronos.org/opengl/wiki/Buffer_Object#Persistent_mapping
 [gl-arb-buffer-storage]: https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_buffer_storage.txt
 [ryg-wc]: https://fgiesen.wordpress.com/2013/01/29/write-combining-is-not-your-friend/
+[json]: http://json.org/
+[sylvan-uvopt]: https://www.sebastiansylvan.com/post/LeastSquaresTextureSeams/
+[pdf-clustered]: http://www.cse.chalmers.se/~uffe/clustered_shading_preprint.pdf
