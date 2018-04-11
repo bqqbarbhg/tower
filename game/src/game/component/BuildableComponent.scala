@@ -1,5 +1,6 @@
 package game.component
 
+import asset.{LoadableAsset, SoundAsset}
 import core._
 import game.system.Entity
 import io.property._
@@ -18,5 +19,8 @@ class BuildableComponent extends Component {
 
   var icon: IdentifierProp.Type = Identifier.Empty
   var locale: StringProp.Type = ""
+  var placeSound: StringProp.Type = ""
+
+  override def assets: Iterable[LoadableAsset] = Some(SoundAsset(placeSound))
 }
 

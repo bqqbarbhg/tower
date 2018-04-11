@@ -9,6 +9,7 @@ import game.component._
 import game.system._
 import game.system.Entity._
 import game.system.base._
+import game.system.audio._
 import game.system.rendering._
 import game.system.rendering.ModelSystem._
 import game.shader.PlaceMeshShader
@@ -26,6 +27,7 @@ object BuildSystem {
     PlaceMeshShader,
     NoiseTex,
     HudAtlas,
+    FailPlaceSound,
   )
 
 }
@@ -69,6 +71,7 @@ object BuildSystemImpl {
   val MaxBlockers = 16
 
   val HudAtlas = AtlasAsset("atlas/hud.s2at")
+  val FailPlaceSound = SoundAsset("audio/effect/error.wav.s2au")
 
   val PreviewValidColor = Color.rgba(0xFFFFFF, 1.0)
   val PreviewBadColor = Color.rgba(0xFF0000, 1.0)
@@ -82,6 +85,7 @@ final class BuildSystemImpl extends BuildSystem {
   var buildPreview: Option[BuildPreview] = None
   var prevMouseDown: Boolean = false
   var buildBlockerEntities = new ArrayBuffer[Entity]()
+  var failCooldown: Double = 0.0
 
   def makePreview(entityType: EntityType): Option[BuildPreview] = {
     for (comp <- entityType.find(BuildPreviewComponent)) yield {
@@ -108,6 +112,9 @@ final class BuildSystemImpl extends BuildSystem {
     val clicked = mouseDown && !prevMouseDown
 
     buildBlockerEntities.clear()
+    if (failCooldown > 0.0) {
+      failCooldown -= dt
+    }
 
     for (buildE <- buildEntity) {
       val mousePos = AppWindow.mousePosition
@@ -133,8 +140,20 @@ final class BuildSystemImpl extends BuildSystem {
         cullingSystem.queryAabb(bounds, MaxBlockers, CullingSystem.MaskGameplay, buildBlockerEntities)
         validPlace = buildBlockerEntities.isEmpty
 
-        if (clicked && validPlace) {
-          entitySystem.create(buildE, point)
+        if (clicked) {
+          if (validPlace) {
+            entitySystem.create(buildE, point)
+
+            for (buildC <- buildE.find(BuildableComponent)) {
+              val sound = SoundAsset(buildC.placeSound)
+              audioSystem.play(sound, AudioSystem.Sfx)
+            }
+          } else {
+            if (failCooldown <= 0.0) {
+              audioSystem.play(FailPlaceSound, AudioSystem.Ui)
+              failCooldown = 0.25
+            }
+          }
         }
       }
 
