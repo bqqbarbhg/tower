@@ -70,6 +70,7 @@ object UniformBlock {
       set(buffer, index, r, g, b, color.a.toFloat)
     }
 
+    def set(buffer: ByteBuffer, col: Color): Unit = set(buffer, 0, col.r.toFloat, col.g.toFloat, col.b.toFloat, col.a.toFloat)
     def set(buffer: ByteBuffer, xyz: Vector3, w: Float): Unit = set(buffer, 0, xyz.x.toFloat, xyz.y.toFloat, xyz.z.toFloat, w)
     def set(buffer: ByteBuffer, index: Int, xyz: Vector3, w: Float): Unit = set(buffer, index, xyz.x.toFloat, xyz.y.toFloat, xyz.z.toFloat, w)
     def set(buffer: ByteBuffer, x: Float, y: Float, z: Float, w: Float): Unit = set(buffer, 0, x, y, z, w)

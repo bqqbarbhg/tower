@@ -17,6 +17,9 @@ class BoundingAabbComponent extends Component {
   override def propertySet: PropertySet = BoundingAabbComponent.propertySet
   override def componentType: ComponentType = BoundingAabbComponent
 
+  /** Type mask */
+  var mask: IntProp.Type = 0
+
   /** Minimum corner */
   var min: Vector3Prop.Type = Vector3.Zero
 
@@ -24,7 +27,7 @@ class BoundingAabbComponent extends Component {
   var max: Vector3Prop.Type = Vector3.Zero
 
   override def create(entity: Entity): Unit = {
-    cullingSystem.addAabb(entity, Aabb.fromMinMax(min, max), CullingSystem.MaskRender)
+    cullingSystem.addAabb(entity, Aabb.fromMinMax(min, max), mask)
   }
 }
 

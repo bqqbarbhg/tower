@@ -44,10 +44,19 @@ object EntityFile {
     buffer.putMagic("s2es")
     buffer.putVersion(Version)
 
-    val maps = entity.map.pairs.collect { case (s: String, m: SMap) => (s, m) }
-    buffer.putInt(maps.length)
+    val multiMaps = entity.map.pairs.collect { case (s: String, m: SArray) => (s, m) }
+    val multis = for {
+      (k, v) <- multiMaps
+      map <- v.data.collect { case m: SMap => m }
+    } yield (k, map)
 
-    for ((k, v) <- maps) {
+    val maps = entity.map.pairs.collect { case (s: String, m: SMap) => (s, m) }
+
+    val all = maps ++ multis
+
+    buffer.putInt(all.length)
+
+    for ((k, v) <- all) {
       buffer.putString(k)
       writeMap(v)
     }

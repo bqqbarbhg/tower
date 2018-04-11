@@ -2,7 +2,6 @@ package game.system.gameplay
 
 
 import scala.collection.mutable
-
 import core._
 import render._
 import asset._
@@ -16,13 +15,17 @@ import game.shader.PlaceMeshShader
 import BuildSystemImpl._
 import core.Matrix4
 import platform.AppWindow
+import ui.{Canvas, InputSet}
 import util.geometry._
+
+import scala.collection.mutable.ArrayBuffer
 
 object BuildSystem {
 
   val Assets = new AssetBundle("BuildSystem",
     PlaceMeshShader,
     NoiseTex,
+    HudAtlas,
   )
 
 }
@@ -34,10 +37,13 @@ sealed trait BuildSystem {
   def setEntityTypeToBuild(entityType: Option[EntityType])
 
   /** Tick the system */
-  def update(dt: Double, invViewProj: Matrix4): Unit
+  def update(dt: Double, invViewProj: Matrix4, inputs: InputSet): Unit
 
   /** Render build preview */
   def renderPreview(): Unit
+
+  /** Render GUI elements used by this system */
+  def renderBuildGui(canvas: Canvas, viewProjection: Matrix4): Unit
 
 }
 
@@ -50,6 +56,8 @@ object BuildSystemImpl {
     val mask = TextureAsset(comp.mask)
     var time: Double = 0.0
     var modelInst: ModelInstance = _
+    var valid: Boolean = false
+    var visible: Boolean = false
 
     def delete(): Unit = {
       entity.delete()
@@ -58,12 +66,22 @@ object BuildSystemImpl {
 
   val GroundPlane = Plane(Vector3.Up, 0.0)
 
+  val MaxBlockers = 16
+
+  val HudAtlas = AtlasAsset("atlas/hud.s2at")
+
+  val PreviewValidColor = Color.rgba(0xFFFFFF, 1.0)
+  val PreviewBadColor = Color.rgba(0xFF0000, 1.0)
+
+  val BlockerSprite = Identifier("gui/hud/build_blocker.png")
+  val CenterAnchor = Vector2(0.5, 0.5)
 }
 
 final class BuildSystemImpl extends BuildSystem {
   var buildEntity: Option[EntityType] = None
   var buildPreview: Option[BuildPreview] = None
   var prevMouseDown: Boolean = false
+  var buildBlockerEntities = new ArrayBuffer[Entity]()
 
   def makePreview(entityType: EntityType): Option[BuildPreview] = {
     for (comp <- entityType.find(BuildPreviewComponent)) yield {
@@ -85,9 +103,11 @@ final class BuildSystemImpl extends BuildSystem {
     }
   }
 
-  override def update(dt: Double, invViewProj: Matrix4): Unit = {
+  override def update(dt: Double, invViewProj: Matrix4, inputs: InputSet): Unit = {
     val mouseDown = AppWindow.mouseButtonDown(0)
     val clicked = mouseDown && !prevMouseDown
+
+    buildBlockerEntities.clear()
 
     for (buildE <- buildEntity) {
       val mousePos = AppWindow.mousePosition
@@ -101,10 +121,19 @@ final class BuildSystemImpl extends BuildSystem {
 
       val ray = Ray.fromUnnormalized(near, far - near)
       val t = ray.intersect(GroundPlane)
-      val groundPoint = t.map(ray.point)
+      var groundPoint = t.map(ray.point)
+
+      if (inputs.focusedLayer >= -1000)
+        groundPoint = None
+
+      var validPlace = false
 
       for (point <- groundPoint) {
-        if (clicked) {
+        val bounds = Aabb(point, Vector3(6.0, 5.0, 6.0))
+        cullingSystem.queryAabb(bounds, MaxBlockers, CullingSystem.MaskGameplay, buildBlockerEntities)
+        validPlace = buildBlockerEntities.isEmpty
+
+        if (clicked && validPlace) {
           entitySystem.create(buildE, point)
         }
       }
@@ -113,6 +142,8 @@ final class BuildSystemImpl extends BuildSystem {
         for (point <- groundPoint)
           preview.entity.position = point + Vector3(0.0, 0.01, 0.0)
         preview.time += dt
+        preview.valid = validPlace
+        preview.visible = groundPoint.nonEmpty
       }
     }
 
@@ -125,13 +156,15 @@ final class BuildSystemImpl extends BuildSystem {
     renderer.setDepthMode(false, true)
     renderer.setBlend(Renderer.BlendAddAlpha)
 
-    for (preview <- buildPreview) {
+    for (preview <- buildPreview if preview.visible) {
       val models = modelSystem.collectModels(preview.entity)
       modelSystem.updateModels(models)
       val meshes = modelSystem.collectMeshInstances(models)
 
       PlaceMeshShader.get.use()
       renderer.setTexture(PlaceMeshShader.Textures.Noise, NoiseTex.get.texture)
+
+      val color = if (preview.valid) PreviewValidColor else PreviewBadColor
 
       for {
         (mesh, insts) <- meshes.meshes
@@ -143,6 +176,7 @@ final class BuildSystemImpl extends BuildSystem {
           import PlaceMeshShader.PixelUniform._
           val time = preview.time.toFloat
           UvOffset.set(u, time, 0.0f, 0.0f, 0.0f)
+          Color.set(u, color)
         })
 
         renderer.pushUniform(PlaceMeshShader.VertexUniform, u => {
@@ -156,5 +190,17 @@ final class BuildSystemImpl extends BuildSystem {
     }
   }
 
+  override def renderBuildGui(canvas: Canvas, viewProjection: Matrix4): Unit = {
+    for (blocker <- buildBlockerEntities) {
+      val projected = viewProjection.projectPoint(blocker.position + Vector3(0.0, 3.0, 0.0))
+
+      val x = (projected.x + 1.0) * 0.5 * globalRenderSystem.screenWidth
+      val y = (1.0 - (projected.y + 1.0) * 0.5) * globalRenderSystem.screenHeight
+      val pos = Vector2(x, y)
+      val extent = math.min(globalRenderSystem.screenWidth, globalRenderSystem.screenHeight) * 0.1
+      val size = Vector2(extent, extent)
+      canvas.draw(0, BlockerSprite, pos, size, CenterAnchor, Color.White)
+    }
+  }
 }
 

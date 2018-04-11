@@ -18,6 +18,7 @@ object PlaceMeshShader extends ShaderAsset("shader/mesh/effect/place_mesh") {
   uniform(PixelUniform)
   object PixelUniform extends UniformBlock("PixelUniform") {
     val UvOffset = vec4("UvOffset")
+    val Color = vec4("Color")
   }
 
   override object Textures extends SamplerBlock {

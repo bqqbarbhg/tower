@@ -55,22 +55,28 @@ class InputSet {
   private[ui] var hoveredInput: InputArea = null
   private[ui] var hoveredIndex: Int = -1
   private[ui] var hoveredAreaLayout: Layout = null
+  private[ui] var hoveredLayerIndex: Int = Int.MinValue
 
   private[ui] var draggedInput: InputArea = null
   private[ui] var draggedIndex: Int = -1
   private[ui] var draggedAreaLayout: Layout = null
+  private[ui] var draggedLayerIndex: Int = Int.MinValue
 
   private[ui] var didClick: Boolean = false
   private[ui] var prevDown: Boolean = false
 
+
   def hovered: Option[(InputArea, Int)] = if (hoveredInput != null) Some((hoveredInput, hoveredIndex)) else None
   def hoveredArea: Option[Layout] = Option(hoveredAreaLayout)
+  def hoveredLayer: Int = hoveredLayerIndex
 
   def dragged: Option[(InputArea, Int)] = if (draggedInput != null) Some((draggedInput, draggedIndex)) else None
   def draggedArea: Option[Layout] = Option(draggedAreaLayout)
+  def draggedLayer: Int = draggedLayerIndex
 
   def focused: Option[(InputArea, Int)] = hovered.orElse(dragged)
   def focusedArea: Option[Layout] = hoveredArea.orElse(draggedArea)
+  def focusedLayer: Int = math.max(hoveredLayerIndex, draggedLayerIndex)
 
   def dragPosition: Vector2 = AppWindow.mousePosition
 
@@ -101,11 +107,13 @@ class InputSet {
       draggedInput = null
       draggedIndex = -1
       draggedAreaLayout = null
+      draggedLayerIndex = Int.MinValue
     }
 
     hoveredInput = null
     hoveredIndex = -1
     hoveredAreaLayout = null
+    hoveredLayerIndex = Int.MinValue
 
     val orderedInputs = inputs.sortBy(input => {
       val base = input.layer * -2
@@ -125,11 +133,13 @@ class InputSet {
       for (input <- orderedInputs) {
         val l = input.layout
         var dist = 0.0
+
         if (mouse.x < l.x0) dist += l.x0 - mouse.x
         if (mouse.y < l.y0) dist += l.y0 - mouse.y
         if (mouse.x > l.x1) dist += mouse.x - l.x1
         if (mouse.y > l.y1) dist += mouse.y - l.y1
         if (dist <= input.distance) {
+          hoveredLayerIndex = input.layer
           if (input.input == BlockerArea) {
             return
           } else if (dist < bestDist) {
@@ -149,6 +159,7 @@ class InputSet {
       draggedInput = hoveredInput
       draggedIndex = hoveredIndex
       draggedAreaLayout = hoveredAreaLayout
+      draggedLayerIndex = hoveredLayerIndex
     }
   }
 

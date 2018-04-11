@@ -111,6 +111,7 @@ class Canvas {
     draw(layer, sprite, pos.x, pos.y, size.x, size.y, color)
   }
 
+
   def draw(layer: Int, sprite: Identifier, x: Double, y: Double, w: Double, h: Double, color: Color): Unit = {
     val sd = new SpriteDraw()
     sd.sprite = sprite
@@ -119,6 +120,23 @@ class Canvas {
     sd.m23 = y.toFloat
     sd.m11 = w.toFloat
     sd.m22 = h.toFloat
+    getInternalLayer(layer).sprites += sd
+  }
+
+  def draw(layer: Int, sprite: Identifier, pos: Vector2, size: Vector2, anchor: Vector2, color: Color): Unit = {
+    draw(layer, sprite, pos.x, pos.y, size.x, size.y, anchor.x, anchor.y, color)
+  }
+
+  def draw(layer: Int, sprite: Identifier, x: Double, y: Double, w: Double, h: Double, ax: Double, ay: Double, color: Color): Unit = {
+    val sd = new SpriteDraw()
+    sd.sprite = sprite
+    sd.color = color
+    sd.m13 = x.toFloat
+    sd.m23 = y.toFloat
+    sd.m11 = w.toFloat
+    sd.m22 = h.toFloat
+    sd.anchorX = ax.toFloat
+    sd.anchorY = ay.toFloat
     getInternalLayer(layer).sprites += sd
   }
 

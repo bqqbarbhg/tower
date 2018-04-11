@@ -14,6 +14,7 @@ object CullingSystem {
   val MaskRender = 0x01
   val MaskShadow = 0x02
   val MaskLight = 0x04
+  val MaskGameplay = 0x08
 
 }
 
@@ -41,6 +42,16 @@ sealed trait CullingSystem extends EntityDeleteListener {
 
   /** Remove an entity from the system. */
   def removeCullables(entity: Entity): Unit
+
+  /** Query AABB and return intersecting entities to existing `results` */
+  def queryAabb(aabb: Aabb, maxResults: Int, mask: Int, results: ArrayBuffer[Entity]): Unit
+
+  /** Query AABB and return intersecting entities */
+  def queryAabb(aabb: Aabb, maxResults: Int, mask: Int): ArrayBuffer[Entity] = {
+    val results = new ArrayBuffer[Entity](maxResults)
+    queryAabb(aabb, maxResults, mask, results)
+    results
+  }
 }
 
 object CullingSystemImpl {
@@ -49,6 +60,7 @@ object CullingSystemImpl {
 
   val MaskTreeRender = MaskRender | MaskShadow
   val MaskTreeLight = MaskLight
+  val MaskTreeGameplay = MaskGameplay
 
   final case class ContainerRef(container: CullableContainer, pool: Int, index: Int) {
     def release(): Unit = {
@@ -155,6 +167,7 @@ final class CullingSystemImpl extends CullingSystem {
 
   val quadTreeRender = new QuadTreeNode(Aabb(QuadTreeOrigin, QuadTreeSize * 0.5), 1)
   val quadTreeLight = new QuadTreeNode(Aabb(QuadTreeOrigin, QuadTreeSize * 0.5), 1)
+  val quadTreeGameplay = new QuadTreeNode(Aabb(QuadTreeOrigin, QuadTreeSize * 0.5), 1)
 
   class QuadTreeNode(val bounds: Aabb, val level: Int) {
     val maxOfSizeXZ = math.max(bounds.halfSize.x, bounds.halfSize.z)
@@ -294,6 +307,8 @@ final class CullingSystemImpl extends CullingSystem {
       cullQuadTreeToNarrow(quadTreeRender, frustum, mask)
     if ((mask & MaskTreeLight) != 0)
       cullQuadTreeToNarrow(quadTreeLight, frustum, mask)
+    if ((mask & MaskTreeGameplay) != 0)
+      cullQuadTreeToNarrow(quadTreeGameplay, frustum, mask)
 
   }
 
@@ -365,6 +380,13 @@ final class CullingSystemImpl extends CullingSystem {
         failedInsert = true
     }
 
+    if ((shape.mask & MaskTreeGameplay) != 0) {
+      if (quadTreeGameplay.bounds.contains(shape.aabb))
+        quadTreeGameplay.add(shape)
+      else
+        failedInsert = true
+    }
+
     if (failedInsert)
       globalContainer.add(shape)
   }
@@ -384,6 +406,13 @@ final class CullingSystemImpl extends CullingSystem {
     if ((shape.mask & MaskTreeLight) != 0) {
       if (quadTreeLight.bounds.contains(shape.sphere))
         quadTreeLight.add(shape)
+      else
+        failedInsert = true
+    }
+
+    if ((shape.mask & MaskTreeGameplay) != 0) {
+      if (quadTreeGameplay.bounds.contains(shape.sphere))
+        quadTreeGameplay.add(shape)
       else
         failedInsert = true
     }
@@ -477,6 +506,51 @@ final class CullingSystemImpl extends CullingSystem {
   }
 
   override def entitiesDeleted(entities: EntitySet): Unit = entities.flag(Flag_Cullables).foreach(removeCullables)
+
+  def addToQueryResults(entity: Entity, results: ArrayBuffer[Entity], maxResults: Int): Boolean = {
+    if (results.length >= maxResults) return true
+    for (e <- results) if (e == entity) return true
+    results += entity
+    results.length >= maxResults
+  }
+
+  def queryCullableAabb(cullables: CullableContainer, queryShape: Aabb, results: ArrayBuffer[Entity], maxResults: Int, mask: Int): Unit = {
+    for (aabb <- cullables.aabbList) {
+      if ((aabb.mask & mask) != 0 && aabb.aabb.intersects(queryShape)) {
+        if (addToQueryResults(aabb.cullable.entity, results, maxResults)) return
+      }
+    }
+
+    for (sphere <- cullables.sphereList) {
+      if ((sphere.mask & mask) != 0 && sphere.sphere.intersects(queryShape)) {
+        if (addToQueryResults(sphere.cullable.entity, results, maxResults)) return
+      }
+    }
+  }
+
+  def queryQuadTreeAabb(node: QuadTreeNode, queryShape: Aabb, results: ArrayBuffer[Entity], maxResults: Int, mask: Int): Unit = {
+    if (results.length >= maxResults || !node.bounds.intersects(queryShape)) return
+
+    queryCullableAabb(node.cullables, queryShape, results, maxResults, mask)
+
+    if (!node.isLeaf) {
+      queryQuadTreeAabb(node.c00, queryShape, results, maxResults, mask)
+      queryQuadTreeAabb(node.c01, queryShape, results, maxResults, mask)
+      queryQuadTreeAabb(node.c10, queryShape, results, maxResults, mask)
+      queryQuadTreeAabb(node.c11, queryShape, results, maxResults, mask)
+    }
+  }
+
+  override def queryAabb(aabb: Aabb, maxResults: Int, mask: Int, results: ArrayBuffer[Entity]): Unit = {
+    queryCullableAabb(globalContainer, aabb, results, maxResults, mask)
+
+    if ((mask & MaskTreeRender) != 0)
+      queryQuadTreeAabb(quadTreeRender, aabb, results, maxResults, mask)
+    if ((mask & MaskTreeLight) != 0)
+      queryQuadTreeAabb(quadTreeLight, aabb, results, maxResults, mask)
+    if ((mask & MaskTreeGameplay) != 0)
+      queryQuadTreeAabb(quadTreeGameplay, aabb, results, maxResults, mask)
+  }
 
 }
 

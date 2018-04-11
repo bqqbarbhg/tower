@@ -527,7 +527,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     viewProjection = projection * view
     invViewProjection = viewProjection.inverse
 
-    buildSystem.update(dt, invViewProjection)
+    buildSystem.update(dt, invViewProjection, inputs)
+    buildSystem.renderBuildGui(canvas, viewProjection)
 
     val renderer = Renderer.get
 

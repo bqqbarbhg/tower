@@ -133,6 +133,8 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
 
     assert(openCategory.isDefined || selectedItem.isEmpty)
 
+    inputs.addBlocker(-10, area, 10.0)
+
     val rightClick = AppWindow.mouseButtonDown(1)
     if (rightClick && !prevRightClick) {
       openCategory = None

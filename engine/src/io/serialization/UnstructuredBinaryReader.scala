@@ -46,14 +46,16 @@ class UnstructuredBinaryReader(val buffer: ByteBuffer) extends AnyVal {
     val numFields = buffer.getInt()
     var ix = 0
     while (ix < numFields) {
-      val dataType = buffer.getInt()
       val name = buffer.getString()
+      val dataType = buffer.getInt()
+      skipType(dataType)
       ix += 1
     }
   }
 
   def skipType(dataType: Int): Unit = dataType match {
     case DataDouble => buffer.getDouble()
+    case DataInt => buffer.getInt()
     case DataString => buffer.getString()
     case DataObject => skipObject()
   }
