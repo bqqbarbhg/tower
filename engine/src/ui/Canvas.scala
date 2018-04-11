@@ -192,8 +192,10 @@ class Canvas {
     val font = style.font.get
     var pos = position
 
+    val hyphenDist = style.height * 6.0
+
     val lines = WordWrap.wrapText(style.font.get, style.height, bounds.x, text, offset, length,
-      hyphenateThreshold = Some(100.0))
+      hyphenateThreshold = Some(hyphenDist))
 
     val endY = bounds.y + position.y
     var y = position.y
