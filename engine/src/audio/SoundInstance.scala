@@ -72,7 +72,11 @@ class SoundInstance private(var sound: Sound) extends Input {
 
   def reload(newSound: Sound): Unit = {
     cursor.close()
+    sound.release()
+
     sound = newSound
+
+    sound.acquire()
     cursor = sound.sampleSource.open()
     invalidateBuffer()
   }

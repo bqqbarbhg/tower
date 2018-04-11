@@ -81,8 +81,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     prevTime = AppWindow.currentTime
 
-    // music = audioSystem.play(IdleMusic, AudioSystem.Music)
-    // music.instance.setFullLoop()
+    music = audioSystem.play(IdleMusic, AudioSystem.Music)
+    music.instance.setFullLoop()
 
     testPlaceModelEntity = new Entity(false, "Test place")
     testPlaceModelInstance = modelSystem.addModel(testPlaceModelEntity, TestPlaceModel)
