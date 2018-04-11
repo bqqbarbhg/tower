@@ -78,6 +78,8 @@ package object core {
   def clamp(v: Float, min: Float, max: Float) = scala.math.min(scala.math.max(v, min), max)
   def clamp(v: Double, min: Double, max: Double) = scala.math.min(scala.math.max(v, min), max)
 
+  def lerp(a: Double, b: Double, t: Double): Double = a * (1.0 - t) + b * t
+
   def smoothStep(t: Double): Double = t * t * (3.0 - 2.0 * t)
 
   /** Code path that should be never run, behaves like assert(false) */

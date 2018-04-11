@@ -323,15 +323,16 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     override val propertySet: PropertySet = new PropertySet("Camera", arr)
 
     var position: Vector2Prop.Type = Vector2.Zero
-    var zoom: DoubleProp.Type = 30.0
-    var interpolatedZoom: DoubleProp.Type = 30.0
+    var zoom: DoubleProp.Type = 40.0
+    var interpolatedZoom: DoubleProp.Type = 40.0
   }
 
   object CameraTweak extends PropertyContainer {
     private val arr = MacroPropertySet.make[CameraTweak.type]()
     override val propertySet: PropertySet = new PropertySet("CameraTweak", arr) {
       range("fov", 30.0, 100.0)
-      range("pitch", 0.0, 2.0)
+      range("pitchLow", 0.0, 2.0)
+      range("pitchHigh", 0.0, 2.0)
     }
 
     var fov: DoubleProp.Type = 45.0
@@ -340,13 +341,14 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     var stopSpeed: DoubleProp.Type = 1.5
 
     var zoomSpeed: DoubleProp.Type = 3.0
-    var minZoom: DoubleProp.Type = 20.0
-    var maxZoom: DoubleProp.Type = 35.0
+    var minZoom: DoubleProp.Type = 35.0
+    var maxZoom: DoubleProp.Type = 45.0
 
     var zoomInterpolateLinear: DoubleProp.Type = 5.0
     var zoomInterpolateExponential: DoubleProp.Type = 0.2
 
-    var pitch: DoubleProp.Type = 0.5
+    var pitchLow: DoubleProp.Type = 0.5
+    var pitchHigh: DoubleProp.Type = 0.2
   }
 
   var cameraPos = Vector3.Zero
@@ -524,7 +526,10 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     val cameraPos = Vector3(Camera.position.x, cameraHeight, Camera.position.y)
     val fov = math.toRadians(CameraTweak.fov)
 
-    view = Matrix43.look(cameraPos, Vector3(0.0, -1.0, -CameraTweak.pitch))
+    val relHeight = (Camera.interpolatedZoom - CameraTweak.minZoom) / (CameraTweak.maxZoom - CameraTweak.minZoom)
+    val pitch = lerp(CameraTweak.pitchLow, CameraTweak.pitchHigh, relHeight)
+
+    view = Matrix43.look(cameraPos, Vector3(0.0, -1.0, -pitch))
     projection = Matrix4.perspective(aspectRatio, fov, 1.0, 200.0)
     viewProjection = projection * view
 
