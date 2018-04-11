@@ -336,6 +336,15 @@ class Matrix4 {
     buf.put(offset + 15, m44.toFloat)
   }
 
+  /** Project a 4D vector with XYZ from `v` and W=1 */
+  def projectPoint(v: Vector3): Vector3 = {
+    val x = m11*v.x + m12*v.y + m13*v.z + m14
+    val y = m21*v.x + m22*v.y + m23*v.z + m24
+    val z = m31*v.x + m32*v.y + m33*v.z + m34
+    val w = m41*v.x + m42*v.y + m43*v.z + m44
+    Vector3(x / w, y / w, z / w)
+  }
+
   def right: Vector3 = Vector3(m11, m21, m31)
   def up: Vector3 = Vector3(m12, m22, m32)
   def forward: Vector3 = Vector3(m13, m23, m33)

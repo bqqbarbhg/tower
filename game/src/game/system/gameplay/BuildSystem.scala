@@ -1,17 +1,22 @@
 package game.system.gameplay
 
-import render._
-import asset._
 
 import scala.collection.mutable
+
+import core._
+import render._
+import asset._
 import game.component._
 import game.system._
 import game.system.Entity._
+import game.system.base._
 import game.system.rendering._
 import game.system.rendering.ModelSystem._
 import game.shader.PlaceMeshShader
 import BuildSystemImpl._
+import core.Matrix4
 import platform.AppWindow
+import util.geometry._
 
 object BuildSystem {
 
@@ -29,7 +34,7 @@ sealed trait BuildSystem {
   def setEntityTypeToBuild(entityType: Option[EntityType])
 
   /** Tick the system */
-  def update(dt: Double): Unit
+  def update(dt: Double, invViewProj: Matrix4): Unit
 
   /** Render build preview */
   def renderPreview(): Unit
@@ -51,10 +56,14 @@ object BuildSystemImpl {
     }
   }
 
+  val GroundPlane = Plane(Vector3.Up, 0.0)
+
 }
 
 final class BuildSystemImpl extends BuildSystem {
+  var buildEntity: Option[EntityType] = None
   var buildPreview: Option[BuildPreview] = None
+  var prevMouseDown: Boolean = false
 
   def makePreview(entityType: EntityType): Option[BuildPreview] = {
     for (comp <- entityType.find(BuildPreviewComponent)) yield {
@@ -66,28 +75,48 @@ final class BuildSystemImpl extends BuildSystem {
   }
 
   override def setEntityTypeToBuild(entityType: Option[EntityType]): Unit = {
-    entityType match {
-      case Some(et) =>
-        buildPreview match {
-          case Some(pre) =>
-            if (pre.entityType != et) {
-              pre.delete()
-              buildPreview = makePreview(et)
-            }
-          case None =>
-            buildPreview = makePreview(et)
-        }
-
-      case None =>
-        for (pre <- buildPreview) pre.delete()
-        buildPreview = None
+    if (entityType != buildEntity) {
+      buildEntity = entityType
+      for (pre <- buildPreview) pre.delete()
+      entityType match {
+        case Some(et) => buildPreview = makePreview(et)
+        case None => buildPreview = None
+      }
     }
   }
 
-  override def update(dt: Double): Unit = {
-    for (preview <- buildPreview) {
-      preview.time += dt
+  override def update(dt: Double, invViewProj: Matrix4): Unit = {
+    val mouseDown = AppWindow.mouseButtonDown(0)
+    val clicked = mouseDown && !prevMouseDown
+
+    for (buildE <- buildEntity) {
+      val mousePos = AppWindow.mousePosition
+      val relX = mousePos.x / globalRenderSystem.screenWidth
+      val relY = mousePos.y / globalRenderSystem.screenHeight
+      val ndcX = relX * 2.0 - 1.0
+      val ndcY = -(relY * 2.0 - 1.0)
+
+      val near = invViewProj.projectPoint(Vector3(ndcX, ndcY, -1.0))
+      val far = invViewProj.projectPoint(Vector3(ndcX, ndcY, +1.0))
+
+      val ray = Ray.fromUnnormalized(near, far - near)
+      val t = ray.intersect(GroundPlane)
+      val groundPoint = t.map(ray.point)
+
+      for (point <- groundPoint) {
+        if (clicked) {
+          entitySystem.create(buildE, point)
+        }
+      }
+
+      for (preview <- buildPreview) {
+        for (point <- groundPoint)
+          preview.entity.position = point + Vector3(0.0, 0.01, 0.0)
+        preview.time += dt
+      }
     }
+
+    prevMouseDown = mouseDown
   }
 
   override def renderPreview(): Unit = {

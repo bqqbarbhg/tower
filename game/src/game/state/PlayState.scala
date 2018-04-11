@@ -47,6 +47,7 @@ object PlayState {
     PauseMenu.Assets,
     TutorialSystem.Assets,
     HotbarMenu.Assets,
+    BuildSystem.Assets,
 
     GroundTexture,
     Colorgrade,
@@ -363,6 +364,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   var view = Matrix43.Identity
   var projection = Matrix4.Identity
   var viewProjection = Matrix4.Identity
+  var invViewProjection = Matrix4.Identity
 
   val visibleEntities = new EntitySet()
 
@@ -509,11 +511,6 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     towerSystem.update(dt)
 
     buildSystem.setEntityTypeToBuild(hotbarMenu.selectedItem.map(_.entityType))
-    buildSystem.update(dt)
-
-    val renderer = Renderer.get
-
-    renderer.beginFrame()
 
     val screenWidth = globalRenderSystem.screenWidth
     val screenHeight = globalRenderSystem.screenHeight
@@ -528,6 +525,13 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     view = Matrix43.look(cameraPos, Vector3(0.0, -1.0, -pitch))
     projection = Matrix4.perspective(aspectRatio, fov, 1.0, 200.0)
     viewProjection = projection * view
+    invViewProjection = viewProjection.inverse
+
+    buildSystem.update(dt, invViewProjection)
+
+    val renderer = Renderer.get
+
+    renderer.beginFrame()
 
     if (globalRenderSystem.renderingEnabled) {
       renderScene()
