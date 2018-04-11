@@ -10,6 +10,7 @@ object BoundingAabbComponent extends ComponentType("BoundingAabb") {
   private val arr = MacroPropertySet.make[BoundingAabbComponent]()
   private val propertySet: PropertySet = new PropertySet("BoundingAabbComponent", arr)
   override def make = new BoundingAabbComponent
+  override type Type = BoundingAabbComponent
 }
 
 class BoundingAabbComponent extends Component {

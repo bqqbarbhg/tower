@@ -43,8 +43,6 @@ object PlayState {
   val TestPlaceMask = TextureAsset("game/tower/turret_basic/placemask.png.s2tx")
   val NoiseTex = TextureAsset("effect/noise.png.s2tx")
 
-  val TestEntity = EntityTypeAsset("game/entity/tower/turret_basic.es.toml.s2es")
-
   val Assets = new AssetBundle("PlayState",
     PauseMenu.Assets,
     TutorialSystem.Assets,
@@ -55,8 +53,6 @@ object PlayState {
     GroundShader,
     InstancedMeshShader,
     IdleMusic,
-
-    TestEntity,
   )
 }
 
@@ -87,8 +83,6 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     music = audioSystem.play(IdleMusic, AudioSystem.Music)
     music.instance.setFullLoop()
-
-    entitySystem.create(TestEntity.get, Vector3.Zero)
 
     if (loadExisting)
       loadGame()
@@ -162,6 +156,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
       if (hotbarMenu.openCategory.nonEmpty) {
         hotbarMenu.openCategory = None
+        hotbarMenu.selectedItem = None
         return
       }
 
@@ -486,6 +481,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       renderer.drawElementsInstanced(draw.num, mesh.numIndices, mesh.indexBuffer, mesh.vertexBuffer)
     }
 
+    buildSystem.renderPreview()
   }
 
   override def update(): Unit = {
@@ -511,6 +507,9 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     hotbarMenu.update(dt)
     towerSystem.update(dt)
+
+    buildSystem.setEntityTypeToBuild(hotbarMenu.selectedItem.map(_.entityType))
+    buildSystem.update(dt)
 
     val renderer = Renderer.get
 

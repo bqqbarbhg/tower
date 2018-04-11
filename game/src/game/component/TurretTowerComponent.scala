@@ -10,6 +10,7 @@ object TurretTowerComponent extends ComponentType("TurretTower") {
   private val arr = MacroPropertySet.make[TurretTowerComponent]()
   private val propertySet: PropertySet = new PropertySet("TurretTowerComponent", arr)
   override def make = new TurretTowerComponent
+  override type Type = TurretTowerComponent
 }
 
 class TurretTowerComponent extends Component {

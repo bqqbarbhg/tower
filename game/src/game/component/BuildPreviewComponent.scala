@@ -10,6 +10,7 @@ object BuildPreviewComponent extends ComponentType("BuildPreview") {
   private val arr = MacroPropertySet.make[BuildPreviewComponent]()
   private val propertySet: PropertySet = new PropertySet("BuildPreviewComponent", arr)
   override def make = new BuildPreviewComponent
+  override type Type = BuildPreviewComponent
 }
 
 class BuildPreviewComponent extends Component {

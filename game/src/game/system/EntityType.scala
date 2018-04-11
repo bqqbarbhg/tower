@@ -58,5 +58,10 @@ class EntityType(val static: Boolean, val name: String, componentSet: Iterable[C
     serialized.toArray
   }
 
+  /** Find a component with a specified type `compType`.
+    * If there are multiple of the same type an arbitrary one is returned. */
+  def find[CompT <: ComponentType](compType: CompT): Option[compType.Type] = components.find(_.componentType == compType).map(_.asInstanceOf[compType.Type])
+
+
 }
 

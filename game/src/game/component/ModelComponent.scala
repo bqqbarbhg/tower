@@ -10,6 +10,7 @@ object ModelComponent extends ComponentType("Model") {
   private val arr = MacroPropertySet.make[ModelComponent]()
   private val propertySet: PropertySet = new PropertySet("ModelComponent", arr)
   override def make = new ModelComponent
+  override type Type = ModelComponent
 }
 
 class ModelComponent extends Component {

@@ -10,7 +10,7 @@ import io.ContentFile
 import task.Task
 
 object EntityTypeAsset {
-  def apply(name: String): EntityTypeAsset = apply(Identifier(name))
+  def apply(name: String): EntityTypeAsset = if (name.endsWith(".s2es")) apply(Identifier(name)) else apply(Identifier(name + ".s2es"))
   def apply(name: Identifier): EntityTypeAsset = AssetLoader.getOrAdd(name, new EntityTypeAsset(name))
 }
 

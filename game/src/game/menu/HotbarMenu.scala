@@ -4,7 +4,9 @@ import core._
 import ui._
 import asset._
 import HotbarMenu._
+import game.component.{BuildPreviewComponent, BuildableComponent}
 import game.options.Options
+import game.system.EntityType
 import locale.Locale
 import platform.{AppWindow, KeyEvent}
 import ui.Canvas.TextStyle
@@ -36,7 +38,8 @@ object HotbarMenu {
   val IconPad = 5.0
   val CellSize = IconSize + IconPad * 2.0
 
-  class Item(val icon: Identifier) {
+  class Item(val entityType: EntityType) {
+    val buildable: BuildableComponent = entityType.find(BuildableComponent).get
     val input = new InputArea()
   }
 
@@ -72,7 +75,6 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
     KeyEvent.KeyToName.get(bind).flatMap(b => Locale.getSimpleOption(s"key.$b")).getOrElse("")
   })
 
-
   val categories = Vector(
     new Category(Identifier("gui/bar/icon_turret.png")),
     new Category(Identifier("gui/bar/icon_radar.png")),
@@ -81,10 +83,11 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
   )
 
   categories(0).items = Vector(
-    new Item(Identifier("game/tower/turret_basic/bar_icon.png")),
+    new Item(EntityTypeAsset("game/entity/tower/turret_basic.es.toml").get),
   )
 
   var openCategory: Option[Category] = None
+  var selectedItem: Option[Item] = None
 
   def update(dt: Double): Unit = {
     val area = Layout.screen.containSnapped(CellSize * 10.0, CellSize * 2.0 + PartPadding + BottomPadding,
@@ -98,6 +101,15 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
     for (cat <- categories) {
       if (cat.input.clicked) {
         openCategory = Some(cat)
+        selectedItem = None
+      }
+    }
+
+    for (cat <- openCategory) {
+      for (item <- cat.items) {
+        if (item.input.clicked) {
+          selectedItem = Some(item)
+        }
       }
     }
 
@@ -106,16 +118,25 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
       if (ix >= 0) {
         openCategory match {
           case Some(cat) =>
+            if (ix < cat.items.length) {
+              selectedItem = Some(cat.items(ix))
+            }
+
           case None =>
-            if (ix < categories.length)
+            if (ix < categories.length) {
               openCategory = Some(categories(ix))
+              selectedItem = None
+            }
         }
       }
     }
 
+    assert(openCategory.isDefined || selectedItem.isEmpty)
+
     val rightClick = AppWindow.mouseButtonDown(1)
     if (rightClick && !prevRightClick) {
       openCategory = None
+      selectedItem = None
     }
     prevRightClick = rightClick
 
@@ -165,10 +186,11 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
         val hotkeyArea = button.copy.pushTop(hotkeyStyle.height).padLeft(HotkeyLeftPadding)
         canvas.drawText(1, hotkeyStyle, hotkeyArea, hotkeyNames(index))
 
-        val color = if (item.input.focused) IconFocusColor
+        val color = if (selectedItem.contains(item)) IconOpenColor
+        else if (item.input.focused) IconFocusColor
         else IconIdleColor
 
-        canvas.draw(1, item.icon, iconPad, color)
+        canvas.draw(1, item.buildable.icon, iconPad, color)
       }
     }
 
