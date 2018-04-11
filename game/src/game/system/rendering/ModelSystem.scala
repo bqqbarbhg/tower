@@ -53,7 +53,7 @@ object ModelSystem {
     var lightProbe: LightProbe = LightProbe.Empty
 
     /** Find a node matching a name in the model. */
-    def findNode(name: Identifier): NodeInstance
+    def findNode(name: Identifier): Option[NodeInstance]
 
     /** Delete the ModelInstance from the system */
     def delete(): Unit
@@ -116,9 +116,14 @@ sealed trait ModelSystem extends EntityDeleteListener {
   def collectVisibleModels(visible: EntitySet): ArrayBuffer[ModelInstance]
 
   /**
-    * Collect models from a set of visible entities.
+    * Collect models from a set of entities.
     */
-  def collectVisibleModels(visible: Iterable[Entity]): ArrayBuffer[ModelInstance]
+  def collectModels(entities: Iterable[Entity]): ArrayBuffer[ModelInstance]
+
+  /**
+    * Collect models from an entity.
+    */
+  def collectModels(entity: Entity): ArrayBuffer[ModelInstance] = collectModels(Some(entity))
 
   /**
     * Update a set of models. If the same model is passed to this method twice
@@ -149,17 +154,23 @@ object ModelSystemImpl {
     var lastFrameUpdated: Long = 0L
     var worldTransform = new Matrix43.Unsafe()
 
-    override def findNode(name: Identifier): NodeInstance = {
-      val ref = new NodeInstanceImpl(this, name)
-      nodes :+= ref
-      ref
+    override def findNode(name: Identifier): Option[NodeInstance] = {
+      if (name == Identifier.Empty) return None
+
+      var index = model.findNodeByName(name)
+      if (index >= 0) {
+        val ref = new NodeInstanceImpl(this, name, index)
+        nodes :+= ref
+        Some(ref)
+      } else {
+        None
+      }
     }
 
     override def delete(): Unit = ???
   }
 
-  class NodeInstanceImpl(override val model: ModelInstanceImpl, name: Identifier) extends NodeInstance(name) {
-    var index = model.model.findNodeByName(name)
+  class NodeInstanceImpl(override val model: ModelInstanceImpl, name: Identifier, var index: Int) extends NodeInstance(name) {
   }
 
 }
@@ -231,9 +242,9 @@ final class ModelSystemImpl extends ModelSystem {
     result
   }
 
-  override def collectVisibleModels(visible: Iterable[Entity]): ArrayBuffer[ModelInstance] = {
+  override def collectModels(entities: Iterable[Entity]): ArrayBuffer[ModelInstance] = {
     val result = new ArrayBuffer[ModelInstance]()
-    for (entity <- visible.filter(_.hasFlag(Flag_Model))) {
+    for (entity <- entities.filter(_.hasFlag(Flag_Model))) {
       var model = entityToModel(entity)
       do {
         result += model

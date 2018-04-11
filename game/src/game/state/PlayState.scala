@@ -15,12 +15,14 @@ import game.system.audio._
 import game.shader._
 import menu.{DebugMenu, PauseMenu}
 import PlayState._
+import game.component._
 import game.menu.HotbarMenu
 import game.options.Options
-import game.system.{Entity, EntitySet}
+import game.system.{Entity, EntitySet, EntityType}
 import game.system.audio.AudioSystem.SoundRef
 import game.system.rendering.AmbientSystem.Probe
 import game.system.rendering.ModelSystem.ModelInstance
+import gfx.Material
 import io.property._
 import io.serialization.{BinaryReader, BinaryWriter}
 import menu.gui.TextBox
@@ -41,6 +43,8 @@ object PlayState {
   val TestPlaceMask = TextureAsset("game/tower/turret_basic/placemask.png.s2tx")
   val NoiseTex = TextureAsset("effect/noise.png.s2tx")
 
+  val TestEntity = EntityTypeAsset("game/entity/tower/turret_basic.es.toml.s2es")
+
   val Assets = new AssetBundle("PlayState",
     PauseMenu.Assets,
     TutorialSystem.Assets,
@@ -49,7 +53,10 @@ object PlayState {
     GroundTexture,
     Colorgrade,
     GroundShader,
+    InstancedMeshShader,
     IdleMusic,
+
+    TestEntity,
   )
 }
 
@@ -63,9 +70,6 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   var finished: Boolean = false
 
   var music: SoundRef = null
-
-  var testPlaceModelEntity: Entity = null
-  var testPlaceModelInstance: ModelInstance = null
 
   override def load(): Unit = {
     Assets.acquire()
@@ -84,8 +88,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     music = audioSystem.play(IdleMusic, AudioSystem.Music)
     music.instance.setFullLoop()
 
-    testPlaceModelEntity = new Entity(false, "Test place")
-    testPlaceModelInstance = modelSystem.addModel(testPlaceModelEntity, TestPlaceModel)
+    entitySystem.create(TestEntity.get, Vector3.Zero)
 
     if (loadExisting)
       loadGame()
@@ -386,6 +389,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     visibleEntities.clear()
 
+
     val s = new Scheduler()
 
     s.add("Viewport cull")(cullingSystem, DepEntities)() {
@@ -406,6 +410,10 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     s.add("Ambient probe indirect")(ambientSystem, DepProbes)() {
       ambientSystem.updateIndirectLight(visibleProbes)
+    }
+
+    s.add("Visible towers")(towerSystem, modelSystem)(DepEntities) {
+      towerSystem.updateVisible(visibleEntities)
     }
 
     s.add("Model update")(modelSystem, DepMeshes)(DepEntities) {
@@ -440,12 +448,12 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     s.finish()
 
-
     val renderer = Renderer.get
 
     renderer.setCull(true)
     renderer.setDepthMode(true, true)
     renderer.setWriteSrgb(false)
+    renderer.setBlend(Renderer.BlendNone)
     renderer.setRenderTarget(globalRenderSystem.mainTargetMsaa)
     renderer.clear(Some(Color.Black), Some(1.0))
 
@@ -461,41 +469,22 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       ground.draw()
     }
 
-    val placeMeshes = {
-      val models = modelSystem.collectVisibleModels(Some(testPlaceModelEntity))
-      modelSystem.updateModels(models)
-      modelSystem.collectMeshInstances(models)
-    }
+    InstancedMeshShader.get.use()
 
-    renderer.setDepthMode(false, true)
-    renderer.setBlend(Renderer.BlendAddAlpha)
-    PlaceMeshShader.get.use()
+    for (draw <- forwardDraws.instanced) {
+      val mesh = draw.mesh
 
-    for {
-      (mesh, insts) <- placeMeshes.meshes
-      inst <- insts
-    } {
+      renderer.setTexture(InstancedMeshShader.Textures.Albedo, Material.shared.get.missingAlbedo.texture)
 
-      renderer.setTexture(PlaceMeshShader.Textures.Placemask, TestPlaceMask.get.texture)
-      renderer.setTexture(PlaceMeshShader.Textures.Noise, NoiseTex.get.texture)
-
-      renderer.pushUniform(PlaceMeshShader.PixelUniform, u => {
-        import PlaceMeshShader.PixelUniform._
-        val time = prevTime.toFloat
-        UvOffset.set(u, time, 0.0f, 0.0f, 0.0f)
-      })
-
-      renderer.pushUniform(PlaceMeshShader.VertexUniform, u => {
-        import PlaceMeshShader.VertexUniform._
-        World.set(u, inst.worldTransform)
+      renderer.bindUniform(ModelInstanceUniform, draw.instanceUbo)
+      renderer.bindUniform(LightProbeUniform, draw.lightProbeUbo)
+      renderer.pushUniform(InstancedMeshShader.VertexUniform, u => {
+        import InstancedMeshShader.VertexUniform._
         UvBounds.set(u, mesh.uvOffsetX, mesh.uvOffsetY, mesh.uvScaleX, mesh.uvScaleY)
       })
 
-      mesh.draw()
-
+      renderer.drawElementsInstanced(draw.num, mesh.numIndices, mesh.indexBuffer, mesh.vertexBuffer)
     }
-
-    renderer.setBlend(Renderer.BlendNone)
 
   }
 
@@ -521,6 +510,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     tutorialSystem.render(canvas)
 
     hotbarMenu.update(dt)
+    towerSystem.update(dt)
 
     val renderer = Renderer.get
 

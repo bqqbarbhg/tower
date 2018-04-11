@@ -335,9 +335,10 @@ final class CullingSystemImpl extends CullingSystem {
       val num = alwaysVisible.sparseData.length
       while (ix < num) {
         val always = alwaysVisible.sparseData(ix)
-        if ((always.mask & mask) != 0) {
+        if (always != null && (always.mask & mask) != 0) {
           addCullableToSet(set, always.cullable)
         }
+        ix += 1
       }
     }
 

@@ -1,6 +1,6 @@
 package game.system.base
 
-import core.ArrayPool
+import core._
 import game.system._
 import game.system.rendering._
 import game.system.Entity._
@@ -11,6 +11,9 @@ sealed trait EntitySystem {
 
   /** Register entity into the system */
   def registerEntity(entity: Entity): Int
+
+  /** Create a new entity from a type */
+  def create(entityType: EntityType, position: Vector3): Entity
 
   /** Queue the removel of an entity from the world */
   def delete(entity: Entity): Unit
@@ -36,6 +39,15 @@ final class EntitySystemImpl extends EntitySystem {
   val deleteListeners = new ArrayBuffer[EntityDeleteListener]()
 
   override def registerEntity(entity: Entity): Int = allEntities.add(entity)
+
+  def create(entityType: EntityType, position: Vector3): Entity = {
+    val entity = new Entity(entityType.static, entityType.name)
+    entity.position = position
+    for (comp <- entityType.components) {
+      comp.create(entity)
+    }
+    entity
+  }
 
   override def delete(entity: Entity): Unit = {
     if (entity.hasFlag(Flag_Deleted)) return

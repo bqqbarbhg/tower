@@ -11,6 +11,10 @@ object DoubleProp {
 abstract class DoubleProp(name: String) extends Property(name) with BinarySerializable {
   override def getGeneric(inst: PropertyContainer): Any = get(inst)
   override def setGeneric(inst: PropertyContainer, value: Any): Unit = set(inst, value.asInstanceOf[Double])
+  override def setGenericWithConversion(inst: PropertyContainer, value: Any): Unit = value match {
+    case v: Double => set(inst, v)
+    case v: Int => set(inst, v.toDouble)
+  }
 
   def get(inst: PropertyContainer): Double
   def set(inst: PropertyContainer, value: Double): Unit

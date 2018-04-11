@@ -214,7 +214,7 @@ class MenuState extends GameState {
 
     val visibleSet = new EntitySet()
     visibleSet.add(modelEntity)
-    val models = modelSystem.collectVisibleModels(Some(modelEntity))
+    val models = modelSystem.collectModels(modelEntity)
     modelSystem.updateModels(models)
     val meshes = modelSystem.collectMeshInstances(models)
     modelSystem.frameCleanup()

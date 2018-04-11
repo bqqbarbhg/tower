@@ -22,7 +22,7 @@ final class GlobalRenderSystemImpl extends GlobalRenderSystem {
 
 
   override def updateScreenSize(width: Int, height: Int): Unit = {
-    if (width == screenWidth && height == screenHeight) return
+    if (width == screenWidth && height == screenHeight && renderingEnabled) return
 
     if (width == 0 || height == 0) {
       renderingEnabled = false

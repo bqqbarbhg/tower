@@ -571,6 +571,25 @@ class Runner(val opts: RunOptions) {
       }
     }
 
+    // Process entities
+    {
+      val dirtyEntities = dirtyAssets.filter(_.fileType == ImportFileEntity)
+      if (opts.verbose)
+        println(s"Processing entities... ${dirtyEntities.size} found")
+
+      for (asset <- dirtyEntities) addAssetTask(asset) {
+        val relPath = assetRelative(asset.file)
+        val resources = asset.importAsset()
+        assert(resources.size == 1)
+        val entity = resources.head.asInstanceOf[EntitySpec]
+
+        val filename = Paths.get(opts.dataRoot, s"$relPath.s2es").toFile
+        EntityFile.save(writer, filename, entity)
+
+        entity.unload()
+      }
+    }
+
     // Wait for the processing to end
     finishTasks()
 

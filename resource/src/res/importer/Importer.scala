@@ -13,6 +13,7 @@ object Importer {
       case "wav" => Some(WavImporter)
       case "glsl" => Some(GlslImporter)
       case "locale" => Some(LocaleImporter)
+      case "entity" => Some(EntityImporter)
       case _ => None
     }
   }
