@@ -11,6 +11,8 @@ import CullingSystemImpl._
 
 object CullingSystem {
 
+  case class RayHit(entity: Entity, t: Double)
+
   val MaskRender = 0x01
   val MaskShadow = 0x02
   val MaskLight = 0x04
@@ -48,8 +50,18 @@ sealed trait CullingSystem extends EntityDeleteListener {
 
   /** Query AABB and return intersecting entities */
   def queryAabb(aabb: Aabb, maxResults: Int, mask: Int): ArrayBuffer[Entity] = {
-    val results = new ArrayBuffer[Entity](maxResults)
+    val results = new ArrayBuffer[Entity](math.min(maxResults, 32))
     queryAabb(aabb, maxResults, mask, results)
+    results
+  }
+
+  /** Cast a ray and return _arbitrary_ intersecting objects (with hit distance) to existing `results`. */
+  def queryRay(ray: Ray, maxResults: Int, mask: Int, results: ArrayBuffer[RayHit]): Unit
+
+  /** Cast a ray and return _arbitrary_ intersecting objects (with hit distance). */
+  def queryRay(ray: Ray, maxResults: Int, mask: Int): ArrayBuffer[RayHit] = {
+    val results = new ArrayBuffer[RayHit](math.min(maxResults, 32))
+    queryRay(ray, maxResults, mask, results)
     results
   }
 }
@@ -550,6 +562,55 @@ final class CullingSystemImpl extends CullingSystem {
       queryQuadTreeAabb(quadTreeLight, aabb, results, maxResults, mask)
     if ((mask & MaskTreeGameplay) != 0)
       queryQuadTreeAabb(quadTreeGameplay, aabb, results, maxResults, mask)
+  }
+
+  def addToRayQueryResults(entity: Entity, t: Double, results: ArrayBuffer[RayHit], maxResults: Int): Boolean = {
+    if (results.length >= maxResults) return true
+    for (e <- results) if (e.entity == entity) return true
+    results += RayHit(entity, t)
+    results.length >= maxResults
+  }
+
+  def queryCullableRay(cullables: CullableContainer, ray: Ray, results: ArrayBuffer[RayHit], maxResults: Int, mask: Int): Unit = {
+    for (aabb <- cullables.aabbList) {
+      if ((aabb.mask & mask) != 0) {
+        for (t <- ray.intersect(aabb.aabb)) {
+          if (addToRayQueryResults(aabb.cullable.entity, t, results, maxResults)) return
+        }
+      }
+    }
+
+    for (sphere <- cullables.sphereList) {
+      if ((sphere.mask & mask) != 0) {
+        for (t <- ray.intersect(sphere.sphere)) {
+          if (addToRayQueryResults(sphere.cullable.entity, t, results, maxResults)) return
+        }
+      }
+    }
+  }
+
+  def queryQuadTreeRay(node: QuadTreeNode, ray: Ray, results: ArrayBuffer[RayHit], maxResults: Int, mask: Int): Unit = {
+    if (results.length >= maxResults || ray.intersect(node.bounds).isEmpty) return
+
+    queryCullableRay(node.cullables, ray, results, maxResults, mask)
+
+    if (!node.isLeaf) {
+      queryQuadTreeRay(node.c00, ray, results, maxResults, mask)
+      queryQuadTreeRay(node.c01, ray, results, maxResults, mask)
+      queryQuadTreeRay(node.c10, ray, results, maxResults, mask)
+      queryQuadTreeRay(node.c11, ray, results, maxResults, mask)
+    }
+  }
+
+  override def queryRay(ray: Ray, maxResults: Int, mask: Int, results: ArrayBuffer[RayHit]): Unit = {
+    queryCullableRay(globalContainer, ray, results, maxResults, mask)
+
+    if ((mask & MaskTreeRender) != 0)
+      queryQuadTreeRay(quadTreeRender, ray, results, maxResults, mask)
+    if ((mask & MaskTreeLight) != 0)
+      queryQuadTreeRay(quadTreeLight, ray, results, maxResults, mask)
+    if ((mask & MaskTreeGameplay) != 0)
+      queryQuadTreeRay(quadTreeGameplay, ray, results, maxResults, mask)
   }
 
 }

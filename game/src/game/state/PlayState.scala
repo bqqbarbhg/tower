@@ -413,6 +413,10 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       towerSystem.updateVisible(visibleEntities)
     }
 
+    s.addTo("Wire GUI")(Task.Main)(towerSystem, buildSystem)(DepEntities) {
+      buildSystem.renderWireGui(canvas, inputs, visibleEntities, viewProjection)
+    }
+
     s.add("Model update")(modelSystem, DepMeshes)(DepEntities) {
       val models = modelSystem.collectVisibleModels(visibleEntities)
       modelSystem.updateModels(models)
@@ -536,6 +540,11 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     if (globalRenderSystem.renderingEnabled) {
       renderScene()
+
+      renderer.setBlend(Renderer.BlendNone)
+      renderer.setDepthMode(true, true)
+      renderer.setWriteSrgb(false)
+      DebugDraw.render(viewProjection)
     }
 
     renderer.setDepthMode(false, false)

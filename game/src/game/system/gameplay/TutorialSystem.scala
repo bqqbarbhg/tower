@@ -41,8 +41,8 @@ sealed trait TutorialSystem {
 final class TutorialSystemImpl extends TutorialSystem {
 
   var currentProgress: Double = 0.0
-  var currentPhase: Int = MoveCamera
-  var nextPhase: Int = MoveCamera
+  var currentPhase: Int = -1
+  var nextPhase: Int = -1
   var fade = 0.0
 
   override def progress(phase: Int, amount: Double): Unit = {
@@ -78,6 +78,8 @@ final class TutorialSystemImpl extends TutorialSystem {
   def bindToText(bind: String): String = Locale.getSimpleOption(s"key.$bind").getOrElse(bind)
 
   override def render(canvas: Canvas): Unit = {
+    if (currentPhase < 0) return
+
     val binds = Options.current.binds
     val area = Layout.screen720p.padAround(100.0).containSnapped(600.0, 100.0,
       snapScale = 2.0, magScale = 4.0, minScale = 8.0, anchor = Vector2(0.5, 1.0))

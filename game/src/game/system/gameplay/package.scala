@@ -17,6 +17,7 @@ package object gameplay {
   }
 
   def unloadGame(): Unit = {
+    buildSystem.unload()
 
     entitySystem.removeDeleteListener(towerSystem)
   }

@@ -433,6 +433,15 @@ class RendererGl {
     }
   }
 
+  def drawTriangleStrip(num: Int, vb0: VertexBufferGl, vb1: VertexBufferGl = null, baseVertex: Int = 0): Unit = {
+    if (activeShader != null) {
+      applyState()
+      vaoCache.bindVertexBuffers(activeShader, vb0, vb1, null)
+      glDrawArrays(GL_TRIANGLE_STRIP, baseVertex, num)
+      glBindVertexArray(0)
+    }
+  }
+
   def drawLines(num: Int, vb0: VertexBufferGl, vb1: VertexBufferGl = null, baseVertex: Int = 0): Unit = {
     if (activeShader != null) {
       applyState()

@@ -69,6 +69,7 @@ object Canvas {
     var blendMode: Renderer.BlendMode = Renderer.BlendPremultipliedAlpha
     val drawsForFont = mutable.HashMap[FontAsset, ArrayBuffer[TextDraw]]()
     val sprites = ArrayBuffer[SpriteDraw]()
+    val customDraws = ArrayBuffer[() => Unit]()
   }
 }
 
@@ -225,12 +226,19 @@ class Canvas {
     y
   }
 
+  def drawCustom(layer: Int, drawBlock: => Unit): Unit = {
+    val il = getInternalLayer(layer)
+    il.customDraws.append(() => drawBlock)
+  }
+
   def setLayerBlend(layer: Int, blendMode: Renderer.BlendMode): Unit = {
     getInternalLayer(layer).blendMode = blendMode
   }
 
   def render(): Unit = {
     val renderer = Renderer.get
+
+    renderer.setDepthMode(false, false)
 
     val sb = Canvas.shared.get.spriteBatch
     var sbNeedsFlush = false
@@ -258,8 +266,20 @@ class Canvas {
         font.get.render(texts)
       }
 
+      if (layer.customDraws.nonEmpty) {
+        if (sbNeedsFlush) {
+          sb.flush()
+          sbNeedsFlush = false
+        }
+      }
+
+      for (custom <- layer.customDraws) {
+        custom()
+      }
+
       layer.sprites.clear()
       layer.drawsForFont.clear()
+      layer.customDraws.clear()
     }
 
     if (sbNeedsFlush)

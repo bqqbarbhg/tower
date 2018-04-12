@@ -121,10 +121,10 @@ object GenerateAtlas {
       val bx = loc.rect.x
       val by = loc.rect.y
       for {
-        yy <- (-wx) until (srcRect.h + wx)
-        xx <- (-wy) until (srcRect.w + wy)
+        yy <- (-wy) until (srcRect.h + wy)
+        xx <- (-wx) until (srcRect.w + wx)
       } {
-        val x = Math.floorMod(xx ,srcRect.w)
+        val x = Math.floorMod(xx, srcRect.w)
         val y = Math.floorMod(yy, srcRect.h)
 
         val pixel = sprite.image.getPixel(srcRect.x + x, srcRect.y + y)

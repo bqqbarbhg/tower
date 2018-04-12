@@ -86,6 +86,10 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
     new Item(EntityTypeAsset("game/entity/tower/turret_basic.es.toml").get),
   )
 
+  categories(1).items = Vector(
+    new Item(EntityTypeAsset("game/entity/tower/radar_basic.es.toml").get),
+  )
+
   var openCategory: Option[Category] = None
   var selectedItem: Option[Item] = None
 
@@ -133,8 +137,6 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
 
     assert(openCategory.isDefined || selectedItem.isEmpty)
 
-    inputs.addBlocker(-10, area, 10.0)
-
     val rightClick = AppWindow.mouseButtonDown(1)
     if (rightClick && !prevRightClick) {
       openCategory = None
@@ -147,24 +149,30 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
     area.padTop(PartPadding)
     val bottom = area.pushTop(CellSize)
 
-    canvas.draw(0, Quad, bottom, CatBgColor)
+    if (openCategory.nonEmpty) {
+      inputs.addBlocker(9, area, 10.0)
+    } else {
+      inputs.addBlocker(9, bottom, 10.0)
+    }
+
+    canvas.draw(10, Quad, bottom, CatBgColor)
 
     val mutBottom = bottom.copy
     for ((cat, index) <- categories.zipWithIndex) {
       val button = mutBottom.pushLeft(CellSize)
       val iconPad = button.copy.padAround(IconPad)
 
-      inputs.add(0, cat.input, button)
+      inputs.add(10, cat.input, button)
 
       if (openCategory.contains(cat)) {
         val bridgeArea = button.edgeTop.extendTop(BottomPadding)
-        canvas.draw(0, Quad, bridgeArea, CatBgColor)
-        canvas.draw(0, Quad, top, CatBgColor)
+        canvas.draw(10, Quad, bridgeArea, CatBgColor)
+        canvas.draw(10, Quad, top, CatBgColor)
       }
 
       val hotkeyStyle = if (openCategory.isEmpty) HotkeyStyleActive else HotkeyStyleInactive
       val hotkeyArea = button.copy.pushTop(hotkeyStyle.height).padLeft(HotkeyLeftPadding)
-      canvas.drawText(1, hotkeyStyle, hotkeyArea, hotkeyNames(index))
+      canvas.drawText(10, hotkeyStyle, hotkeyArea, hotkeyNames(index))
 
       val color = if (openCategory.contains(cat)) IconOpenColor
       else if (cat.input.focused && openCategory.nonEmpty) IconFocusInactiveColor
@@ -172,7 +180,7 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
       else if (openCategory.nonEmpty) IconInactiveColor
       else IconIdleColor
 
-      canvas.draw(1, cat.icon, iconPad, color)
+      canvas.draw(10, cat.icon, iconPad, color)
     }
 
     for (cat <- openCategory) {
@@ -182,17 +190,17 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
         val button = mutTop.pushLeft(CellSize)
         val iconPad = button.copy.padAround(IconPad)
 
-        inputs.add(0, item.input, button)
+        inputs.add(10, item.input, button)
 
         val hotkeyStyle = HotkeyStyleActive
         val hotkeyArea = button.copy.pushTop(hotkeyStyle.height).padLeft(HotkeyLeftPadding)
-        canvas.drawText(1, hotkeyStyle, hotkeyArea, hotkeyNames(index))
+        canvas.drawText(10, hotkeyStyle, hotkeyArea, hotkeyNames(index))
 
         val color = if (selectedItem.contains(item)) IconOpenColor
         else if (item.input.focused) IconFocusColor
         else IconIdleColor
 
-        canvas.draw(1, item.buildable.icon, iconPad, color)
+        canvas.draw(10, item.buildable.icon, iconPad, color)
       }
     }
 

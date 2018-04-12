@@ -49,6 +49,8 @@ class PauseMenu(val inputs: InputSet, val canvas: Canvas) {
 
     fade = clamp(fade, 0.0, 1.0)
 
+    if (fade <= 0.01) return
+
     val area = Layout.screen720p.padAround(400.0).containSnapped(Width, Height,
       snapScale = 1.0, magScale = 2.0, minScale = 8.0)
 

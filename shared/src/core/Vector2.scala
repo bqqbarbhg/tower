@@ -26,5 +26,7 @@ case class Vector2(x: Double, y: Double) {
   def /@(v: Vector2): Vector2 = Vector2(x / v.x, y / v.y)
 
   def dot(v: Vector2): Double = x*v.x + y*v.y
+
+  def perpendicular: Vector2 = Vector2(-y, x)
 }
 

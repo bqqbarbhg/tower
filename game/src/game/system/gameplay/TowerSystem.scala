@@ -1,14 +1,24 @@
 package game.system.gameplay
 
+import core._
 import game.component._
 import game.system._
 import game.system.Entity._
-import TowerSystemImpl._
-import core.{CompactArrayPool, Matrix43}
 import game.system.rendering._
 import game.system.rendering.ModelSystem._
+import TowerSystem._
+import TowerSystemImpl._
 
 import scala.collection.mutable
+
+object TowerSystem {
+
+  class Slot {
+    var locale: String = ""
+    var isInput: Boolean = false
+  }
+
+}
 
 sealed trait TowerSystem extends EntityDeleteListener {
 
@@ -21,6 +31,9 @@ sealed trait TowerSystem extends EntityDeleteListener {
   /** Update visible entities for rendering */
   def updateVisible(visible: EntitySet): Unit
 
+  /** Retrieve connectable slots from an entity */
+  def getSlots(entity: Entity): Seq[Slot]
+
 }
 
 object TowerSystemImpl {
@@ -31,6 +44,8 @@ object TowerSystemImpl {
 
     var spin: Double = 0.0
   }
+
+  val NoSlots = Array[Slot]()
 
 }
 
@@ -68,6 +83,18 @@ final class TowerSystemImpl extends TowerSystem {
       for (spin <- turret.spinNode) {
         spin.localTransform = Matrix43.rotateY(turret.spin)
       }
+    }
+  }
+
+  override def getSlots(entity: Entity): Seq[Slot] = {
+    if (entity.hasFlag(Flag_Turret)) {
+      var slots = Array[Slot]()
+      slots :+= new Slot() { locale = "slot.turret.aim"; isInput = true }
+      slots :+= new Slot() { locale = "slot.turret.shoot"; isInput = true }
+      slots :+= new Slot() { locale = "slot.turret.hits"; isInput = false }
+      slots
+    } else {
+      NoSlots
     }
   }
 }
