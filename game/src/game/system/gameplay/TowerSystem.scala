@@ -13,9 +13,17 @@ import scala.collection.mutable
 
 object TowerSystem {
 
-  class Slot {
+  class Slot(val entity: Entity) {
     var locale: String = ""
     var isInput: Boolean = false
+    var connection: Option[Slot] = None
+
+    def detach(): Unit = {
+      for (c <- connection) {
+        c.connection = None
+        connection = None
+      }
+    }
   }
 
 }
@@ -34,6 +42,9 @@ sealed trait TowerSystem extends EntityDeleteListener {
   /** Retrieve connectable slots from an entity */
   def getSlots(entity: Entity): Seq[Slot]
 
+  /** Try to connect slots `a` and `b`, return whether it was succesful */
+  def connectSlots(a: Slot, b: Slot): Boolean
+
 }
 
 object TowerSystemImpl {
@@ -47,12 +58,26 @@ object TowerSystemImpl {
 
   val NoSlots = Array[Slot]()
 
+  class SlotContainer(val entity: Entity) {
+    var slots = new Array[Slot](0)
+
+    def detachAll(): Unit = for (slot <- slots) slot.detach()
+  }
+
 }
 
 final class TowerSystemImpl extends TowerSystem {
 
   val turrets = new CompactArrayPool[Turret]
   val entityToTurret = new mutable.HashMap[Entity, Turret]()
+  val entityToSlots = new mutable.HashMap[Entity, SlotContainer]()
+
+  def getSlotContainer(entity: Entity): SlotContainer = {
+    entityToSlots.getOrElseUpdate(entity, {
+      entity.setFlag(Flag_Slots)
+      new SlotContainer(entity)
+    })
+  }
 
   override def addTurret(entity: Entity, turretComp: TurretTowerComponent): Unit = {
     val turret = new Turret(entity)
@@ -62,12 +87,21 @@ final class TowerSystemImpl extends TowerSystem {
     entity.setFlag(Flag_Turret)
     entityToTurret(entity) = turret
     turrets.add(turret)
+
+    val sc = getSlotContainer(entity)
+    sc.slots :+= new Slot(entity) { locale = "slot.turret.aim"; isInput = true }
+    sc.slots :+= new Slot(entity) { locale = "slot.turret.shoot"; isInput = true }
+    sc.slots :+= new Slot(entity) { locale = "slot.turret.hits"; isInput = false }
   }
 
   override def entitiesDeleted(entities: EntitySet): Unit = {
     for (e <- entities.flag(Flag_Turret)) {
       turrets.remove(entityToTurret.remove(e).get)
       e.clearFlag(Flag_Turret)
+    }
+    for (e <- entities.flag(Flag_Slots)) {
+      val slots = entityToSlots.remove(e).get
+      slots.detachAll()
     }
   }
 
@@ -87,15 +121,23 @@ final class TowerSystemImpl extends TowerSystem {
   }
 
   override def getSlots(entity: Entity): Seq[Slot] = {
-    if (entity.hasFlag(Flag_Turret)) {
-      var slots = Array[Slot]()
-      slots :+= new Slot() { locale = "slot.turret.aim"; isInput = true }
-      slots :+= new Slot() { locale = "slot.turret.shoot"; isInput = true }
-      slots :+= new Slot() { locale = "slot.turret.hits"; isInput = false }
-      slots
+    if (entity.hasFlag(Flag_Slots)) {
+      entityToSlots(entity).slots
     } else {
       NoSlots
     }
+  }
+
+  override def connectSlots(a: Slot, b: Slot): Boolean = {
+    if (a == b) return false
+
+    a.detach()
+    b.detach()
+    a.connection = Some(b)
+    b.connection = Some(a)
+
+    cableSystem.addCable(a, b)
+    true
   }
 }
 

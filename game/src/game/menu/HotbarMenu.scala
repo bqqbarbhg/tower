@@ -46,6 +46,7 @@ object HotbarMenu {
   class Category(val icon: Identifier) {
     var items: Vector[Item] = Vector[Item]()
     val input = new InputArea()
+    var wireCategory: Boolean = false
   }
 
   val IconOpenColor = Color.rgba(0xFFFFFF, 0.9)
@@ -78,7 +79,9 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
   val categories = Vector(
     new Category(Identifier("gui/bar/icon_turret.png")),
     new Category(Identifier("gui/bar/icon_radar.png")),
-    new Category(Identifier("gui/bar/icon_cable.png")),
+    new Category(Identifier("gui/bar/icon_cable.png")) {
+      wireCategory = true
+    },
     new Category(Identifier("gui/bar/icon_structure.png")),
   )
 

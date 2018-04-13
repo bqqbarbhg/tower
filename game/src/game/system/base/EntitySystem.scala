@@ -41,7 +41,7 @@ final class EntitySystemImpl extends EntitySystem {
   override def registerEntity(entity: Entity): Int = allEntities.add(entity)
 
   def create(entityType: EntityType, position: Vector3): Entity = {
-    val entity = new Entity(entityType.static, entityType.name)
+    val entity = new Entity(entityType.static, entityType.name, entityType)
     entity.position = position
     for (comp <- entityType.components) {
       comp.create(entity)

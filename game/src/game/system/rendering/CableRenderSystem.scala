@@ -1,5 +1,6 @@
 package game.system.rendering
 
+import asset.ModelAsset
 import core._
 import render._
 import game.shader._
@@ -10,6 +11,7 @@ import game.system.Entity._
 import game.system.rendering.CableRenderSystem._
 import game.system.rendering.CableRenderSystemImpl._
 import game.system.rendering.AmbientSystem.Probe
+import gfx.Model
 import util.geometry.Aabb
 import util.BinarySearch
 
@@ -58,23 +60,33 @@ object CableRenderSystem {
     }
   }
 
+  object CableNode {
+    def apply(position: Vector3, tangent: Vector3): CableNode = CableNode(position, tangent, tangent)
+  }
+
   /**
     * Represents a single node in the Hermite-interpolation based cable curve.
     *
     * @param position Position of the node
-    * @param tangent Tangent direction and magnitude
+    * @param tangentIn Incoming tangent direction and magnitude
+    * @param tangentOut Outgoing tangent direction and magnitude
     */
-  case class CableNode(position: Vector3, tangent: Vector3)
+  case class CableNode(position: Vector3, tangentIn: Vector3, tangentOut: Vector3) {
+    def this(position: Vector3, tangent: Vector3) = this(position, tangent, tangent)
+  }
 
 }
 
 trait CableRenderSystem extends EntityDeleteListener {
 
   /** Create a new cable from a set of nodes. */
-  def createCable(entity: Entity, nodes: Seq[CableNode], radius: Double): Unit
+  def createCable(entity: Entity, nodes: Seq[CableNode], radius: Double): Aabb
 
   /** Collect all the cables from a set of visible entities. */
   def collectCableMeshes(visible: EntitySet): ArrayBuffer[CableMeshPart]
+
+  /** Retrieve a list of alternative cable paths for a model */
+  def getCablePathsForModel(asset: ModelAsset): Option[Array[Array[CableNode]]]
 
   /** Free used resources */
   def unload(): Unit
@@ -96,6 +108,8 @@ object CableRenderSystemImpl {
   }
 
   val CablePartName = "CablePart"
+
+  case class CachedModelCables(model: Model, cables: Option[Array[Array[CableNode]]])
 }
 
 class CableRenderSystemImpl extends CableRenderSystem {
@@ -146,6 +160,88 @@ class CableRenderSystemImpl extends CableRenderSystem {
   }
 
   val entityToCablePart = new mutable.HashMap[Entity, CableMeshPart]()
+  val modelCableCache = new mutable.HashMap[ModelAsset, CachedModelCables]()
+
+  def getCablePathsForModel(asset: ModelAsset): Option[Array[Array[CableNode]]] = {
+    val model = asset.getShallowUnsafe
+    val cables = modelCableCache.get(asset).filter(_.model == model)
+    cables match {
+      case Some(c) => c.cables
+      case None =>
+        val cables = createCablePathsForModel(model)
+        modelCableCache(asset) = CachedModelCables(model, cables)
+        cables
+    }
+  }
+
+  def createCablePathsForModel(model: Model): Option[Array[Array[CableNode]]] = {
+    val allNodes = mutable.ArrayBuilder.make[Array[CableNode]]()
+
+    val childrenForName = mutable.HashMap[Identifier, Vector[Identifier]]().withDefaultValue(Vector[Identifier]())
+    val roots = ArrayBuffer[Identifier]()
+
+    def getPathRecursive(head: Vector[CableNode], name: Identifier): Unit = {
+      val node = model.findNodeByName(name)
+      assert(node >= 0, s"Node not found for cable node '${name.toString}'")
+      val children = childrenForName(name)
+      val worldTransform = model.transformToRoot(node)
+      val pos = worldTransform.translation
+      val dir = worldTransform.forward * 2.0
+      val self = CableNode(pos, dir)
+      val list = head :+ self
+
+      if (children.nonEmpty) {
+        for (child <- children)
+          getPathRecursive(list, child)
+      } else {
+        allNodes += list.toArray
+      }
+    }
+
+    val start = model.findNodeByName(Identifier("Cables"))
+    if (start >= 0) {
+      val cableNodes = model.getChildNodes(start)
+      val numberRegex = "^(.*)\\.(\\d{3})$".r
+
+      val names = cableNodes.map(node => new Identifier(model.nodeName(node)).toString)
+
+      for (name <- names) {
+        val nameId = Identifier(name)
+        name match {
+          case numberRegex(prefix, numberStr) =>
+            val number = numberStr.toInt
+            val parent = if (number > 1) {
+              val parentNumber = number - 1
+              f"$prefix.${parentNumber}%03d"
+            } else {
+              prefix
+            }
+
+            val parentId = Identifier(parent)
+            val prev = childrenForName(parentId)
+            childrenForName(parentId) = prev :+ nameId
+          case _ =>
+
+            names.find(parent => name.startsWith(parent) && name != parent) match {
+              case Some(parentName) =>
+                val parentId = Identifier(parentName)
+                val prev = childrenForName(parentId)
+                childrenForName(parentId) = prev :+ nameId
+              case None =>
+                roots += Identifier(name)
+            }
+        }
+      }
+
+      for (root <- roots) {
+        getPathRecursive(Vector[CableNode](), root)
+      }
+
+      Some(allNodes.result)
+    } else {
+      None
+    }
+  }
 
   /**
     * Convert the cable path into a piecewise linear approximation.
@@ -158,7 +254,7 @@ class CableRenderSystemImpl extends CableRenderSystem {
 
     val TimeEnd = (cable.length - 1).toDouble
     var position = cable.head.position
-    var tangent = cable.head.tangent.normalize
+    var tangent = cable.head.tangentOut.normalize
 
     /** Evaluate the _whole_ cable at a point */
     def evaluate(t: Double): Vector3 = {
@@ -170,13 +266,13 @@ class CableRenderSystemImpl extends CableRenderSystem {
       val prev = cable(index)
       val next = cable(index + 1)
       val p0 = prev.position
-      val m0 = prev.tangent
+      val m0 = prev.tangentOut
       val p1 = next.position
-      val m1 = next.tangent
+      val m1 = next.tangentIn
       Hermite.interpolate(p0, m0, p1, m1, fract)
     }
 
-    val BinarySeachGranularity = 16
+    val BinarySeachGranularity = 64
     val MinTimestep = 0.01
     val MaxTimestep = 0.2
     val MinDistance = 0.2
@@ -226,7 +322,11 @@ class CableRenderSystemImpl extends CableRenderSystem {
       time = baseTime + ix * binarySearchStep
       val nextPos = evaluate(time)
 
-      tangent = (nextPos - position).normalize
+      val deltaPos = nextPos - position
+      val deltaLen = deltaPos.length
+      if (deltaLen >= 0.0001) {
+        tangent = deltaPos / deltaLen
+      }
       position = nextPos
     }
 
@@ -437,8 +537,10 @@ class CableRenderSystemImpl extends CableRenderSystem {
     mesh
   }
 
-  override def createCable(entity: Entity, nodes: Seq[CableNode], radius: Double): Unit = {
+  override def createCable(entity: Entity, nodes: Seq[CableNode], radius: Double): Aabb = {
     val mesh = createCableMesh(nodes, radius)
+    var min = Vector3(Double.MaxValue, Double.MaxValue, Double.MaxValue)
+    var max = Vector3(Double.MinValue, Double.MinValue, Double.MinValue)
 
     for (part <- mesh.parts) {
       val partEntity = new Entity(true, CablePartName)
@@ -448,6 +550,9 @@ class CableRenderSystemImpl extends CableRenderSystem {
       val localAabb = part.aabb.copy(center = Vector3.Zero)
       cullingSystem.addAabb(partEntity, localAabb, CullingSystem.MaskRender)
 
+      min = Vector3.min(min, part.aabb.min)
+      max = Vector3.max(max, part.aabb.max)
+
       for (probe <- part.lightProbes) {
         ambientSystem.addProbeDependency(partEntity, probe)
       }
@@ -455,6 +560,8 @@ class CableRenderSystemImpl extends CableRenderSystem {
       entityToCablePart(partEntity) = part
       partEntity.setFlag(Flag_CablePart)
     }
+
+    Aabb.fromMinMax(min, max)
   }
 
   override def collectCableMeshes(visible: EntitySet) = {

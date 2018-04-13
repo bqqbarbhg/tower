@@ -199,6 +199,10 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       debugOpenSelector()
     }
 
+    if (AppWindow.keyDownEvents.exists(e => e.key == 'H' && e.control)) {
+      debugSelect(DebugView)
+    }
+
     for (debug <- debugMenu) {
       val area = Layout.screen.padAround(10.0).pushLeft(300.0)
       debug.update(area)
@@ -222,6 +226,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   val debugObjectByName: PartialFunction[String, PropertyContainer] = {
     case "camera" => Camera
     case "cameratweak" => CameraTweak
+    case "debugview" => DebugView
+    case "cable" => CableSystem.CableTweak
   }
 
   def debugSelect(target: PropertyContainer): Unit = {
@@ -357,6 +363,15 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     var pitchHigh: DoubleProp.Type = 0.2
   }
 
+  object DebugView extends PropertyContainer {
+    private val arr = MacroPropertySet.make[DebugView.type]()
+    override val propertySet: PropertySet = new PropertySet("DebugView", arr)
+
+    var cables: BoolProp.Type = false
+    var groundBlockers: BoolProp.Type = false
+    var cableParts: BoolProp.Type = false
+  }
+
   var cameraPos = Vector3.Zero
   var cameraVel = Vector2.Zero
 
@@ -385,7 +400,6 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     var forwardDraws: ForwardRenderingSystem.Draws = null
 
     visibleEntities.clear()
-
 
     val s = new Scheduler()
 
@@ -449,6 +463,19 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     s.finish()
 
+    if (DebugView.cables) {
+      cableSystem.debugDrawControlPoints(visibleEntities)
+    }
+    if (DebugView.groundBlockers) {
+      cableSystem.debugDrawGroundBlockers()
+    }
+    if (DebugView.cableParts) {
+      val color = Color.rgb(0xFF00FF)
+      for (part <- visibleCables) {
+        DebugDraw.drawAabb(part.aabb, color)
+      }
+    }
+
     val renderer = Renderer.get
 
     renderer.setCull(true)
@@ -462,12 +489,10 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       GlobalSceneUniform.ViewProjection.set(u, viewProjection)
     })
 
-    renderer.setTexture(GroundShader.Textures.Albedo, GroundTexture.get.texture)
+    CableShader.get.use()
 
-    GroundShader.get.use()
-
-    for (ground <- visibleGround) {
-      ground.draw()
+    for (cable <- visibleCables) {
+      cable.draw()
     }
 
     InstancedMeshShader.get.use()
@@ -487,10 +512,21 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       renderer.drawElementsInstanced(draw.num, mesh.numIndices, mesh.indexBuffer, mesh.vertexBuffer)
     }
 
+    renderer.setTexture(GroundShader.Textures.Albedo, GroundTexture.get.texture)
+
+
+    GroundShader.get.use()
+
+    for (ground <- visibleGround) {
+      ground.draw()
+    }
+
     buildSystem.renderPreview()
   }
 
   override def update(): Unit = {
+    entitySystem.processDeletions()
+
     AppWindow.pollEvents()
 
     val time = AppWindow.currentTime
@@ -514,6 +550,12 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     hotbarMenu.update(dt)
     towerSystem.update(dt)
 
+    if (CableSystem.CableTweak.regenerateCables) {
+      cableSystem.regenerateAllCables()
+      CableSystem.CableTweak.regenerateCables = false
+    }
+
+    buildSystem.setWireGuiEnabled(hotbarMenu.openCategory.exists(_.wireCategory))
     buildSystem.setEntityTypeToBuild(hotbarMenu.selectedItem.map(_.entityType))
 
     val screenWidth = globalRenderSystem.screenWidth

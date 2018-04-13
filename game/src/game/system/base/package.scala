@@ -8,6 +8,8 @@ package object base {
   def loadState(): Unit = {
     entitySystem = new EntitySystemImpl()
     parentingSystem = new ParentingSystemImpl()
+
+    entitySystem.addDeleteListener(parentingSystem)
   }
 
   def unloadState(): Unit = {

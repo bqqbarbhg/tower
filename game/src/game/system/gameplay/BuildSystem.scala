@@ -22,6 +22,7 @@ import locale.LocaleString._
 import platform.AppWindow
 import ui.Canvas.TextStyle
 import ui.InputSet.InputArea
+import ui.LineBatch.HermiteNode
 import ui._
 import util.geometry._
 
@@ -50,6 +51,9 @@ sealed trait BuildSystem {
 
   /** Render build preview */
   def renderPreview(): Unit
+
+  /** Enable/disable wire GUI */
+  def setWireGuiEnabled(enabled: Boolean): Unit
 
   /** Render GUI used for wiring towers */
   def renderWireGui(canvas: Canvas, inputs: InputSet, visible: EntitySet, viewProjection: Matrix4): Unit
@@ -90,8 +94,9 @@ object BuildSystemImpl {
 
   val SlotFont = FontAsset("font/catamaran/Catamaran-SemiBold.ttf.s2ft")
   val SlotEmptySprite = Identifier("gui/menu/slot_empty.png")
+  val SlotFullSprite = Identifier("gui/menu/slot_full.png")
 
-  val WireTestSprite = Identifier("gui/wire/test.png")
+  val WireSprite = Identifier("gui/wire/plain.png")
 
   val PreviewValidColor = Color.rgba(0xFFFFFF, 1.0)
   val PreviewBadColor = Color.rgba(0xFF0000, 1.0)
@@ -99,6 +104,7 @@ object BuildSystemImpl {
   val BlockerSprite = Identifier("gui/hud/build_blocker.png")
   val CenterAnchor = Vector2(0.5, 0.5)
   val NoSlots = Array[Slot]()
+  val NoCenters = Array[Vector2]()
 
   val WireBackColor = Color.rgba(0x000000, 0.5)
   val SlotIdleColor = Color.rgba(0xFFFFFF, 0.5)
@@ -110,10 +116,13 @@ object BuildSystemImpl {
 
   class WireGui(val entity: Entity) {
     var slots: Seq[Slot] = NoSlots
+    var slotCenters: Array[Vector2] = NoCenters
     val iconInput = new InputArea()
   }
 
   case class SlotRef(gui: WireGui, slot: Int)
+
+  val GridSize = 8.0
 }
 
 final class BuildSystemImpl extends BuildSystem {
@@ -124,6 +133,7 @@ final class BuildSystemImpl extends BuildSystem {
   var rayCastResult = new ArrayBuffer[RayHit]()
   var failCooldown: Double = 0.0
   var prevWireGui = mutable.HashMap[Entity, WireGui]()
+  var wireGuiEnabled = false
 
   var activeSlot: Option[SlotRef] = None
 
@@ -155,6 +165,10 @@ final class BuildSystemImpl extends BuildSystem {
     val mouseDown = AppWindow.mouseButtonDown(0)
     val clicked = mouseDown && !prevMouseDown
 
+    if (AppWindow.mouseButtonDown(1)) {
+      activeSlot = None
+    }
+
     buildBlockerEntities.clear()
     if (failCooldown > 0.0) {
       failCooldown -= dt
@@ -173,7 +187,11 @@ final class BuildSystemImpl extends BuildSystem {
 
     for (buildE <- buildEntity) {
       val t = ray.intersect(GroundPlane)
-      var groundPoint = t.map(ray.point)
+      var groundPoint = t.map(ray.point).map(point => {
+        val roundX = (math.floor(point.x / GridSize) + 0.5) * GridSize
+        val roundZ = (math.floor(point.z / GridSize) + 0.5) * GridSize
+        Vector3(roundX, 0.0, roundZ)
+      })
 
       if (inputs.focusedLayer >= -1000)
         groundPoint = None
@@ -181,7 +199,7 @@ final class BuildSystemImpl extends BuildSystem {
       var validPlace = false
 
       for (point <- groundPoint) {
-        val bounds = Aabb(point, Vector3(6.0, 5.0, 6.0))
+        val bounds = Aabb(point, Vector3(1.0, 5.0, 1.0))
         cullingSystem.queryAabb(bounds, MaxBlockers, CullingSystem.MaskGameplay, buildBlockerEntities)
         validPlace = buildBlockerEntities.isEmpty
 
@@ -254,7 +272,19 @@ final class BuildSystemImpl extends BuildSystem {
     }
   }
 
+  override def setWireGuiEnabled(enabled: Boolean): Unit = {
+    if (wireGuiEnabled == enabled) return
+    wireGuiEnabled = enabled
+
+    if (!enabled) {
+      activeSlot = None
+      prevWireGui = mutable.HashMap[Entity, WireGui]()
+    }
+  }
+
   override def renderWireGui(canvas: Canvas, inputs: InputSet, visible: EntitySet, viewProjection: Matrix4): Unit = {
+    if (!wireGuiEnabled) return
+
     val nextWireGui = new mutable.HashMap[Entity, WireGui]()
 
     for (entity <- visible.flag(Flag_Turret)) {
@@ -262,6 +292,7 @@ final class BuildSystemImpl extends BuildSystem {
       if (slots.nonEmpty) {
         val gui = prevWireGui.getOrElse(entity, new WireGui(entity))
         gui.slots = slots
+        gui.slotCenters = Array.fill(slots.length)(Vector2.Zero)
         nextWireGui(entity) = gui
       }
     }
@@ -269,7 +300,14 @@ final class BuildSystemImpl extends BuildSystem {
     for ((entity, wireGui) <- nextWireGui) {
       val clickIndex = wireGui.iconInput.clickIndex
       if (clickIndex >= 0) {
-        activeSlot = Some(SlotRef(wireGui, clickIndex))
+        activeSlot match {
+          case Some(slot) =>
+            towerSystem.connectSlots(slot.gui.slots(slot.slot), wireGui.slots(clickIndex))
+            activeSlot = None
+
+          case None =>
+            activeSlot = Some(SlotRef(wireGui, clickIndex))
+        }
       }
     }
 
@@ -277,18 +315,6 @@ final class BuildSystemImpl extends BuildSystem {
     for (active <- activeSlot) {
       nextWireGui(active.gui.entity) = active.gui
     }
-
-    canvas.drawCustom(10, {
-
-      val points = Seq.tabulate(16)(ix => {
-        val t = ix / 15.0
-        Hermite.interpolate(Vector2(0.0, 0.0), Vector2(2000.0, 0.0), AppWindow.mousePosition, Vector2(-2000.0, 0.0), t)
-      })
-
-      lineBatch.draw(WireTestSprite, points, 20.0)
-
-      lineBatch.flush()
-    })
 
     for ((entity, wireGui) <- nextWireGui) {
       val projected = viewProjection.projectPoint(entity.position + Vector3(0.0, 3.0, 0.0))
@@ -331,12 +357,77 @@ final class BuildSystemImpl extends BuildSystem {
 
         inputs.add(3, wireGui.iconInput, iconArea, 4.0, index)
 
+        wireGui.slotCenters(index) = iconArea.center
+
         val focused = wireGui.iconInput.focusIndex == index
         val color = if (focused) SlotHoverColor else SlotIdleColor
-        canvas.draw(3, SlotEmptySprite, iconArea, color)
+        val sprite = if (slot.connection.isDefined) SlotFullSprite else SlotEmptySprite
+        canvas.draw(3, sprite, iconArea, color)
       }
 
     }
+
+    canvas.drawCustom(10, {
+
+      Renderer.get.setBlend(Renderer.BlendPremultipliedAlpha)
+
+      for {
+        (entity, gui) <- nextWireGui
+        (slot, index) <- gui.slots.zipWithIndex if !slot.isInput
+        anotherSlot <- slot.connection
+        anotherGui <- nextWireGui.get(anotherSlot.entity)
+      } {
+        val anotherIndex = anotherGui.slots.indexOf(anotherSlot)
+        val posA = gui.slotCenters(index)
+        val posB = anotherGui.slotCenters(anotherIndex)
+
+        val width = globalRenderSystem.screenHeight * (8.0 / 720.0)
+
+        val slotDir = if (slot.isInput) Vector2(-1.0, 0.0) else Vector2(1.0, 0.0)
+        val diff = posB - posA
+        val dist = diff.length
+
+        val wrongSide = clamp(-(diff dot slotDir) / width * 0.3 + 1.0, 0.0, 2.0)
+        val endStrength = wrongSide * width * 10.0
+
+        val beginDir = Vector2(slotDir.x, wrongSide * 0.1)
+        val endDir = Vector2(slotDir.x, -wrongSide * 0.1)
+
+        val nodes = Seq(
+          HermiteNode(posA, beginDir * (dist + endStrength)),
+          HermiteNode(posB, endDir * (dist + endStrength)),
+        )
+
+        lineBatch.drawHermite(WireSprite, nodes, width, width * 0.5, width * 10.0, 10.0)
+      }
+
+      for (active <- activeSlot) {
+        val slot = active.gui.slots(active.slot)
+        val center = active.gui.slotCenters(active.slot)
+        val mouse = AppWindow.mousePosition
+
+        val width = globalRenderSystem.screenHeight * (8.0 / 720.0)
+
+        val slotDir = if (slot.isInput) Vector2(-1.0, 0.0) else Vector2(1.0, 0.0)
+        val diff = mouse - center
+        val dist = diff.length
+
+        val wrongSide = clamp(-(diff dot slotDir) / width * 0.3 + 1.0, 0.0, 2.0)
+        val endStrength = wrongSide * width * 10.0
+
+        val beginDir = Vector2(slotDir.x, wrongSide * 0.1)
+        val endDir = Vector2(slotDir.x, -wrongSide * 0.1)
+
+        val nodes = Seq(
+          HermiteNode(center, beginDir * (dist + endStrength)),
+          HermiteNode(AppWindow.mousePosition, endDir * (dist + endStrength)),
+        )
+
+        lineBatch.drawHermite(WireSprite, nodes, width, width * 0.5, width * 10.0, 10.0)
+      }
+
+      lineBatch.flush()
+    })
 
     prevWireGui = nextWireGui
   }

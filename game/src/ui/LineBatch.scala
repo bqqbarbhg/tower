@@ -12,6 +12,7 @@ import render.VertexSpec._
 import LineBatch._
 import asset.ShaderAsset
 import gfx.Shader.Permutations
+import util.BinarySearch
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -46,7 +47,7 @@ object LineBatch {
     uniform(LineInstanceUniform)
     object LineInstanceUniform extends UniformBlock("LineInstanceUniform") {
       val TexCoords = vec4("TexCoords", MaxLinesPerDraw)
-      val Pages = vec4("Pages", MaxLinesPerDraw)
+      val PageAdvance = vec4("PageAdvance", MaxLinesPerDraw)
     }
 
   }
@@ -56,6 +57,11 @@ object LineBatch {
     Attrib(2, DataFmt.F32, Identifier("TexCoord")),
     Attrib(1, DataFmt.I32, Identifier("Index")),
   ))
+
+  case class HermiteNode(position: Vector2, tangent: Vector2)
+
+  private case class LineInBatch(sprite: AtlasIndexPair, width: Double)
+
 }
 
 class LineBatch {
@@ -69,9 +75,92 @@ class LineBatch {
   private var gpuBuffer: ByteBuffer = null
   private var numVertsInBatch = 0
 
-  private var prevPos: Vector2 = Vector2.Zero
+  private val prevPos: UnsafeVector2 = UnsafeVector2.Zero
 
-  private var linesInBatch = new ArrayBuffer[AtlasIndexPair](LineShader.MaxLinesPerDraw)
+  private var linesInBatch = new ArrayBuffer[LineInBatch](LineShader.MaxLinesPerDraw)
+
+  def drawHermite(sprite: Identifier, segments: Seq[HermiteNode], width: Double, minDistance: Double, maxDistance: Double, maxAngle: Double): Unit = {
+    if (segments.length < 2) return
+
+    val points = new ArrayBuffer[Vector2]()
+
+    var prevPoint = segments(0).position
+    val tangent = UnsafeVector2.Zero
+    val tangentRef = UnsafeVector2.Zero
+    val point = UnsafeVector2.Zero
+    val next = UnsafeVector2.Zero
+
+    points += prevPoint
+
+    val distMaxSq = maxDistance * maxDistance
+    val distMinSq = minDistance * minDistance
+    val angleDotMax = math.cos(math.toRadians(maxAngle))
+    val TangentStep = 0.01
+    val Step = 0.1
+    val SearchSteps = 64
+    var t = Step
+    var endT = segments.length.toDouble - 1.01
+
+    def isConsidreableAdvance(point: UnsafeVector2, next: UnsafeVector2): Boolean = {
+      if (point.distanceSquaredTo(prevPoint) <= distMinSq) return false
+      if (point.distanceSquaredTo(prevPoint) >= distMaxSq) return true
+
+      tangentRef %<- next - point
+      tangent %<- point - prevPoint
+
+      val refLen = tangentRef.length
+      val tanLen = tangent.length
+      if (refLen >= 0.0001 && tanLen >= 0.001) {
+        tangent /= tanLen
+        tangentRef /= refLen
+        val dot = tangent dot tangentRef
+        if (dot <= angleDotMax) return true
+      }
+
+      false
+    }
+
+    def evalPoint(pt: UnsafeVector2, unsafeT: Double): Unit = {
+      val t = math.min(unsafeT, endT)
+      val base = math.floor(t)
+      val rel = t - base
+      val ix = base.toInt
+
+      val prev = segments(ix)
+      val next = segments(ix + 1)
+      Hermite.interpolate(pt, prev.position, prev.tangent, next.position, next.tangent, rel)
+    }
+
+    while (t < endT) {
+      evalPoint(point, t + Step)
+      evalPoint(next, t + TangentStep)
+
+      if (isConsidreableAdvance(point, next)) {
+
+        var ix = BinarySearch.upperBound(0, SearchSteps, index => {
+          val tt = t + Step * (index.toDouble / SearchSteps.toDouble)
+          evalPoint(point, tt)
+          evalPoint(next, tt + TangentStep)
+          isConsidreableAdvance(point, next)
+        })
+
+        t += Step * (ix.toDouble / SearchSteps.toDouble)
+        evalPoint(point, t)
+
+        val pt = point.safe
+        points += pt
+
+        prevPoint = pt
+      } else {
+        t += Step
+      }
+    }
+
+    val lastPoint = segments.last.position
+    points += lastPoint
+
+    draw(sprite, points, width)
+  }
 
   def draw(sprite: Identifier, segments: Seq[Vector2], width: Double): Unit = {
     if (segments.length < 2) return
@@ -82,7 +171,7 @@ class LineBatch {
       return
     }
 
-    if (currentAtlasIndex != pair.atlas || numVertsInBatch + segments.length * 2 + 1 >  MaxVertsPerDraw || linesInBatch.length >= LineShader.MaxLinesPerDraw) {
+    if (currentAtlasIndex != pair.atlas || numVertsInBatch + segments.length * 2 + 2 >  MaxVertsPerDraw || linesInBatch.length >= LineShader.MaxLinesPerDraw) {
       flush()
       currentAtlasIndex = pair.atlas
       currentAtlas = SpriteMap.atlasAssets(currentAtlasIndex).get
@@ -90,7 +179,7 @@ class LineBatch {
     }
 
     val lineIndex = linesInBatch.length
-    linesInBatch += pair
+    linesInBatch += LineInBatch(pair, width)
 
     val halfWidth = width * 0.5
 
@@ -98,24 +187,36 @@ class LineBatch {
     var cur = segments(1)
     var offset = 0.0f
 
-    var prevDiff: Vector2 = null
+    val prevDiff = UnsafeVector2.Zero
+    val diff = UnsafeVector2.Zero
+    val dir = UnsafeVector2.Zero
+    val up = UnsafeVector2.Zero
+    val a = UnsafeVector2.Zero
+    val b = UnsafeVector2.Zero
+    var diffLen = 0.0
 
     {
-      val diff = (cur - prev)
-      val diffLen = diff.length
-      val dir = diff / diffLen
-      val up = dir.perpendicular * halfWidth
+      diff %<- cur - prev
+      diffLen = diff.length
+      dir %<- diff / diffLen
+      up.perpendicularTo(dir)
+      up *= halfWidth
 
-      val a = prev - up
-      val b = prev + up
+      a %<- prev - up
+      b %<- prev + up
 
       if (numVertsInBatch > 0) {
         gpuBuffer.putFloat(prevPos.x.toFloat)
         gpuBuffer.putFloat(prevPos.y.toFloat)
-        gpuBuffer.putInt(0)
         gpuBuffer.putFloat(0.0f)
         gpuBuffer.putFloat(0.0f)
         gpuBuffer.putInt(0)
+
+        gpuBuffer.putFloat(a.x.toFloat)
+        gpuBuffer.putFloat(a.y.toFloat)
+        gpuBuffer.putFloat(offset)
+        gpuBuffer.putFloat(0.0f)
+        gpuBuffer.putInt(lineIndex)
       }
 
       gpuBuffer.putFloat(a.x.toFloat)
@@ -131,7 +232,7 @@ class LineBatch {
       gpuBuffer.putInt(lineIndex)
 
       offset += diffLen.toFloat
-      prevDiff = diff
+      prevDiff %<- diff
     }
 
     var ix = 2
@@ -140,13 +241,15 @@ class LineBatch {
       prev = cur
       cur = segments(ix)
 
-      val diff = (cur - prev)
-      val diffLen = diff.length
-      val dir = (diff + prevDiff).normalize
-      val up = dir.perpendicular * halfWidth
+      diff %<- cur - prev
+      diffLen = diff.length
+      dir %<- diff + prevDiff
+      dir.normalize()
+      up.perpendicularTo(dir)
+      up *= halfWidth
 
-      val a = prev - up
-      val b = prev + up
+      a %<- prev - up
+      b %<- prev + up
 
       gpuBuffer.putFloat(a.x.toFloat)
       gpuBuffer.putFloat(a.y.toFloat)
@@ -161,20 +264,21 @@ class LineBatch {
       gpuBuffer.putInt(lineIndex)
 
       offset += diffLen.toFloat
-      prevDiff = diff
       ix += 1
 
-      prevPos = b
+      prevDiff %<- diff
+      prevPos %<- b
     }
 
     {
-      val diff = (cur - prev)
-      val diffLen = diff.length
-      val dir = diff / diffLen
-      val up = dir.perpendicular * halfWidth
+      diff %<- (cur - prev)
+      diffLen = diff.length
+      dir %<- diff / diffLen
+      up.perpendicularTo(dir)
+      up *= halfWidth
 
-      val a = cur - up
-      val b = cur + up
+      a %<- cur - up
+      b %<- cur + up
 
       gpuBuffer.putFloat(a.x.toFloat)
       gpuBuffer.putFloat(a.y.toFloat)
@@ -190,12 +294,13 @@ class LineBatch {
       gpuBuffer.putInt(lineIndex)
 
       offset += diffLen.toFloat
-      prevPos = b
+
+      prevPos %<- b
     }
 
     // Degenerate segment
     if (numVertsInBatch > 0)
-      numVertsInBatch += 1
+      numVertsInBatch += 2
 
     numVertsInBatch += segments.length * 2
   }
@@ -237,8 +342,10 @@ class LineBatch {
 
       var ix = 0
       while (ix < linesInBatch.length) {
+        val line = linesInBatch(ix)
+
         val D = currentAtlas.data
-        val A = currentAtlas.spriteBase + SpriteBounds.size * linesInBatch(ix).index
+        val A = currentAtlas.spriteBase + SpriteBounds.size * line.sprite.index
 
         val page = SpriteBounds.Page.get(D, A).toInt
 
@@ -246,9 +353,12 @@ class LineBatch {
         var uvBaseY = SpriteBounds.UvBaseY.get(D, A)
         var uvScaleX = SpriteBounds.UvScaleX.get(D, A)
         var uvScaleY = SpriteBounds.UvScaleY.get(D, A)
+        var aspect = SpriteBounds.Aspect.get(D, A)
+
+        val advance = 1.0 / (line.width * aspect)
 
         TexCoords.set(u, ix, uvBaseX.toFloat, uvBaseY.toFloat, uvScaleX.toFloat, uvScaleY.toFloat)
-        Pages.set(u, ix, page.toFloat - 1.0f, 0, 0, 0)
+        PageAdvance.set(u, ix, page.toFloat - 1.0f, advance.toFloat, 0, 0)
 
         ix += 1
       }

@@ -8,6 +8,7 @@ object ComponentType {
     ModelComponent,
     TurretTowerComponent,
     BuildableComponent,
+    GroundBlockerComponent,
   )
 
 }

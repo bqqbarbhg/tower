@@ -15,16 +15,41 @@ object Vector3 {
     val dz = a.z - b.z
     dx*dx + dy*dy + dz*dz
   }
+
+  def min(a: Vector3, b: Vector3): Vector3 = Vector3(
+    math.min(a.x, b.x),
+    math.min(a.y, b.y),
+    math.min(a.z, b.z))
+
+  def max(a: Vector3, b: Vector3): Vector3 = Vector3(
+    math.max(a.x, b.x),
+    math.max(a.y, b.y),
+    math.max(a.z, b.z))
 }
 
 case class Vector3(x: Double, y: Double, z: Double) {
+
+  def distanceSquaredTo(a: Vector3) = {
+    val dx = x - a.x
+    val dy = y - a.y
+    val dz = z - a.z
+    dx*dx + dy*dy + dz*dz
+  }
 
   def lengthSquared: Double = x*x + y*y + z*z
   def length: Double = math.sqrt(x*x + y*y + z*z)
   def normalize: Vector3 = {
     val len = this.length
-    assert(math.abs(len) > 0.00001)
+    assert(len > 0.00000001)
     this * (1.0 / length)
+  }
+  def normalizeOrZero: Vector3 = {
+    val len = this.length
+    if (len >= 0.000001) {
+      this * (1.0 / length)
+    } else {
+      Vector3.Zero
+    }
   }
 
   def *(f: Double): Vector3 = Vector3(x * f, y * f, z * f)
