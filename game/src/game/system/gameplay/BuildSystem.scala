@@ -181,7 +181,7 @@ final class BuildSystemImpl extends BuildSystem {
 
   override def update(dt: Double, invViewProj: Matrix4, inputs: InputSet): Unit = {
     val mouseDown = AppWindow.mouseButtonDown(0)
-    val clicked = mouseDown && !prevMouseDown
+    val clicked = mouseDown && !prevMouseDown && inputs.focusedLayer < -1000
 
     if (AppWindow.mouseButtonDown(1)) {
       activeSlot = None
@@ -321,25 +321,36 @@ final class BuildSystemImpl extends BuildSystem {
   override def setWireGuiEnabled(enabled: Boolean): Unit = {
     if (wireGuiEnabled == enabled) return
     wireGuiEnabled = enabled
-
-    if (!enabled) {
-      activeSlot = None
-      prevWireGui = mutable.HashMap[Entity, WireGui]()
-    }
   }
 
   override def renderWireGui(canvas: Canvas, inputs: InputSet, visible: EntitySet, viewProjection: Matrix4): Unit = {
-    if (!wireGuiEnabled) return
-
     val nextWireGui = new mutable.HashMap[Entity, WireGui]()
 
-    for (entity <- visible.flag(Flag_Slots)) {
+    def makeWireGui(entity: Entity): Unit = {
       val slots = towerSystem.getSlots(entity)
       if (slots.nonEmpty) {
         val gui = prevWireGui.getOrElse(entity, new WireGui(entity))
         gui.slots = slots
         gui.slotCenters = Array.fill(slots.length)(Vector2.Zero)
         nextWireGui(entity) = gui
+      }
+    }
+
+    if (wireGuiEnabled) {
+      for (entity <- visible.flag(Flag_Slots)) {
+        makeWireGui(entity)
+      }
+    }
+
+    // Active GUI is always visible
+    for (active <- activeSlot) {
+      nextWireGui(active.gui.entity) = active.gui
+    }
+
+    // Selected tower's GUI is visible
+    for (selected <- selectedTower if selected.hasFlag(Flag_Slots)) {
+      if (!nextWireGui.contains(selected)) {
+        makeWireGui(selected)
       }
     }
 
@@ -350,16 +361,12 @@ final class BuildSystemImpl extends BuildSystem {
           case Some(slot) =>
             towerSystem.connectSlots(slot.gui.slots(slot.slot), wireGui.slots(clickIndex))
             activeSlot = None
+            selectedTower = None
 
           case None =>
             activeSlot = Some(SlotRef(wireGui, clickIndex))
         }
       }
-    }
-
-    // Active GUI is always visible
-    for (active <- activeSlot) {
-      nextWireGui(active.gui.entity) = active.gui
     }
 
     for ((entity, wireGui) <- nextWireGui) {
@@ -375,6 +382,8 @@ final class BuildSystemImpl extends BuildSystem {
       var minY = clamp(y - height * 0.5, 0.0, globalRenderSystem.screenHeight - height)
 
       val layout = new Layout(Vector2(unit, unit), minX, minY, minX + width, minY + height)
+
+      inputs.addBlocker(-10, layout)
 
       val mutLayout = layout.copy.padAround(10.0)
       val inputLayout = mutLayout.pushLeft(100.0)

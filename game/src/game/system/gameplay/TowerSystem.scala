@@ -195,13 +195,20 @@ final class TowerSystemImpl extends TowerSystem {
 
   override def connectSlots(a: Slot, b: Slot): Boolean = {
     if (a == b) return false
+    if (a.isInput && b.isInput) return false
+    if (!a.isInput && !b.isInput) return false
 
-    a.detach()
-    b.detach()
-    a.connection = Some(b)
-    b.connection = Some(a)
+    val (src, dst) = if (a.isInput) (a, b) else (b, a)
 
-    cableSystem.addCable(a, b)
+    src.detach()
+    dst.detach()
+
+    src.connection = Some(dst)
+    dst.connection = Some(src)
+
+    val cable = cableSystem.addCable(src, dst)
+    connectionSystem.addConnection(src, dst, cable)
+
     true
   }
 
