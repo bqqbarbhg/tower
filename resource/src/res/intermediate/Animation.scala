@@ -9,7 +9,7 @@ object Animation {
   case class FrameQuat(time: Double, value: Quaternion)
   case class FrameVec3(time: Double, value: Vector3)
 
-  case class Timeline(val boneName: String, val rot: Array[FrameQuat], val pos: Array[FrameVec3], val size: Array[FrameVec3])
+  case class Timeline(val boneName: String, val isParent: Boolean, val rot: Array[FrameQuat], val pos: Array[FrameVec3], val size: Array[FrameVec3])
 }
 
 class Animation(val name: String, val duration: Double, val ticksPerSecond: Double) extends Resource {

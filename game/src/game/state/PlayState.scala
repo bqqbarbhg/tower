@@ -22,7 +22,7 @@ import game.system.{Entity, EntitySet, EntityType}
 import game.system.audio.AudioSystem.SoundRef
 import game.system.rendering.AmbientSystem.Probe
 import game.system.rendering.ModelSystem.ModelInstance
-import gfx.Material
+import gfx.{AnimationState, Material}
 import io.property._
 import io.serialization.{BinaryReader, BinaryWriter}
 import menu.gui.TextBox
@@ -53,6 +53,8 @@ object PlayState {
     Colorgrade,
     GroundShader,
     InstancedMeshShader,
+    SkinnedMeshShader,
+    CableShader,
     IdleMusic,
   )
 }
@@ -87,6 +89,11 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     if (loadExisting)
       loadGame()
+
+    val entity = entitySystem.create(EntityTypeAsset("entity/enemy/test.es.toml").get, Vector3(0.0, 0.0, -5.0))
+    val model = modelSystem.collectModels(entity).head
+    val anim = animationSystem.addAnimator(entity, model)
+    anim.playLoop(0, Identifier("Move"))
   }
 
   override def stop(): Unit = {
@@ -389,7 +396,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   object DepCables
   object DepGround
 
-  def renderScene(): Unit = {
+  def renderScene(dt: Double): Unit = {
 
     val frustum = Frustum.fromViewProjection(viewProjection)
 
@@ -425,6 +432,10 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     s.add("Visible towers")(towerSystem, modelSystem)(DepEntities) {
       towerSystem.updateVisible(visibleEntities)
+    }
+
+    s.add("Visible animations")(modelSystem, animationSystem)(DepEntities) {
+      animationSystem.updateVisibleAnimations(dt, visibleEntities)
     }
 
     s.addTo("Wire GUI")(Task.Main)(towerSystem, buildSystem)(DepEntities) {
@@ -512,6 +523,22 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       renderer.drawElementsInstanced(draw.num, mesh.numIndices, mesh.indexBuffer, mesh.vertexBuffer)
     }
 
+    SkinnedMeshShader.get.use()
+
+    for (draw <- forwardDraws.skinned) {
+      val mesh = draw.mesh
+
+      renderer.setTexture(InstancedMeshShader.Textures.Albedo, Material.shared.get.missingAlbedo.texture)
+
+      renderer.bindUniform(SkinnedModelUniform, draw.uniform)
+      renderer.pushUniform(SkinnedMeshShader.VertexUniform, u => {
+        import SkinnedMeshShader.VertexUniform._
+        UvBounds.set(u, mesh.uvOffsetX, mesh.uvOffsetY, mesh.uvScaleX, mesh.uvScaleY)
+      })
+
+      renderer.drawElements(mesh.numIndices, mesh.indexBuffer, mesh.vertexBuffer)
+    }
+
     renderer.setTexture(GroundShader.Textures.Albedo, GroundTexture.get.texture)
 
 
@@ -583,7 +610,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     renderer.beginFrame()
 
     if (globalRenderSystem.renderingEnabled) {
-      renderScene()
+      renderScene(dt)
 
       renderer.setBlend(Renderer.BlendNone)
       renderer.setDepthMode(true, true)

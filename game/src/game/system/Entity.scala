@@ -14,6 +14,7 @@ object Entity {
   val Flag_Children = 6
   val Flag_Parent = 7
   val Flag_Deleted = 8
+  val Flag_Animator = 9
 
   val Flag_CablePart = 128
   val Flag_GroundPlate = 129

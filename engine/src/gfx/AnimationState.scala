@@ -19,6 +19,15 @@ class AnimationState(val model: Model, val animation: Animation) {
   /** Is the content required by the animation state loaded */
   def loaded: Boolean = model.loaded && animation.loaded
 
+  /** Copy the AnimationState but update references to newly loaded assets */
+  def remake(newModel: Model): AnimationState = {
+    val newAnimation = newModel.findAnimationByName(animation.name)
+    val copy = new AnimationState(newModel, newAnimation)
+    copy.time = time
+    copy.alpha = alpha
+    copy
+  }
+
   /**
     * Advance the animation by some timestep, but loop when the animation reaches the end.
     */
@@ -30,9 +39,14 @@ class AnimationState(val model: Model, val animation: Animation) {
   /**
     * Advance the animation by some timestep, but clamp to the end.
     */
-  def advanceClamp(dt: Double): Unit = {
+  def advanceClamp(dt: Double): Boolean = {
     time += dt
-    time = math.min(time, animation.duration)
+    if (time >= animation.duration) {
+      time = animation.duration
+      true
+    } else {
+      false
+    }
   }
 
   /**

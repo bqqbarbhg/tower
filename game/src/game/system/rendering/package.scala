@@ -12,6 +12,7 @@ package object rendering {
   var shadowRenderingSystem: ShadowRenderingSystem = null
   var cableRenderSystem: CableRenderSystem = null
   var globalRenderSystem: GlobalRenderSystem = null
+  var animationSystem: AnimationSystem = null
 
   def loadGlobal(): Unit = {
     globalRenderSystem = new GlobalRenderSystemImpl()
@@ -25,12 +26,14 @@ package object rendering {
     pointLightSystem = new PointLightSystemImpl()
     ambientSystem = new AmbientSystemImpl()
     ambientPointLightSystem = new AmbientPointLightSystemImpl()
+    animationSystem = new AnimationSystemImpl()
 
     base.entitySystem.addDeleteListener(cullingSystem)
     base.entitySystem.addDeleteListener(pointLightSystem)
     base.entitySystem.addDeleteListener(ambientSystem)
     base.entitySystem.addDeleteListener(ambientPointLightSystem)
     base.entitySystem.addDeleteListener(modelSystem)
+    base.entitySystem.addDeleteListener(animationSystem)
   }
 
   def loadGame(): Unit = {
@@ -50,6 +53,12 @@ package object rendering {
   }
 
   def unloadState(): Unit = {
+    base.entitySystem.removeDeleteListener(cullingSystem)
+    base.entitySystem.removeDeleteListener(pointLightSystem)
+    base.entitySystem.removeDeleteListener(ambientSystem)
+    base.entitySystem.removeDeleteListener(ambientPointLightSystem)
+    base.entitySystem.removeDeleteListener(modelSystem)
+    base.entitySystem.removeDeleteListener(animationSystem)
   }
 
   def unloadGlobal(): Unit = {

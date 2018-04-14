@@ -213,10 +213,14 @@ object Config {
       /** Maximum error value for the scale keyframe compression */
       var scaleMaxError: Double = 0.001
 
+      /** Relative scale of the animation (applied to root bone) */
+      var scale: Double = 1.0
+
       override def visit(v: SimpleVisitor): Unit = {
         rotationMaxError = v.field("rotationMaxError", rotationMaxError)
         positionMaxError = v.field("positionMaxError", positionMaxError)
         scaleMaxError = v.field("scaleMaxError", scaleMaxError)
+        scale = v.field("scale", scale)
       }
     }
 

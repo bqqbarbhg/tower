@@ -217,6 +217,7 @@ class Model {
     for ((mesh, meshIndex) <- meshes.zipWithIndex) {
       if (mesh.numSkinnedParts > 0) {
         val mapping = new Array[Array[Int]](mesh.numSkinnedParts)
+        skinnedPartBoneToNodeMapping(meshIndex) = mapping
         for ((part, partIndex) <- mesh.parts.zipWithIndex) {
           val mapIx = part.skinnedPartIndex
           if (mapIx >= 0) {

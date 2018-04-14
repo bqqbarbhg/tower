@@ -12,6 +12,8 @@ import res.intermediate.Model._
 import res.intermediate.Animation._
 import res.intermediate.Mesh._
 
+import scala.collection.mutable
+
 /**
   * Assimp-based 3D model importer.
   *
@@ -65,11 +67,32 @@ object AssimpImporter extends Importer {
       val timeScale = 1.0 / anim.ticksPerSecond
 
       val aChans = collect(aAnim.mChannels, aAnim.mNumChannels, AINodeAnim.create)
+
+      val nodesWithAnims = aChans.map(_.mNodeName.dataString).toSet
+      val animChildNodes = new mutable.HashSet[String]()
+
+      def visitNodes(aNode: AINode): Unit = {
+        val aChildren = collect(aNode.mChildren, aNode.mNumChildren, AINode.create)
+
+        val inAnim = nodesWithAnims.contains(aNode.mName.dataString)
+        if (inAnim) {
+          for (aChild <- aChildren) {
+            animChildNodes += aChild.mName.dataString
+          }
+        }
+
+        for (aChild <- aChildren) {
+          visitNodes(aChild)
+        }
+      }
+      visitNodes(aScene.mRootNode)
+
       for (aChan <- aChans) {
         val rot = for (i <- 0 until aChan.mNumRotationKeys) yield convertQuatFrame(aChan.mRotationKeys.get(i), timeScale)
         val pos = for (i <- 0 until aChan.mNumPositionKeys) yield convertVec3Frame(aChan.mPositionKeys.get(i), timeScale)
         val siz = for (i <- 0 until aChan.mNumScalingKeys)  yield convertVec3Frame(aChan.mScalingKeys.get(i), timeScale)
-        val timeline = new Timeline(aChan.mNodeName.dataString, rot.toArray, pos.toArray, siz.toArray)
+        val isParent = !animChildNodes.contains(aChan.mNodeName.dataString)
+        val timeline = new Timeline(aChan.mNodeName.dataString, isParent, rot.toArray, pos.toArray, siz.toArray)
         anim.timelines += timeline
       }
 

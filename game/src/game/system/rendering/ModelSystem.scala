@@ -298,7 +298,7 @@ final class ModelSystemImpl extends ModelSystem {
             var boneIx = 0
             while (boneIx < part.numBones) {
               val nodeIx = mapping(boneIx)
-              inst.bones(boneIx) = state.nodeWorldTransform(nodeIx)
+              inst.bones(boneIx) = state.nodeWorldTransform(nodeIx) * part.boneMeshToBone(boneIx)
               boneIx += 1
             }
 

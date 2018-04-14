@@ -132,6 +132,7 @@ object EditorMain extends App {
         processResources()
         AssetLoader.reloadEverything()
         modelSystem.assetsLoaded()
+        animationSystem.assetsLoaded()
       }
       if (AppWindow.keyEvents.exists(e => e.down == true && e.control && e.key == 'L')) {
         dumpColorLookup()

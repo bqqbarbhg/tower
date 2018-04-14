@@ -86,11 +86,11 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
   )
 
   categories(0).items = Vector(
-    new Item(EntityTypeAsset("game/entity/tower/turret_basic.es.toml").get),
+    new Item(EntityTypeAsset("entity/tower/turret_basic.es.toml").get),
   )
 
   categories(1).items = Vector(
-    new Item(EntityTypeAsset("game/entity/tower/radar_basic.es.toml").get),
+    new Item(EntityTypeAsset("entity/tower/radar_basic.es.toml").get),
   )
 
   var openCategory: Option[Category] = None
