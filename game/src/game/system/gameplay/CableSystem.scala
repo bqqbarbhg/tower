@@ -48,6 +48,9 @@ sealed trait CableSystem extends EntityDeleteListener {
   /** Add a new cable */
   def addCable(src: Slot, dst: Slot): Cable
 
+  /** Remove a cable between slots */
+  def removeCable(src: Slot, dst: Slot): Unit
+
   /** Block cables from going through an object */
   def addGroundBlocker(entity: Entity, min: Vector2, max: Vector2): Unit
 
@@ -432,7 +435,7 @@ final class CableSystemImpl extends CableSystem {
     }
   }
 
-  def removeCable(src: Slot, dst: Slot): Unit = {
+  override def removeCable(src: Slot, dst: Slot): Unit = {
     for (cable <- slotToCable.remove(src)) {
       if (cable.entity != null && !cable.deleted) {
         cable.deleted = true

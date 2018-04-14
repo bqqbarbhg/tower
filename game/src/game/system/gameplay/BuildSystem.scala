@@ -15,14 +15,16 @@ import game.system.rendering.ModelSystem._
 import game.shader.PlaceMeshShader
 import BuildSystemImpl._
 import core.Matrix4
+import game.options.Options
 import game.system.gameplay.TowerSystem.Slot
 import game.system.rendering.CullingSystem.RayHit
 import locale.Locale
 import locale.LocaleString._
-import platform.AppWindow
+import platform.{AppWindow, KeyEvent}
 import ui.Canvas.TextStyle
 import ui.InputSet.InputArea
 import ui.LineBatch.HermiteNode
+import ui.SpriteBatch.SpriteDraw
 import ui._
 import util.geometry._
 
@@ -34,8 +36,10 @@ object BuildSystem {
     HudAtlas,
     WireAtlas,
     MenuAtlas,
+    IngameAtlas,
     FailPlaceSound,
     SlotFont,
+    BreakSound,
   )
 
 }
@@ -60,6 +64,9 @@ sealed trait BuildSystem {
 
   /** Render GUI elements used by this system */
   def renderBuildGui(canvas: Canvas, viewProjection: Matrix4): Unit
+
+  /** Render the in-game overlay GUI elements */
+  def renderIngameGui(viewProjection: Matrix4): Unit
 
   /** Release resources used by the system */
   def unload(): Unit
@@ -90,6 +97,7 @@ object BuildSystemImpl {
   val MenuAtlas = AtlasAsset("atlas/menu.s2at")
   val HudAtlas = AtlasAsset("atlas/hud.s2at")
   val WireAtlas = AtlasAsset("atlas/wire.s2at")
+  val IngameAtlas = AtlasAsset("atlas/ingame.s2at")
   val FailPlaceSound = SoundAsset("audio/effect/error.wav.s2au")
 
   val SlotFont = FontAsset("font/catamaran/Catamaran-SemiBold.ttf.s2ft")
@@ -98,8 +106,13 @@ object BuildSystemImpl {
 
   val WireSprite = Identifier("gui/wire/plain.png")
 
+  val TowerSelectSprite = Identifier("gui/ingame/tower_select.png")
+  val IngameBlockerSprite = Identifier("gui/ingame/blocker.png")
+
   val PreviewValidColor = Color.rgba(0xFFFFFF, 1.0)
   val PreviewBadColor = Color.rgba(0xFF0000, 1.0)
+
+  val BreakSound = SoundAsset("audio/effect/break.wav.s2au")
 
   val BlockerSprite = Identifier("gui/hud/build_blocker.png")
   val CenterAnchor = Vector2(0.5, 0.5)
@@ -134,6 +147,11 @@ final class BuildSystemImpl extends BuildSystem {
   var failCooldown: Double = 0.0
   var prevWireGui = mutable.HashMap[Entity, WireGui]()
   var wireGuiEnabled = false
+  var selectedTower: Option[Entity] = None
+
+  val deleteBind = KeyEvent.NameToKey.get(Options.current.binds.delete).getOrElse(KeyEvent.Delete)
+
+  val ingameGuiWorld = Matrix43.world(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, 1.0), Vector3(0.0, 1.0, 0.0), Vector3(0.0, 2.0, 0.0))
 
   var activeSlot: Option[SlotRef] = None
 
@@ -186,6 +204,8 @@ final class BuildSystemImpl extends BuildSystem {
     val ray = Ray.fromUnnormalized(near, far - near)
 
     for (buildE <- buildEntity) {
+      selectedTower = None
+
       val t = ray.intersect(GroundPlane)
       var groundPoint = t.map(ray.point).map(point => {
         val roundX = (math.floor(point.x / GridSize) + 0.0) * GridSize + GridSize * 0.5
@@ -227,6 +247,29 @@ final class BuildSystemImpl extends BuildSystem {
         preview.valid = validPlace
         preview.visible = groundPoint.nonEmpty
       }
+    }
+
+    if (buildEntity.isEmpty) {
+      rayCastResult.clear()
+      cullingSystem.queryRay(ray, MaxRayCast, CullingSystem.MaskGameplay, rayCastResult)
+      val towers = rayCastResult.iterator.filter(_.entity.hasFlag(Flag_Tower))
+      if (towers.nonEmpty) {
+        val closest = towers.minBy(_.t)
+
+        if (clicked) {
+          selectedTower = Some(closest.entity)
+        }
+      }
+    }
+
+    for (selected <- selectedTower) {
+
+      if (AppWindow.keyDownEvents.exists(_.key == deleteBind)) {
+        audioSystem.play(BreakSound, AudioSystem.Sfx)
+        selected.delete()
+        selectedTower = None
+      }
+
     }
 
     prevMouseDown = mouseDown
@@ -443,6 +486,50 @@ final class BuildSystemImpl extends BuildSystem {
       val size = Vector2(extent, extent)
       canvas.draw(0, BlockerSprite, pos, size, CenterAnchor, Color.White)
     }
+  }
+
+  override def renderIngameGui(viewProjection: Matrix4): Unit = {
+    val renderer = Renderer.get
+
+    renderer.setCull(false)
+    renderer.setDepthMode(false, true)
+    renderer.setBlend(Renderer.BlendPremultipliedAlpha)
+
+    // Borrow the Canvas SpriteBatch
+    val sb = Canvas.shared.get.spriteBatch
+    val prevWvp = sb.worldViewProjection
+
+    sb.worldViewProjection = Some(viewProjection * ingameGuiWorld)
+
+    for (sel <- selectedTower) {
+      val pos = sel.position
+      val sd = new SpriteDraw()
+      sd.sprite = TowerSelectSprite
+      sd.m11 = 8.0f
+      sd.m22 = 8.0f
+      sd.m13 = pos.x.toFloat
+      sd.m23 = pos.z.toFloat
+      sd.anchorX = 0.5f
+      sd.anchorY = 0.5f
+      sb.draw(sd)
+    }
+
+    for (blocker <- buildBlockerEntities) {
+      val pos = blocker.position
+      val sd = new SpriteDraw()
+      sd.sprite = IngameBlockerSprite
+      sd.m11 = 8.0f
+      sd.m22 = 8.0f
+      sd.m13 = pos.x.toFloat
+      sd.m23 = pos.z.toFloat
+      sd.anchorX = 0.5f
+      sd.anchorY = 0.5f
+      sb.draw(sd)
+    }
+
+    sb.flush()
+
+    sb.worldViewProjection = prevWvp
   }
 
   override def unload(): Unit = {

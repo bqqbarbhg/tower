@@ -21,7 +21,7 @@ class AnimationState(val model: Model, val animation: Animation) {
 
   /** Copy the AnimationState but update references to newly loaded assets */
   def remake(newModel: Model): AnimationState = {
-    val newAnimation = newModel.findAnimationByName(animation.name)
+    val newAnimation = newModel.findAnimationByFilename(animation.name)
     val copy = new AnimationState(newModel, newAnimation)
     copy.time = time
     copy.alpha = alpha

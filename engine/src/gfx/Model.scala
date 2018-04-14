@@ -178,6 +178,18 @@ class Model {
   }
 
   /**
+    * Find an animation by filename. Returns `null` on failure (for performance reasons).
+    */
+  def findAnimationByFilename(name: Identifier): Animation = {
+    var index = 0
+    while (index < numAnims) {
+      if (anims(index).name == name) return anims(index)
+      index += 1
+    }
+    null
+  }
+
+  /**
     * Find a node by name. Returns -1 on failure (for performance reasons).
     */
   def findNodeByName(name: Identifier): Int = {

@@ -27,12 +27,18 @@ object SpriteBatch {
 
     override object Permutations extends Shader.Permutations {
       val UseArray = both("UseArray", 0 to 1)
+      val UseTransform = both("UseTransform", 0 to 1)
     }
 
     uniform(VertexUniform)
     object VertexUniform extends UniformBlock("SpriteVertexUniform") {
       val TexCoordScale = vec4("TexCoordScale")
       val PosScale = vec4("PosScale")
+    }
+
+    uniform(MatrixUniform)
+    object MatrixUniform extends UniformBlock("SpriteMatrixUniform") {
+      val WorldViewProjection = mat4("WorldViewProjection")
     }
   }
 
@@ -100,6 +106,9 @@ class SpriteBatch {
   private var localBuffer = MemoryUtil.memAlloc(SpriteSpec.sizeInBytes * 4)
   private var gpuBuffer: ByteBuffer = null
   private var numSpritesInBatch = 0
+
+  /** If set render the sprites into perspective */
+  var worldViewProjection: Option[Matrix4] = None
 
   /**
     * Draw a generic sprite.
@@ -250,9 +259,17 @@ class SpriteBatch {
       PosScale.set(b, screenX, screenY, 0.0f, 0.0f)
     })
 
+    for (wvp <- worldViewProjection) {
+      renderer.pushUniform(SpriteShader.MatrixUniform, u => {
+        import SpriteShader.MatrixUniform._
+        WorldViewProjection.set(u, wvp)
+      })
+    }
+
     val shader = SpriteShader.get
     shader.use(p => {
       p(SpriteShader.Permutations.UseArray) = useArray
+      p(SpriteShader.Permutations.UseTransform) = worldViewProjection.isDefined
     })
 
     val indexBuffer = SharedQuadIndexBuffer.get.indexBuffer

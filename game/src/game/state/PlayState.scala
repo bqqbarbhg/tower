@@ -548,6 +548,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       ground.draw()
     }
 
+    buildSystem.renderIngameGui(viewProjection)
+
     buildSystem.renderPreview()
   }
 

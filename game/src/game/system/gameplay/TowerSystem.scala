@@ -18,6 +18,9 @@ object TowerSystem {
 
     def detach(): Unit = {
       for (c <- connection) {
+        cableSystem.removeCable(this, c)
+        connectionSystem.removeConnection(this, c)
+
         c.connection = None
         connection = None
       }
