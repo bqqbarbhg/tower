@@ -75,6 +75,7 @@ object CableSystemImpl {
     var nodes: Array[CableNode] = _
     var cells: Array[GroundCell] = NoCells
     var needsToBeGenerated: Boolean = false
+    var deleted: Boolean = false
 
     override def entity: Entity = entityImpl
   }
@@ -401,11 +402,16 @@ final class CableSystemImpl extends CableSystem {
 
   override def generateCables(): Unit = {
     for (cable <- cablesToGenerate) {
+      if (cable.deleted) return
+      cable.needsToBeGenerated = false
+
       if (cable.entityImpl != null) {
         cable.entityImpl.delete()
       }
       generateCable(cable)
     }
+
+    cablesToGenerate.clear()
   }
 
   def queueGeneration(cable: CableImpl): Unit = {
@@ -426,9 +432,29 @@ final class CableSystemImpl extends CableSystem {
     }
   }
 
+  def removeCable(src: Slot, dst: Slot): Unit = {
+    for (cable <- slotToCable.remove(src)) {
+      if (cable.entity != null && !cable.deleted) {
+        cable.deleted = true
+        cable.entity.delete()
+      }
+    }
+
+    for (cable <- slotToCable.remove(dst)) {
+      if (cable.entity != null && !cable.deleted) {
+        cable.deleted = true
+        cable.entity.delete()
+      }
+    }
+  }
+
   override def addCable(src: Slot, dst: Slot): Cable = {
+    removeCable(src, dst)
+
     val cable = new CableImpl(src, dst)
     queueGeneration(cable)
+    slotToCable(src) = cable
+    slotToCable(dst) = cable
     cable
   }
 
