@@ -287,7 +287,7 @@ final class BuildSystemImpl extends BuildSystem {
 
     val nextWireGui = new mutable.HashMap[Entity, WireGui]()
 
-    for (entity <- visible.flag(Flag_Turret)) {
+    for (entity <- visible.flag(Flag_Slots)) {
       val slots = towerSystem.getSlots(entity)
       if (slots.nonEmpty) {
         val gui = prevWireGui.getOrElse(entity, new WireGui(entity))

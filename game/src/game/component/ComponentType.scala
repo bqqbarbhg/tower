@@ -6,9 +6,11 @@ object ComponentType {
     BoundingAabbComponent,
     BuildPreviewComponent,
     ModelComponent,
-    TurretTowerComponent,
     BuildableComponent,
     GroundBlockerComponent,
+
+    TurretTowerComponent,
+    RotatingRadarComponent,
   )
 
 }

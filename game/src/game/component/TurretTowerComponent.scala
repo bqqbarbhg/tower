@@ -26,7 +26,7 @@ class TurretTowerComponent extends Component {
   override def dependencies: Iterable[ComponentType] = Some(ModelComponent)
 
   override def create(entity: Entity): Unit = {
-    towerSystem.addTurret(entity, this)
+    towerSystem.addComponent(entity, this)
   }
 
 }

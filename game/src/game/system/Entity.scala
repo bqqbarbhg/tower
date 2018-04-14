@@ -17,7 +17,7 @@ object Entity {
 
   val Flag_CablePart = 128
   val Flag_GroundPlate = 129
-  val Flag_Turret = 130
+  val Flag_Tower = 130
   val Flag_Slots = 131
   val Flag_Cable = 132
   val Flag_GroundBlocker = 133

@@ -13,9 +13,7 @@ import scala.collection.mutable
 
 object TowerSystem {
 
-  class Slot(val entity: Entity) {
-    var locale: String = ""
-    var isInput: Boolean = false
+  class Slot(val entity: Entity, val isInput: Boolean, val locale: String) {
     var connection: Option[Slot] = None
 
     def detach(): Unit = {
@@ -30,8 +28,8 @@ object TowerSystem {
 
 sealed trait TowerSystem extends EntityDeleteListener {
 
-  /** Add a turret to the system */
-  def addTurret(entity: Entity, turretComp: TurretTowerComponent): Unit
+  /** Add a tower component to the system */
+  def addComponent(entity: Entity, comp: Component): Unit
 
   /** Update all the towers */
   def update(dt: Double): Unit
@@ -45,15 +43,71 @@ sealed trait TowerSystem extends EntityDeleteListener {
   /** Try to connect slots `a` and `b`, return whether it was succesful */
   def connectSlots(a: Slot, b: Slot): Boolean
 
+  /** Add or modify a radar target */
+  def updateRadarTarget(entity: Entity, position: Vector3): Unit
+
 }
 
 object TowerSystemImpl {
 
-  class Turret(val entity: Entity) extends CompactArrayPool.Element {
-    var aimNode: Option[NodeInstance] = None
-    var spinNode: Option[NodeInstance] = None
+  abstract class Tower extends CompactArrayPool.Element {
+    var next: Tower = null
+
+    def slots: Array[Slot]
+    def update(dt: Double): Unit
+    def updateVisible(): Unit
+  }
+
+  class Turret(val entity: Entity, val component: TurretTowerComponent) extends Tower {
+    val model = modelSystem.collectModels(entity).head
+
+    var aimNode: Option[NodeInstance] = model.findNode(component.aimBone)
+    var spinNode: Option[NodeInstance] = model.findNode(component.spinBone)
 
     var spin: Double = 0.0
+
+    val slotTargetIn = new Slot(entity, true, "slot.turret.targetIn")
+    val slotTargetOut = new Slot(entity, false, "slot.turret.targetOut")
+
+    override val slots: Array[Slot] = Array(
+      slotTargetIn,
+      slotTargetOut,
+    )
+
+    def update(dt: Double): Unit = {
+      spin += dt * 5.0
+    }
+
+    override def updateVisible(): Unit = {
+      for (node <- spinNode) {
+        node.localTransform = Matrix43.rotateY(spin)
+      }
+    }
+
+  }
+
+  class RotatingRadar(val entity: Entity, val component: RotatingRadarComponent) extends Tower {
+    val model = modelSystem.collectModels(entity).head
+
+    var rotateNode: Option[NodeInstance] = model.findNode(component.rotateBone)
+
+    var angle: Double = 0.0
+
+    val slotTargetOut = new Slot(entity, false, "slot.radar.targetOut")
+
+    override val slots: Array[Slot] = Array(
+      slotTargetOut,
+    )
+
+    def update(dt: Double): Unit = {
+      angle += dt * 2.0
+    }
+
+    override def updateVisible(): Unit = {
+      for (node <- rotateNode) {
+        node.localTransform = Matrix43.rotateZ(angle)
+      }
+    }
   }
 
   val NoSlots = Array[Slot]()
@@ -68,8 +122,9 @@ object TowerSystemImpl {
 
 final class TowerSystemImpl extends TowerSystem {
 
-  val turrets = new CompactArrayPool[Turret]
-  val entityToTurret = new mutable.HashMap[Entity, Turret]()
+  val towers = new CompactArrayPool[Tower]
+
+  val entityToTower = new mutable.HashMap[Entity, Tower]()
   val entityToSlots = new mutable.HashMap[Entity, SlotContainer]()
 
   def getSlotContainer(entity: Entity): SlotContainer = {
@@ -79,25 +134,31 @@ final class TowerSystemImpl extends TowerSystem {
     })
   }
 
-  override def addTurret(entity: Entity, turretComp: TurretTowerComponent): Unit = {
-    val turret = new Turret(entity)
-    val model = modelSystem.collectModels(entity).head
-    turret.aimNode = model.findNode(turretComp.aimBone)
-    turret.spinNode = model.findNode(turretComp.spinBone)
-    entity.setFlag(Flag_Turret)
-    entityToTurret(entity) = turret
-    turrets.add(turret)
+  override def addComponent(entity: Entity, comp: Component): Unit = {
+    val tower = comp match {
+      case c: TurretTowerComponent => new Turret(entity, c)
+      case c: RotatingRadarComponent => new RotatingRadar(entity, c)
+    }
 
-    val sc = getSlotContainer(entity)
-    sc.slots :+= new Slot(entity) { locale = "slot.turret.aim"; isInput = true }
-    sc.slots :+= new Slot(entity) { locale = "slot.turret.shoot"; isInput = true }
-    sc.slots :+= new Slot(entity) { locale = "slot.turret.hits"; isInput = false }
+    if (entity.hasFlag(Flag_Tower)) {
+      tower.next = entityToTower(entity)
+    }
+
+    val slots = getSlotContainer(entity)
+    entity.setFlag(Flag_Tower)
+    slots.slots ++= tower.slots
+    entityToTower(entity) = tower
+    towers.add(tower)
   }
 
   override def entitiesDeleted(entities: EntitySet): Unit = {
-    for (e <- entities.flag(Flag_Turret)) {
-      turrets.remove(entityToTurret.remove(e).get)
-      e.clearFlag(Flag_Turret)
+    for (e <- entities.flag(Flag_Tower)) {
+      var tower = entityToTower(e)
+      do {
+        towers.remove(tower)
+        tower = tower.next
+      } while (tower != null)
+      e.clearFlag(Flag_Tower)
     }
     for (e <- entities.flag(Flag_Slots)) {
       val slots = entityToSlots.remove(e).get
@@ -106,17 +167,18 @@ final class TowerSystemImpl extends TowerSystem {
   }
 
   override def update(dt: Double): Unit = {
-    for (turret <- turrets) {
-      turret.spin += dt * 5.0
+    for (tower <- towers) {
+      tower.update(dt)
     }
   }
 
   override def updateVisible(visible: EntitySet): Unit = {
-    for (e <- visible.flag(Flag_Turret)) {
-      val turret = entityToTurret(e)
-      for (spin <- turret.spinNode) {
-        spin.localTransform = Matrix43.rotateY(turret.spin)
-      }
+    for (e <- visible.flag(Flag_Tower)) {
+      var tower = entityToTower(e)
+      do {
+        tower.updateVisible()
+        tower = tower.next
+      } while (tower != null)
     }
   }
 
@@ -138,6 +200,10 @@ final class TowerSystemImpl extends TowerSystem {
 
     cableSystem.addCable(a, b)
     true
+  }
+
+  override def updateRadarTarget(entity: Entity, position: Vector3): Unit = {
+
   }
 }
 

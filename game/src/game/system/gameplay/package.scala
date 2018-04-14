@@ -8,12 +8,14 @@ package object gameplay {
   var towerSystem: TowerSystem = null
   var buildSystem: BuildSystem = null
   var cableSystem: CableSystem = null
+  var connectionSystem: ConnectionSystem = null
 
   def loadGame(): Unit = {
     tutorialSystem = new TutorialSystemImpl()
     towerSystem = new TowerSystemImpl()
     buildSystem = new BuildSystemImpl()
     cableSystem = new CableSystemImpl()
+    connectionSystem = new ConnectionSystemImpl()
 
     entitySystem.addDeleteListener(towerSystem)
     entitySystem.addDeleteListener(cableSystem)
