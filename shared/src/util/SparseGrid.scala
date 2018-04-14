@@ -23,7 +23,7 @@ object SparseGrid {
 }
 
 /** Spatial 2D sparse grid structure comprised of cells of some size. */
-class SparseGrid[A](val cellSize: Vector2, val constructor: (Int, Int) => A) extends Iterable[A] {
+class SparseGrid[A](val cellSize: Vector2, val cellOffset: Vector2, val constructor: (Int, Int) => A) extends Iterable[A] {
   val mapping = new mutable.HashMap[Long, A]()
 
   def createCell(x: Int, y: Int): A = {
@@ -37,24 +37,24 @@ class SparseGrid[A](val cellSize: Vector2, val constructor: (Int, Int) => A) ext
   }
 
   def createCellContaining(x: Double, y: Double): A = {
-    val cx = math.floor(x / cellSize.x).toInt
-    val cy = math.floor(y / cellSize.y).toInt
+    val cx = math.floor((x - cellOffset.x) / cellSize.x).toInt
+    val cy = math.floor((y - cellOffset.y) / cellSize.y).toInt
     createCell(cx, cy)
   }
 
   def createCellContaining(position: Vector2): A = createCellContaining(position.x, position.y)
 
   def getCellContaining(x: Double, y: Double): Option[A] = {
-    val cx = math.floor(x / cellSize.x).toInt
-    val cy = math.floor(y / cellSize.y).toInt
+    val cx = math.floor((x - cellOffset.x) / cellSize.x).toInt
+    val cy = math.floor((y - cellOffset.y) / cellSize.y).toInt
     getCell(cx, cy)
   }
 
   def getCellContaining(position: Vector2): Option[A] = getCellContaining(position.x, position.y)
 
   def getCellPosition(x: Double, y: Double): CellPos = {
-    val cx = math.floor(x / cellSize.x).toInt
-    val cy = math.floor(y / cellSize.y).toInt
+    val cx = math.floor((x - cellOffset.x) / cellSize.x).toInt
+    val cy = math.floor((y - cellOffset.y) / cellSize.y).toInt
     CellPos(cx, cy)
   }
   def getCellPosition(position: Vector2): CellPos = getCellPosition(position.x, position.y)

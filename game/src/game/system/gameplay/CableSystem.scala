@@ -13,6 +13,7 @@ import CableSystem._
 import CableSystemImpl._
 import io.property._
 import ui.DebugDraw
+import util.SparseGrid.CellPos
 import util._
 
 import scala.collection.mutable
@@ -28,17 +29,15 @@ object CableSystem {
   object CableTweak extends PropertyContainer {
     private val arr = MacroPropertySet.make[CableTweak.type]()
     override val propertySet: PropertySet = new PropertySet("CableTweak", arr) {
-      range("positionRandom", 0.0, 2.0)
-      range("angleRandom", 0.0, 2.0)
       range("tangentScaleMid", 0.0, 1.0)
       range("tangentScaleEndpoint", 0.0, 1.0)
     }
 
-    var positionRandom: DoubleProp.Type = 0.2
-    var angleRandom: DoubleProp.Type = 0.2
     var tangentScaleMid: DoubleProp.Type = 0.5
     var tangentScaleEndpoint: DoubleProp.Type = 0.5
-    var avoidWeight: DoubleProp.Type = 10.0
+    var stepSize: DoubleProp.Type = 10.0
+    var tangentGainOnRemove: DoubleProp.Type = 1.5
+    var surroundingBlockerWeight: DoubleProp.Type = 1.0
     var regenerateCables: BoolProp.Type = false
   }
 
@@ -51,6 +50,9 @@ sealed trait CableSystem extends EntityDeleteListener {
 
   /** Block cables from going through an object */
   def addGroundBlocker(entity: Entity, min: Vector2, max: Vector2): Unit
+
+  /** Generate queued cables */
+  def generateCables(): Unit
 
   /** Render debug view of cable control points */
   def debugDrawControlPoints(visible: EntitySet)
@@ -65,9 +67,14 @@ sealed trait CableSystem extends EntityDeleteListener {
 
 object CableSystemImpl {
 
+  val NoCables = Array[CableImpl]()
+  val NoCells = Array[GroundCell]()
+
   final class CableImpl(val src: Slot, val dst: Slot) extends Cable {
-    var entityImpl: Entity = _
+    var entityImpl: Entity = null
     var nodes: Array[CableNode] = _
+    var cells: Array[GroundCell] = NoCells
+    var needsToBeGenerated: Boolean = false
 
     override def entity: Entity = entityImpl
   }
@@ -78,29 +85,50 @@ object CableSystemImpl {
     nodes.reverse.map(n => n.copy(tangentIn = -n.tangentIn, tangentOut = -n.tangentOut))
   }
 
+  val CellOffset = Vector2(2.0, 2.0)
   val CellSize = Vector2(8.0, 8.0)
   val CellArea = CellSize.x * CellSize.y
   val CellInvArea = 1.0 / CellArea
+  val InvCellSize = Vector2(1.0 / CellSize.x, 1.0 / CellSize.y)
 
   val BlockMultiplier = 10000
   val InvBlockMultiplier = 1.0 / BlockMultiplier.toDouble
 
+  def worldToCell(x: Double, y: Double): CellPos = {
+    val ix = math.floor((x - CellOffset.x) * InvCellSize.x).toInt
+    val iy = math.floor((y - CellOffset.y) * InvCellSize.y).toInt
+    CellPos(ix, iy)
+  }
+  def worldToCell(pos: Vector2): CellPos = worldToCell(pos.x, pos.y)
+  def worldToCell(pos: Vector3): CellPos = worldToCell(pos.x, pos.z)
+
+  def cellToWorld(x: Int, y: Int): Vector2 = {
+    val fx = x * CellSize.x + CellOffset.x
+    val fy = y * CellSize.y + CellOffset.y
+    Vector2(fx, fy)
+  }
+  def cellToWorld(pos: CellPos): Vector2 = cellToWorld(pos.x, pos.y)
+
+
   class GroundCell(val x: Int, val y: Int) {
     var blockCount: Int = 0
     var blockAmount: Int = 0
-    val minWorld = Vector2(x * CellSize.x, y * CellSize.y)
-    val maxWorld = Vector2((x + 1) * CellSize.x, (y + 1) * CellSize.y)
+    val minWorld = Vector2(x * CellSize.x, y * CellSize.y) + CellOffset
+    val maxWorld = Vector2((x + 1) * CellSize.x, (y + 1) * CellSize.y) + CellOffset
+    var cables: Array[CableImpl] = NoCables
 
     var blockers = new Array[GroundBlocker](0)
 
     def moveWeight: Double = blockAmount.toDouble * InvBlockMultiplier
 
-    def testPoint(a: Vector2): Boolean = {
+    def testPoint(x: Double, y: Double, ignoredEntities: Iterable[Entity] = None): Boolean = {
       for (blocker <- blockers) {
-        val min = blocker.minWorld
-        val max = blocker.maxWorld
-        if (a.x >= min.x && a.y >= min.y && a.x <= max.x && a.y <= max.y)
-          return false
+        if (!ignoredEntities.exists(_ == blocker.entity)) {
+          val min = blocker.minWorld
+          val max = blocker.maxWorld
+          if (x >= min.x && y >= min.y && x <= max.x && y <= max.y)
+            return false
+        }
       }
 
       true
@@ -138,7 +166,7 @@ object CableSystemImpl {
     }
   }
 
-  class GroundBlocker(val minX: Int, val minY: Int, val maxX: Int, val maxY: Int, val minWorld: Vector2, val maxWorld: Vector2, val next: GroundBlocker) {
+  class GroundBlocker(val entity: Entity, val minX: Int, val minY: Int, val maxX: Int, val maxY: Int, val minWorld: Vector2, val maxWorld: Vector2, val next: GroundBlocker) {
   }
 
 }
@@ -148,16 +176,21 @@ final class CableSystemImpl extends CableSystem {
   val entityToCable = new mutable.HashMap[Entity, CableImpl]()
   val entityToGroundBlocker = new mutable.HashMap[Entity, GroundBlocker]()
   val random = new Random()
-  val cells = new SparseGrid[GroundCell](CellSize, (x, y) => new GroundCell(x, y))
+  val cells = new SparseGrid[GroundCell](CellSize, CellOffset, (x, y) => new GroundCell(x, y))
+  val cablesToGenerate = new ArrayBuffer[CableImpl]()
 
-  case class GroundSearchState(x: Int, y: Int, gx: Int, gy: Int) extends AStar.State[GroundSearchState] {
-    def weight: Double = cells.getCell(x, y).map(c => 1.0 + c.moveWeight * CableTweak.avoidWeight).getOrElse(1.0)
+  case class GroundSearchState(x: Int, y: Int, gx: Int, gy: Int, goalEntity: Entity) extends AStar.State[GroundSearchState] {
+    def weight: Double = cells.getCell(Math.floorDiv(x, 2), Math.floorDiv(y, 2)).map(c => {
+      if (x == gx && y == gy) return 1.0
+      if (!c.testPoint(x * CellSize.x * 0.5 + CellOffset.x, y * CellSize.y * 0.5 + CellOffset.y, Some(goalEntity))) return 100.0
+      1.0 + c.moveWeight * CableTweak.surroundingBlockerWeight
+    }).getOrElse(1.0)
 
     override def neighbors: Iterable[(GroundSearchState, Double)] = {
-      val a = GroundSearchState(x - 1, y, gx, gy)
-      val b = GroundSearchState(x + 1, y, gx, gy)
-      val c = GroundSearchState(x, y - 1, gx, gy)
-      val d = GroundSearchState(x, y + 1, gx, gy)
+      val a = GroundSearchState(x - 1, y, gx, gy, goalEntity)
+      val b = GroundSearchState(x + 1, y, gx, gy, goalEntity)
+      val c = GroundSearchState(x, y - 1, gx, gy, goalEntity)
+      val d = GroundSearchState(x, y + 1, gx, gy, goalEntity)
       val res = new Array[(GroundSearchState, Double)](4)
       res(0) = (a, a.weight)
       res(1) = (b, b.weight)
@@ -165,7 +198,11 @@ final class CableSystemImpl extends CableSystem {
       res(3) = (d, d.weight)
       res
     }
-    override def heuristic: Double = math.abs(gx - x) + math.abs(gy - y)
+    override def heuristic: Double = {
+      val dx = gx - x
+      val dy = gy - y
+      math.sqrt(dx*dx + dy*dy)
+    }
     override def goal: Boolean = x == gx && y == gy
   }
 
@@ -186,53 +223,6 @@ final class CableSystemImpl extends CableSystem {
     dir dot path.last.tangentOut.normalize
   }
 
-
-  def meander(from: CableNode, to: CableNode): Seq[CableNode] = {
-    val begin2D = Vector2(from.position.x, from.position.z)
-    val end2D = Vector2(to.position.x, to.position.z)
-    val begin = cells.getCellPosition(begin2D)
-    val end = cells.getCellPosition(end2D)
-
-    val path = AStar.search(GroundSearchState(begin.x, begin.y, end.x, end.y), 10000)
-
-    def randomOffset(): Double = (random.nextDouble() * 2.0 - 1.0) * CellSize.x * CableTweak.positionRandom
-
-    val mids = if (path.length >= 3) {
-      path.iterator.sliding(3).map(tri => {
-        val Seq(a, b, c) = tri
-
-        val ax = (a.x.toDouble + 0.5) * CellSize.x + randomOffset()
-        val ay = (a.y.toDouble + 0.5) * CellSize.y + randomOffset()
-        val bx = (b.x.toDouble + 0.5) * CellSize.x + randomOffset()
-        val by = (b.y.toDouble + 0.5) * CellSize.y + randomOffset()
-        val cx = (c.x.toDouble + 0.5) * CellSize.x + randomOffset()
-        val cy = (c.y.toDouble + 0.5) * CellSize.y + randomOffset()
-
-        val x = (ax + bx + cx) / 3.0
-        val y = (ay + by + cy) / 3.0
-
-        Vector2(x, y)
-      }).toSeq
-    } else {
-      Seq[Vector2]()
-    }
-
-    val positions = begin2D +: mids :+ end2D
-
-    (for (Seq(prev, cur, next) <- positions.sliding(3)) yield {
-      val delta = (cur - prev).normalizeOrZero + (next - cur).normalizeOrZero
-      val tan = delta * CellSize.x * CableTweak.tangentScaleMid
-      val randomAngle = (random.nextDouble() * 2.0 - 1.0) * CableTweak.angleRandom
-      val c = math.cos(randomAngle)
-      val s = math.sin(randomAngle)
-
-      val tx = tan.x * c + tan.y * -s
-      val ty = tan.x * s + tan.y * c
-
-      CableNode(Vector3(cur.x, 0.1, cur.y), Vector3(tx, 0.0, ty))
-    }).toSeq
-  }
-
   def adjustBlockCount(blocker: GroundBlocker, delta: Int): Unit = {
     for {
       y <- blocker.minY to blocker.maxY
@@ -249,83 +239,124 @@ final class CableSystemImpl extends CableSystem {
       cell.blockAmount += delta * integerRatio
       if (delta > 0) {
         cell.blockers :+= blocker
+        for (cable <- cell.cables)
+          queueGeneration(cable)
       } else {
         cell.blockers = cell.blockers.filter(_ != blocker)
       }
     }
   }
 
-  def dodgeObstacles(cable: Array[CableNode]): Array[CableNode] = {
-    val nodeArr = cable.toArray
+  def layoutCable(from: Vector3, to: Vector3, goal: Entity, cable: CableImpl): Seq[CableNode] = {
+    val begin2D = Vector2(from.x, from.z) - CellOffset
+    val end2D = Vector2(to.x, to.z) - CellOffset
+    val bx = math.round(begin2D.x / CellSize.x * 2.0).toInt
+    val by = math.round(begin2D.y / CellSize.y * 2.0).toInt
+    val ex = math.round(end2D.x / CellSize.x * 2.0).toInt
+    val ey = math.round(end2D.y / CellSize.y * 2.0).toInt
+    val path = AStar.search(GroundSearchState(bx, by, ex, ey, goal), 10000)
 
-    val TimeStart = 0.0
-    val TimeEnd = (cable.length - 1).toDouble
-    def evaluate(t: Double): Vector3 = {
-      if (t <= 0.0) return nodeArr.head.position
-      if (t >= TimeEnd) return nodeArr.last.position
+    var dropStart = path.indexWhere(p => p.x < bx - 1 || p.x > bx + 1 || p.y < by - 1 || p.y > by + 1)
+    var dropEnd = path.reverseIterator.indexWhere(p => p.x < ex - 1 || p.x > ex + 1 || p.y < ey - 1 || p.y > ex + 1)
 
-      val index = t.toInt
-      val fract = t - index.toDouble
-      val prev = nodeArr(index)
-      val next = nodeArr(index + 1)
-      val p0 = prev.position
-      val m0 = prev.tangentOut
-      val p1 = next.position
-      val m1 = next.tangentIn
-      Hermite.interpolate(p0, m0, p1, m1, fract)
+    if (dropStart <= 0) dropStart = 1
+    if (dropEnd <= 0) dropEnd = 1
+    dropStart -= 1
+    dropEnd -= 1
+
+    val trimmed = path.drop(dropStart).dropRight(dropEnd)
+
+    val points = for (node <- trimmed) yield {
+      val px = node.x * CellSize.x * 0.5 + CellOffset.x
+      val py = node.y * CellSize.y * 0.5 + CellOffset.y
+      Vector3(px, 0.1, py)
     }
 
-    val StepSize = 0.1
+    var nodes = (for (i <- points.indices) yield {
+      val prev = points.lift(i - 1).getOrElse(from)
+      val cur = points(i)
+      val next = points.lift(i + 1).getOrElse(to)
 
-    def findOffendingPosition(begin: Double, end: Double, step: Double): Option[Double] = {
-      for (t <- begin to end by step) {
-        val pos = evaluate(t)
-        for (node <- cells.getCellContaining(pos.x, pos.z)) {
-          if (!node.testPoint(Vector2(pos.x, pos.z)))
-            return Some(t)
+      val dir = (cur - prev) + (next - cur)
+      CableNode(cur, dir * CableTweak.tangentScaleMid)
+    }).toBuffer
+
+    def evaluateSpan(a: CableNode, b: CableNode): Boolean = {
+      val step = math.max(a.position.distanceTo(b.position) / CellSize.x / CableTweak.stepSize, 0.02)
+      for (t <- 0.0 to 1.001 by step) {
+        val pos = CableRenderSystem.evaluate(a, b, t)
+        for (cell <- cells.getCellContaining(pos.x, pos.z)) {
+          if (!cell.testPoint(pos.x, pos.z)) return false
         }
       }
-      None
+      true
     }
 
-    val offsets = Array(
-      Vector3(CellSize.x * +0.5, 0.0, 0.0),
-      Vector3(CellSize.x * -0.5, 0.0, 0.0),
-      Vector3(0.0, 0.0, CellSize.y * +0.5),
-      Vector3(0.0, 0.0, CellSize.y * -0.5),
-    )
+    var prevCell: GroundCell = null
 
-    var maybeT = findOffendingPosition(TimeStart, TimeEnd, 0.1)
-    var tryIx = 0
-    while (maybeT.isDefined && tryIx < 2) {
-      val t = maybeT.get
-      tryIx += 1
+    var cellList = new ArrayBuffer[GroundCell]()
 
-      val prev = t.toInt
-      val next = prev + 1
-
-      var prevNode = nodeArr(prev)
-      var nextNode = nodeArr(next)
-
-      var isBad = true
-      var moveIx = 0
-      do {
-        val offset = offsets(moveIx)
-
-        nodeArr(prev) = prevNode.copy(position = prevNode.position + offset)
-        nodeArr(next) = nextNode.copy(position = nextNode.position + offset)
-
-        isBad = findOffendingPosition(prev.toDouble, next.toDouble, 0.1).isDefined
-        moveIx += 1
-      } while (moveIx < offsets.length && isBad)
-
-      if (isBad) {
-        println("Re-route is bad!")
-        return cable
+    def markSpan(a: CableNode, b: CableNode): Unit = {
+      val step = math.max(a.position.distanceTo(b.position) / CellSize.x / CableTweak.stepSize, 0.02)
+      for (t <- 0.0 to 1.001 by step) {
+        val pos = CableRenderSystem.evaluate(a, b, t)
+        val cell = cells.createCellContaining(pos.x, pos.z)
+        if (cell != prevCell) {
+          prevCell = cell
+          if (!cell.cables.contains(cable)) {
+            cell.cables :+= cable
+            cellList += cell
+          }
+        }
       }
     }
 
-    nodeArr
+    def removeUnncesessaryNodes(): Unit = {
+
+      nodes = (for (i <- nodes.indices) yield {
+        val prev = nodes.lift(i - 1).map(_.position).getOrElse(from)
+        val cur = nodes(i).position
+        val next = nodes.lift(i + 1).map(_.position).getOrElse(to)
+
+        val dir = (cur - prev) + (next - cur)
+        CableNode(cur, dir * CableTweak.tangentScaleMid)
+      }).toBuffer
+
+      var index = 1
+      while (index < nodes.length - 1) {
+        val a = nodes(index - 1)
+        val b = nodes(index)
+        val c = nodes(index + 1)
+
+        if (evaluateSpan(a, c)) {
+          nodes(index) = null
+          index += 2
+        } else {
+          index += 1
+        }
+      }
+
+      nodes = nodes.filter(_ != null)
+
+    }
+
+    for (i <- 0 until 2) {
+      removeUnncesessaryNodes()
+    }
+
+    {
+      var index = 0
+      while (index < nodes.length - 1) {
+        val a = nodes(index)
+        val b = nodes(index + 1)
+        markSpan(a, b)
+        index += 1
+      }
+    }
+
+    cable.cells = cellList.toArray
+
+    nodes.toSeq
   }
 
   def generateCable(cable: CableImpl): Unit = {
@@ -340,25 +371,24 @@ final class CableSystemImpl extends CableSystem {
     val srcPaths = findCablePathsForEntity(src.entity)
     val dstPaths = findCablePathsForEntity(dst.entity)
 
-    val srcPath = srcPaths.maxBy(p => scorePath(p, dstPos - srcPos))
-    val dstPath = reverseNodes(dstPaths.maxBy(p => scorePath(p, srcPos - dstPos)))
+    val worldMid = layoutCable(srcPos, dstPos, dst.entity, cable)
 
-    val worldSrcPre = srcPath.map(n => n.copy(position = n.position + srcPos))
-    val worldDstPre = dstPath.map(n => n.copy(position = n.position + dstPos))
+    val (srcPath, dstPath) = if (worldMid.nonEmpty) {
+      val srcPath = srcPaths.maxBy(p => scorePath(p, worldMid.head.position - srcPos))
+      val dstPath = reverseNodes(dstPaths.maxBy(p => scorePath(p, worldMid.last.position - dstPos)))
+      (srcPath, dstPath)
+    } else {
+      val srcPath = srcPaths.maxBy(p => scorePath(p, dstPos - srcPos))
+      val dstPath = reverseNodes(dstPaths.maxBy(p => scorePath(p, srcPos - dstPos)))
+      (srcPath, dstPath)
+    }
 
-    val worldSrc = worldSrcPre.dropRight(1) ++ worldSrcPre.takeRight(1).map(n => {
-      n.copy(tangentOut = n.tangentOut.normalizeOrZero * CellSize.x * CableTweak.tangentScaleEndpoint)
-    })
-    val worldDst = worldDstPre.take(1).map(n => {
-      n.copy(tangentIn = n.tangentIn.normalizeOrZero * CellSize.x * CableTweak.tangentScaleEndpoint)
-    }) ++ worldDstPre.drop(1)
+    val worldSrc = srcPath.map(n => n.copy(position = n.position + srcPos))
+    val worldDst = dstPath.map(n => n.copy(position = n.position + dstPos))
 
-    val worldMid = meander(worldSrc.last, worldDst.head)
-    val worldMidDodge = dodgeObstacles((worldSrc.last +: worldMid :+ worldDst.head).toArray)
+    val path = worldSrc ++ worldMid ++ worldDst
 
-    val path = worldSrc ++ worldMidDodge ++ worldDst
-
-    val aabb = cableRenderSystem.createCable(entity, path, 0.15)
+    val aabb = cableRenderSystem.createCable(entity, path, 0.2)
 
     cullingSystem.addAabb(entity, aabb, CullingSystem.MaskRender)
 
@@ -369,21 +399,36 @@ final class CableSystemImpl extends CableSystem {
     cable.nodes = path
   }
 
-  def regenerateAllCables(): Unit = {
-    val cables = entityToCable.values.toVector
-    for (e <- entityToCable.keysIterator) {
-      e.clearFlag(Flag_Cable)
-      e.delete()
-    }
-    entityToCable.clear()
-    for (cable <- cables) {
+  override def generateCables(): Unit = {
+    for (cable <- cablesToGenerate) {
+      if (cable.entityImpl != null) {
+        cable.entityImpl.delete()
+      }
       generateCable(cable)
+    }
+  }
+
+  def queueGeneration(cable: CableImpl): Unit = {
+    if (cable.needsToBeGenerated) return
+    cable.needsToBeGenerated = true
+    cablesToGenerate += cable
+  }
+
+  def regenerateAllCables(): Unit = {
+    for (cable <- entityToCable.valuesIterator) {
+      queueGeneration(cable)
+    }
+  }
+
+  def removeCable(cable: CableImpl): Unit = {
+    for (cell <- cable.cells) {
+      cell.cables = cell.cables.filter(_ != cable)
     }
   }
 
   override def addCable(src: Slot, dst: Slot): Cable = {
     val cable = new CableImpl(src, dst)
-    generateCable(cable)
+    queueGeneration(cable)
     cable
   }
 
@@ -394,7 +439,7 @@ final class CableSystemImpl extends CableSystem {
     val worldMax = Vector2(entity.position.x, entity.position.z) + max
     val cellMin = cells.getCellPosition(worldMin)
     val cellMax = cells.getCellPosition(worldMax)
-    val blocker = new GroundBlocker(cellMin.x, cellMin.y, cellMax.x, cellMax.y, worldMin, worldMax, next)
+    val blocker = new GroundBlocker(entity, cellMin.x, cellMin.y, cellMax.x, cellMax.y, worldMin, worldMax, next)
     adjustBlockCount(blocker, +1)
 
     entity.setFlag(Flag_GroundBlocker)
@@ -420,7 +465,8 @@ final class CableSystemImpl extends CableSystem {
 
   override def debugDrawGroundBlockers(): Unit = {
     for (cell <- cells) {
-      val min = Vector3(cell.x.toDouble * CellSize.x, 0.0, cell.y.toDouble * CellSize.y)
+      val min2D = cellToWorld(cell.x, cell.y)
+      val min = Vector3(min2D.x, 0.0, min2D.y)
       val max = min + Vector3(CellSize.x - 0.05, 5.0, CellSize.y - 0.05)
       if (cell.blockCount > 0) {
         DebugDraw.drawAabb(min, max, Color.rgb(0xFF0000) * cell.moveWeight)
@@ -438,7 +484,8 @@ final class CableSystemImpl extends CableSystem {
 
   override def entitiesDeleted(entities: EntitySet): Unit = {
     for (e <- entities.flag(Flag_Cable)) {
-      entityToCable.remove(e)
+      val cable = entityToCable.remove(e).get
+      removeCable(cable)
       e.clearFlag(Flag_Cable)
     }
 

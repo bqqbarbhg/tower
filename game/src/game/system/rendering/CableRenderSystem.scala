@@ -64,6 +64,34 @@ object CableRenderSystem {
     def apply(position: Vector3, tangent: Vector3): CableNode = CableNode(position, tangent, tangent)
   }
 
+  /** Evaluate cable at a point */
+  def evaluate(prev: CableNode, next: CableNode, t: Double): Vector3 = {
+    if (t <= 0.0) return prev.position
+    if (t >= 1.0) return next.position
+
+    val p0 = prev.position
+    val m0 = prev.tangentOut
+    val p1 = next.position
+    val m1 = next.tangentIn
+    Hermite.interpolate(p0, m0, p1, m1, t)
+  }
+
+  /** Evaluate cable at a point */
+  def evaluate(cable: Seq[CableNode], t: Double): Vector3 = {
+    if (t <= 0.0) return cable.head.position
+    if (t >= (cable.length - 1).toDouble) return cable.last.position
+
+    val index = t.toInt
+    val fract = t - index.toDouble
+    val prev = cable(index)
+    val next = cable(index + 1)
+    val p0 = prev.position
+    val m0 = prev.tangentOut
+    val p1 = next.position
+    val m1 = next.tangentIn
+    Hermite.interpolate(p0, m0, p1, m1, fract)
+  }
+
   /**
     * Represents a single node in the Hermite-interpolation based cable curve.
     *
@@ -254,7 +282,7 @@ class CableRenderSystemImpl extends CableRenderSystem {
 
     val TimeEnd = (cable.length - 1).toDouble
     var position = cable.head.position
-    var tangent = cable.head.tangentOut.normalize
+    var tangent = cable.head.tangentOut.normalizeOr(Vector3.Up)
 
     /** Evaluate the _whole_ cable at a point */
     def evaluate(t: Double): Vector3 = {

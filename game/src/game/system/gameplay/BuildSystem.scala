@@ -122,7 +122,7 @@ object BuildSystemImpl {
 
   case class SlotRef(gui: WireGui, slot: Int)
 
-  val GridSize = 8.0
+  val GridSize = 4.0
 }
 
 final class BuildSystemImpl extends BuildSystem {
@@ -188,8 +188,8 @@ final class BuildSystemImpl extends BuildSystem {
     for (buildE <- buildEntity) {
       val t = ray.intersect(GroundPlane)
       var groundPoint = t.map(ray.point).map(point => {
-        val roundX = (math.floor(point.x / GridSize) + 0.5) * GridSize
-        val roundZ = (math.floor(point.z / GridSize) + 0.5) * GridSize
+        val roundX = (math.floor(point.x / GridSize) + 0.0) * GridSize + GridSize * 0.5
+        val roundZ = (math.floor(point.z / GridSize) + 0.0) * GridSize + GridSize * 0.5
         Vector3(roundX, 0.0, roundZ)
       })
 

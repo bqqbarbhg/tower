@@ -525,7 +525,6 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   }
 
   override def update(): Unit = {
-    entitySystem.processDeletions()
 
     AppWindow.pollEvents()
 
@@ -575,6 +574,9 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     buildSystem.update(dt, invViewProjection, inputs)
     buildSystem.renderBuildGui(canvas, viewProjection)
+
+    cableSystem.generateCables()
+    entitySystem.processDeletions()
 
     val renderer = Renderer.get
 

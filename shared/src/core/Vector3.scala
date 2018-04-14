@@ -29,12 +29,14 @@ object Vector3 {
 
 case class Vector3(x: Double, y: Double, z: Double) {
 
-  def distanceSquaredTo(a: Vector3) = {
+  def distanceSquaredTo(a: Vector3): Double = {
     val dx = x - a.x
     val dy = y - a.y
     val dz = z - a.z
     dx*dx + dy*dy + dz*dz
   }
+
+  def distanceTo(a: Vector3): Double = math.sqrt(distanceSquaredTo(a))
 
   def lengthSquared: Double = x*x + y*y + z*z
   def length: Double = math.sqrt(x*x + y*y + z*z)
@@ -42,6 +44,14 @@ case class Vector3(x: Double, y: Double, z: Double) {
     val len = this.length
     assert(len > 0.00000001)
     this * (1.0 / length)
+  }
+  def normalizeOr(failsafe: => Vector3): Vector3 = {
+    val len = this.length
+    if (len >= 0.000001) {
+      this * (1.0 / length)
+    } else {
+      failsafe
+    }
   }
   def normalizeOrZero: Vector3 = {
     val len = this.length
