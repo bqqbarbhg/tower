@@ -29,7 +29,9 @@ object TowerSystem {
     def sendIfEmpty(msg: Message): Unit = {
       for (conn <- connection) conn.sendIfEmpty(msg)
     }
-    def receive(): Message = connection.map(_.receive()).getOrElse(MessageNone)
+    def receive: Message = connection.map(_.receive()).getOrElse(MessageNone)
+
+    def isEmpty: Boolean = connection.exists(_.isEmpty)
 
     def detach(): Unit = {
       for (c <- connectedSlot) {
@@ -85,6 +87,10 @@ object TowerSystemImpl {
     var spinNode: Option[NodeInstance] = model.findNode(component.spinBone)
 
     var spin: Double = 0.0
+    var aimAngle: Double = 0.0
+    var targetAngle: Double = 0.0
+    var visualAngle: Double = 0.0
+    var visualVel: Double = 0.0
 
     val slotTargetIn = new Slot(entity, true, "slot.turret.targetIn")
     val slotTargetOut = new Slot(entity, false, "slot.turret.targetOut")
@@ -95,10 +101,33 @@ object TowerSystemImpl {
     )
 
     def update(dt: Double): Unit = {
+      slotTargetIn.receive match {
+        case m: MessageTarget =>
+          val dx = m.position.x - entity.position.x
+          val dz = m.position.z - entity.position.z
+          targetAngle = math.atan2(dx, -dz)
+
+        case _ =>
+      }
+
+      var deltaAngle = wrapAngle(targetAngle - aimAngle)
+      val turnSpeed = component.turnSpeed * dt
+      aimAngle += wrapAngle(clamp(deltaAngle, -turnSpeed, turnSpeed))
+
+      var visualDeltaAngle = wrapAngle(aimAngle - visualAngle)
+      val visualSpeed = component.visualTurnSpeed * dt
+      visualVel += wrapAngle(clamp(visualDeltaAngle, -visualSpeed, visualSpeed))
+      visualVel *= math.pow(component.visualTurnFriction, dt / (1.0 / 60.0))
+
+      visualAngle = wrapAngle(visualAngle + visualVel * dt)
+
       spin += dt * 5.0
     }
 
     override def updateVisible(): Unit = {
+      for (node <- aimNode) {
+        node.localTransform = Matrix43.rotateZ(visualAngle)
+      }
       for (node <- spinNode) {
         node.localTransform = Matrix43.rotateY(spin)
       }
@@ -122,9 +151,29 @@ object TowerSystemImpl {
     def update(dt: Double): Unit = {
       angle += dt * 2.0
 
-      for (enemy <- enemySystem.queryEnemiesAround(entity.position, component.radius).take(1)) {
-        slotTargetOut.sendIfEmpty(MessageTarget(enemy.position, towerSystem.time))
+      def findTarget(): Unit = {
+        for (enemy <- enemySystem.queryEnemiesAround(entity.position, component.radius)) {
+
+          val dx = enemy.position.x - entity.position.x
+          val dz = enemy.position.z - entity.position.z
+          val lenSq = dx*dx + dz*dz
+
+          if (lenSq > 0.01) {
+            val invLen = 1.0 / math.sqrt(lenSq)
+            val enemyAngle = math.atan2(dx, -dz)
+
+            val delta = math.abs(wrapAngle(angle - enemyAngle))
+            if (delta <= dt * 4.0 + 0.05) {
+              slotTargetOut.sendQueued(MessageTarget(enemy.position, towerSystem.time))
+              return
+            }
+
+          }
+        }
       }
+
+      if (slotTargetOut.isEmpty)
+        findTarget()
     }
 
     override def updateVisible(): Unit = {

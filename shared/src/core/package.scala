@@ -82,6 +82,11 @@ package object core {
 
   def smoothStep(t: Double): Double = t * t * (3.0 - 2.0 * t)
 
+  def wrapAngle(angle: Double): Double = {
+    val amount = angle * (1.0 / (math.Pi * 2.0)) + 0.5
+    (amount - math.floor(amount) - 0.5) * math.Pi * 2.0
+  }
+
   /** Code path that should be never run, behaves like assert(false) */
   def unreachable(reason: String): Nothing = {
     throw new AssertionError(s"Should never reach here: $reason")

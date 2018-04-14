@@ -90,10 +90,19 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     if (loadExisting)
       loadGame()
 
-    val entity = entitySystem.create(EntityTypeAsset("entity/enemy/test.es.toml").get, Vector3(0.0, 0.0, -5.0))
-    val model = modelSystem.collectModels(entity).head
-    val anim = animationSystem.addAnimator(entity, model)
-    anim.playLoop(0, Identifier("Move"))
+    {
+      val entity = entitySystem.create(EntityTypeAsset("entity/enemy/test.es.toml").get, Vector3(0.0, 0.0, -5.0))
+      val model = modelSystem.collectModels(entity).head
+      val anim = animationSystem.addAnimator(entity, model)
+      anim.playLoop(0, Identifier("Move"))
+    }
+
+    {
+      val entity = entitySystem.create(EntityTypeAsset("entity/enemy/test.es.toml").get, Vector3(0.0, 0.0, -16.0))
+      val model = modelSystem.collectModels(entity).head
+      val anim = animationSystem.addAnimator(entity, model)
+      anim.playLoop(0, Identifier("Move"))
+    }
   }
 
   override def stop(): Unit = {

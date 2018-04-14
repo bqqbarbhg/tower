@@ -15,6 +15,7 @@ object ConnectionSystem {
     def sendQueued(message: Message): Unit
     def sendIfEmpty(message: Message): Unit
     def receive(): Message
+    def isEmpty: Boolean
   }
 
 }
@@ -49,8 +50,10 @@ object ConnectionSystemImpl {
       }
     }
 
+    override def isEmpty: Boolean = pendingMessage == MessageNone && transmittingMessage == MessageNone
+
     override def sendIfEmpty(message: Message): Unit = {
-      if (pendingMessage == MessageNone && transmittingMessage == MessageNone) {
+      if (isEmpty) {
         sendQueued(message)
       }
     }

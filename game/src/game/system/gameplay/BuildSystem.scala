@@ -40,6 +40,7 @@ object BuildSystem {
     FailPlaceSound,
     SlotFont,
     BreakSound,
+    LineBatch.LineShader,
   )
 
 }

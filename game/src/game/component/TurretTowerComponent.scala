@@ -23,6 +23,15 @@ class TurretTowerComponent extends Component {
   /** Bone spun when firing */
   var spinBone: IdentifierProp.Type = Identifier.Empty
 
+  /** How fast does the turret aim */
+  var turnSpeed: DoubleProp.Type = 5.0
+
+  /** How fast does the visual follow the actual aim */
+  var visualTurnSpeed: DoubleProp.Type = 15.0
+
+  /** Speed remaining per 1/60s */
+  var visualTurnFriction: DoubleProp.Type = 0.9
+
   override def dependencies: Iterable[ComponentType] = Some(ModelComponent)
 
   override def create(entity: Entity): Unit = {
