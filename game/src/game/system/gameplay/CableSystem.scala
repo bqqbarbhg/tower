@@ -8,7 +8,7 @@ import game.system.Entity._
 import game.system.base._
 import game.system.rendering._
 import game.system.gameplay.TowerSystem.Slot
-import game.system.rendering.CableRenderSystem.{CableMesh, CableNode}
+import game.system.rendering.CableRenderSystem.{CableMesh, CableNode, ModelCablePath}
 import CableSystem._
 import CableSystemImpl._
 import io.property._
@@ -101,6 +101,7 @@ object CableSystemImpl {
     }
   }
 
+  val NoPaths = Array(ModelCablePath("", Array[CableNode]()))
   val DummyPaths = Array(Array(CableNode(Vector3.Zero, Vector3.Zero)))
 
   def reverseNodes(nodes: Array[CableNode]): Array[CableNode] = {
@@ -191,6 +192,7 @@ object CableSystemImpl {
   class GroundBlocker(val entity: Entity, val minX: Int, val minY: Int, val maxX: Int, val maxY: Int, val minWorld: Vector2, val maxWorld: Vector2, val next: GroundBlocker) {
   }
 
+
 }
 
 final class CableSystemImpl extends CableSystem {
@@ -228,7 +230,7 @@ final class CableSystemImpl extends CableSystem {
     override def goal: Boolean = x == gx && y == gy
   }
 
-  def findCablePathsForEntity(entity: Entity): Array[Array[CableNode]] = {
+  def findCablePathsForEntity(entity: Entity): Array[ModelCablePath] = {
     val models = entity.prototype.components.collect { case m: ModelComponent => m }
     for {
       model <- models
@@ -237,7 +239,7 @@ final class CableSystemImpl extends CableSystem {
       return paths
     }
 
-    DummyPaths
+    NoPaths
   }
 
   def scorePath(path: Array[CableNode], targetPosition: Vector3): Double = {
@@ -389,8 +391,11 @@ final class CableSystemImpl extends CableSystem {
     val srcPos = src.entity.position
     val dstPos = dst.entity.position
 
-    val srcPaths = findCablePathsForEntity(src.entity)
-    val dstPaths = findCablePathsForEntity(dst.entity)
+    val srcModelPaths = findCablePathsForEntity(src.entity).filter(_.name.startsWith(src.cablePrefix))
+    val dstModelPaths = findCablePathsForEntity(dst.entity).filter(_.name.startsWith(dst.cablePrefix))
+
+    val srcPaths = if (srcModelPaths.nonEmpty) srcModelPaths.map(_.nodes) else DummyPaths
+    val dstPaths = if (dstModelPaths.nonEmpty) dstModelPaths.map(_.nodes) else DummyPaths
 
     val worldMid = layoutCable(srcPos, dstPos, dst.entity, cable)
 

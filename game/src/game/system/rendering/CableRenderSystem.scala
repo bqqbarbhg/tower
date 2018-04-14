@@ -111,6 +111,8 @@ object CableRenderSystem {
     def this(position: Vector3, tangent: Vector3) = this(position, tangent, tangent)
   }
 
+  case class ModelCablePath(name: String, nodes: Array[CableNode])
+
 }
 
 trait CableRenderSystem extends EntityDeleteListener {
@@ -122,7 +124,7 @@ trait CableRenderSystem extends EntityDeleteListener {
   def collectCableMeshes(visible: EntitySet): ArrayBuffer[CableMeshPart]
 
   /** Retrieve a list of alternative cable paths for a model */
-  def getCablePathsForModel(asset: ModelAsset): Option[Array[Array[CableNode]]]
+  def getCablePathsForModel(asset: ModelAsset): Option[Array[ModelCablePath]]
 
   /** Free used resources */
   def unload(): Unit
@@ -145,7 +147,7 @@ object CableRenderSystemImpl {
 
   val CablePartName = "CablePart"
 
-  case class CachedModelCables(model: Model, cables: Option[Array[Array[CableNode]]])
+  case class CachedModelCables(model: Model, cables: Option[Array[ModelCablePath]])
 }
 
 class CableRenderSystemImpl extends CableRenderSystem {
@@ -198,7 +200,7 @@ class CableRenderSystemImpl extends CableRenderSystem {
   val entityToCablePart = new mutable.HashMap[Entity, CableMeshPart]()
   val modelCableCache = new mutable.HashMap[ModelAsset, CachedModelCables]()
 
-  def getCablePathsForModel(asset: ModelAsset): Option[Array[Array[CableNode]]] = {
+  def getCablePathsForModel(asset: ModelAsset): Option[Array[ModelCablePath]] = {
     val model = asset.getShallowUnsafe
     val cables = modelCableCache.get(asset).filter(_.model == model)
     cables match {
@@ -210,8 +212,8 @@ class CableRenderSystemImpl extends CableRenderSystem {
     }
   }
 
-  def createCablePathsForModel(model: Model): Option[Array[Array[CableNode]]] = {
-    val allNodes = mutable.ArrayBuilder.make[Array[CableNode]]()
+  def createCablePathsForModel(model: Model): Option[Array[ModelCablePath]] = {
+    val allNodes = mutable.ArrayBuilder.make[ModelCablePath]()
 
     val childrenForName = mutable.HashMap[Identifier, Vector[Identifier]]().withDefaultValue(Vector[Identifier]())
     val roots = ArrayBuffer[Identifier]()
@@ -230,7 +232,7 @@ class CableRenderSystemImpl extends CableRenderSystem {
         for (child <- children)
           getPathRecursive(list, child)
       } else {
-        allNodes += list.toArray
+        allNodes += ModelCablePath(name.toString, list.toArray)
       }
     }
 

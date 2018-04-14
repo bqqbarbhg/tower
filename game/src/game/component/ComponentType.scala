@@ -12,6 +12,7 @@ object ComponentType {
 
     TurretTowerComponent,
     RotatingRadarComponent,
+    SplitterComponent,
   )
 
 }

@@ -19,7 +19,7 @@ object TowerSystem {
   case object MessageNone extends Message
   case class MessageTarget(position: Vector3, time: Double) extends Message
 
-  class Slot(val entity: Entity, val isInput: Boolean, val locale: String) {
+  class Slot(val entity: Entity, val isInput: Boolean, val locale: String, val cablePrefix: String = "") {
     var connectedSlot: Option[Slot] = None
     var connection: Option[Connection] = None
 
@@ -183,6 +183,24 @@ object TowerSystemImpl {
     }
   }
 
+  class Splitter(val entity: Entity, val component: SplitterComponent) extends Tower {
+    val slotInput = new Slot(entity, true, "slot.splitter.input", component.cableNodeIn)
+    val slotOutputA = new Slot(entity, false, "slot.splitter.outputA", component.cableNodeOutA)
+    val slotOutputB = new Slot(entity, false, "slot.splitter.outputB", component.cableNodeOutB)
+
+    override def slots: Array[Slot] = Array(
+      slotInput,
+      slotOutputA,
+      slotOutputB,
+    )
+
+    override def update(dt: Double): Unit = {
+    }
+
+    override def updateVisible(): Unit = {
+    }
+  }
+
   val NoSlots = Array[Slot]()
 
   class SlotContainer(val entity: Entity) {
@@ -212,6 +230,7 @@ final class TowerSystemImpl extends TowerSystem {
     val tower = comp match {
       case c: TurretTowerComponent => new Turret(entity, c)
       case c: RotatingRadarComponent => new RotatingRadar(entity, c)
+      case c: SplitterComponent => new Splitter(entity, c)
     }
 
     if (entity.hasFlag(Flag_Tower)) {
