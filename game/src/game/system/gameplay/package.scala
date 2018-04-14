@@ -9,6 +9,7 @@ package object gameplay {
   var buildSystem: BuildSystem = null
   var cableSystem: CableSystem = null
   var connectionSystem: ConnectionSystem = null
+  var enemySystem: EnemySystem = null
 
   def loadGame(): Unit = {
     tutorialSystem = new TutorialSystemImpl()
@@ -16,9 +17,11 @@ package object gameplay {
     buildSystem = new BuildSystemImpl()
     cableSystem = new CableSystemImpl()
     connectionSystem = new ConnectionSystemImpl()
+    enemySystem = new EnemySystemImpl()
 
     entitySystem.addDeleteListener(towerSystem)
     entitySystem.addDeleteListener(cableSystem)
+    entitySystem.addDeleteListener(enemySystem)
   }
 
   def unloadGame(): Unit = {
@@ -26,6 +29,7 @@ package object gameplay {
 
     entitySystem.removeDeleteListener(towerSystem)
     entitySystem.removeDeleteListener(cableSystem)
+    entitySystem.removeDeleteListener(enemySystem)
   }
 
 }

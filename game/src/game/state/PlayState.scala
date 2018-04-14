@@ -577,6 +577,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     hotbarMenu.update(dt)
     towerSystem.update(dt)
+    connectionSystem.update(dt)
 
     if (CableSystem.CableTweak.regenerateCables) {
       cableSystem.regenerateAllCables()

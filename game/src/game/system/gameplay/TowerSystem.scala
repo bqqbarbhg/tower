@@ -8,20 +8,37 @@ import game.system.rendering._
 import game.system.rendering.ModelSystem._
 import TowerSystem._
 import TowerSystemImpl._
+import game.system.gameplay.ConnectionSystem.Connection
 
 import scala.collection.mutable
 
 object TowerSystem {
 
+  abstract class Message
+
+  case object MessageNone extends Message
+  case class MessageTarget(position: Vector3, time: Double) extends Message
+
   class Slot(val entity: Entity, val isInput: Boolean, val locale: String) {
-    var connection: Option[Slot] = None
+    var connectedSlot: Option[Slot] = None
+    var connection: Option[Connection] = None
+
+    def sendQueued(msg: Message): Unit = {
+      for (conn <- connection) conn.sendQueued(msg)
+    }
+    def sendIfEmpty(msg: Message): Unit = {
+      for (conn <- connection) conn.sendIfEmpty(msg)
+    }
+    def receive(): Message = connection.map(_.receive()).getOrElse(MessageNone)
 
     def detach(): Unit = {
-      for (c <- connection) {
+      for (c <- connectedSlot) {
         cableSystem.removeCable(this, c)
-        connectionSystem.removeConnection(this, c)
+        connectionSystem.removeConnection(connection.get)
 
         c.connection = None
+        c.connectedSlot = None
+        connectedSlot = None
         connection = None
       }
     }
@@ -46,8 +63,8 @@ sealed trait TowerSystem extends EntityDeleteListener {
   /** Try to connect slots `a` and `b`, return whether it was succesful */
   def connectSlots(a: Slot, b: Slot): Boolean
 
-  /** Add or modify a radar target */
-  def updateRadarTarget(entity: Entity, position: Vector3): Unit
+  /** Synced time between towers */
+  def time: Double
 
 }
 
@@ -104,6 +121,10 @@ object TowerSystemImpl {
 
     def update(dt: Double): Unit = {
       angle += dt * 2.0
+
+      for (enemy <- enemySystem.queryEnemiesAround(entity.position, component.radius).take(1)) {
+        slotTargetOut.sendIfEmpty(MessageTarget(enemy.position, towerSystem.time))
+      }
     }
 
     override def updateVisible(): Unit = {
@@ -129,6 +150,7 @@ final class TowerSystemImpl extends TowerSystem {
 
   val entityToTower = new mutable.HashMap[Entity, Tower]()
   val entityToSlots = new mutable.HashMap[Entity, SlotContainer]()
+  var timeImpl: Double = 0.0
 
   def getSlotContainer(entity: Entity): SlotContainer = {
     entityToSlots.getOrElseUpdate(entity, {
@@ -170,6 +192,7 @@ final class TowerSystemImpl extends TowerSystem {
   }
 
   override def update(dt: Double): Unit = {
+    timeImpl += dt
     for (tower <- towers) {
       tower.update(dt)
     }
@@ -198,22 +221,24 @@ final class TowerSystemImpl extends TowerSystem {
     if (a.isInput && b.isInput) return false
     if (!a.isInput && !b.isInput) return false
 
-    val (src, dst) = if (a.isInput) (a, b) else (b, a)
+    val (src, dst) = if (b.isInput) (a, b) else (b, a)
 
     src.detach()
     dst.detach()
 
-    src.connection = Some(dst)
-    dst.connection = Some(src)
+    src.connectedSlot = Some(dst)
+    dst.connectedSlot = Some(src)
 
     val cable = cableSystem.addCable(src, dst)
-    connectionSystem.addConnection(src, dst, cable)
+    val conn = connectionSystem.addConnection(src, dst, cable)
+
+    src.connection = Some(conn)
+    dst.connection = Some(conn)
 
     true
   }
 
-  override def updateRadarTarget(entity: Entity, position: Vector3): Unit = {
+  override def time: Double = timeImpl
 
-  }
 }
 

@@ -8,7 +8,7 @@ import game.system.Entity._
 import game.system.base._
 import game.system.rendering._
 import game.system.gameplay.TowerSystem.Slot
-import game.system.rendering.CableRenderSystem.CableNode
+import game.system.rendering.CableRenderSystem.{CableMesh, CableNode}
 import CableSystem._
 import CableSystemImpl._
 import io.property._
@@ -24,6 +24,9 @@ object CableSystem {
 
   sealed abstract class Cable {
     def entity: Entity
+
+    def setPulse(relativePos: Double): Unit
+    def clearPulse(): Unit
   }
 
   object CableTweak extends PropertyContainer {
@@ -77,10 +80,25 @@ object CableSystemImpl {
     var entityImpl: Entity = null
     var nodes: Array[CableNode] = _
     var cells: Array[GroundCell] = NoCells
+    var mesh: CableMesh = null
     var needsToBeGenerated: Boolean = false
     var deleted: Boolean = false
 
     override def entity: Entity = entityImpl
+
+    override def setPulse(relativePos: Double): Unit = {
+      if (mesh != null) {
+        mesh.pulseSize = 5.0
+        mesh.pulsePosition = (relativePos * (mesh.length + 2.0 * mesh.pulseSize)) - mesh.pulseSize
+      }
+    }
+
+    override def clearPulse(): Unit = {
+      if (mesh != null) {
+        mesh.pulsePosition = 0.0
+        mesh.pulseSize = 0.0
+      }
+    }
   }
 
   val DummyPaths = Array(Array(CableNode(Vector3.Zero, Vector3.Zero)))
@@ -391,13 +409,14 @@ final class CableSystemImpl extends CableSystem {
 
     val path = worldSrc ++ worldMid ++ worldDst
 
-    val aabb = cableRenderSystem.createCable(entity, path, 0.2)
+    val cableMesh = cableRenderSystem.createCable(entity, path, 0.2)
 
-    cullingSystem.addAabb(entity, aabb, CullingSystem.MaskRender)
+    cullingSystem.addAabb(entity, cableMesh.aabb, CullingSystem.MaskRender)
 
     entityToCable(entity) = cable
     entity.setFlag(Flag_Cable)
 
+    cable.mesh = cableMesh
     cable.entityImpl = entity
     cable.nodes = path
   }

@@ -47,6 +47,11 @@ class CompactArrayPool[A >: Null <: ElementBase : ClassTag] extends Seq[A] {
     num += 1
   }
 
+  def tryRemove(element: A): Unit = {
+    val index = element.compactPoolIndex
+    if (index >= 0) remove(index)
+  }
+
   def remove(element: A): Unit = {
     remove(element.compactPoolIndex)
   }
@@ -54,6 +59,8 @@ class CompactArrayPool[A >: Null <: ElementBase : ClassTag] extends Seq[A] {
   def remove(index: Int): Unit = {
     require(index >= 0 && index < num)
     require(num > 0)
+
+    arr(index).compactPoolRemoved()
 
     if (index != num - 1) {
       val elem = arr(num - 1)

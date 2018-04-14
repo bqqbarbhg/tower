@@ -32,6 +32,10 @@ object CableRenderSystem {
       var baseRing = 0
 
       renderer.pushUniform(LightProbeUniform, u => LightProbeUniform.write(u, lightProbes))
+      renderer.pushUniform(CablePulseUniform, u => {
+        val invSize = 1.0 / mesh.pulseSize
+        CablePulseUniform.Pulse.set(u, mesh.pulsePosition.toFloat, mesh.pulseSize.toFloat, invSize.toFloat, 0.0f)
+      })
 
       val maxRing = numRings - 1
       while (baseRing < maxRing) {
@@ -52,6 +56,10 @@ object CableRenderSystem {
     var numRings: Int = 0
     var length: Double = 0.0
     var parts: Array[CableMeshPart] = null
+    var aabb: Aabb = null
+
+    var pulsePosition: Double = 0.0
+    var pulseSize: Double = 0.0
 
     def draw(): Unit = {
       for (part <- parts) {
@@ -108,7 +116,7 @@ object CableRenderSystem {
 trait CableRenderSystem extends EntityDeleteListener {
 
   /** Create a new cable from a set of nodes. */
-  def createCable(entity: Entity, nodes: Seq[CableNode], radius: Double): Aabb
+  def createCable(entity: Entity, nodes: Seq[CableNode], radius: Double): CableMesh
 
   /** Collect all the cables from a set of visible entities. */
   def collectCableMeshes(visible: EntitySet): ArrayBuffer[CableMeshPart]
@@ -382,6 +390,7 @@ class CableRenderSystemImpl extends CableRenderSystem {
     var prevTangent: Vector3 = Vector3.Zero
     var prevBitangent: Vector3 = Vector3.Zero
 
+    var prevLength: Double = 0.0
     var length: Double = 0.0
     var prevPos = points(0)
 
@@ -440,7 +449,7 @@ class CableRenderSystemImpl extends CableRenderSystem {
     }
 
     /** Append a ring based on a specified tangent frame */
-    def appendRingVertices(pos: Vector3, up: Vector3, right: Vector3): Unit = {
+    def appendRingVertices(pos: Vector3, up: Vector3, right: Vector3, length: Double): Unit = {
       groundSystem.getProbesAndWeights(pos, probeRet, weightRet)
 
       var ix0 = partProbes.indexOf(probeRet(0))
@@ -457,8 +466,8 @@ class CableRenderSystemImpl extends CableRenderSystem {
       // Ran out of probe space: Emit previous and current rings again
       if (ix0 < 0 || ix1 < 0 || ix2 < 0 || ix3 < 0 || partNumRings >= PartMaxRings) {
         flushCurrentPart()
-        appendRingVertices(prevPos, prevTangent, prevBitangent)
-        appendRingVertices(pos, up, right)
+        appendRingVertices(prevPos, prevTangent, prevBitangent, prevLength)
+        appendRingVertices(pos, up, right, length)
         return
       }
 
@@ -508,8 +517,9 @@ class CableRenderSystemImpl extends CableRenderSystem {
 
     /** Append a ring based on the current tangent frame */
     def appendRing(pos: Vector3): Unit = {
-      appendRingVertices(pos, tangent, bitangent)
-      length += (pos - prevPos).length
+      prevLength = length
+      length += pos.distanceTo(prevPos)
+      appendRingVertices(pos, tangent, bitangent, length)
 
       prevTangent = tangent
       prevBitangent = bitangent
@@ -565,7 +575,7 @@ class CableRenderSystemImpl extends CableRenderSystem {
     mesh
   }
 
-  override def createCable(entity: Entity, nodes: Seq[CableNode], radius: Double): Aabb = {
+  override def createCable(entity: Entity, nodes: Seq[CableNode], radius: Double): CableMesh = {
     val mesh = createCableMesh(nodes, radius)
     var min = Vector3(Double.MaxValue, Double.MaxValue, Double.MaxValue)
     var max = Vector3(Double.MinValue, Double.MinValue, Double.MinValue)
@@ -589,7 +599,9 @@ class CableRenderSystemImpl extends CableRenderSystem {
       partEntity.setFlag(Flag_CablePart)
     }
 
-    Aabb.fromMinMax(min, max)
+    mesh.aabb = Aabb.fromMinMax(min, max)
+
+    mesh
   }
 
   override def collectCableMeshes(visible: EntitySet) = {

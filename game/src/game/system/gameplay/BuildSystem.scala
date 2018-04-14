@@ -429,7 +429,7 @@ final class BuildSystemImpl extends BuildSystem {
       for {
         (entity, gui) <- nextWireGui
         (slot, index) <- gui.slots.zipWithIndex if !slot.isInput
-        anotherSlot <- slot.connection
+        anotherSlot <- slot.connectedSlot
         anotherGui <- nextWireGui.get(anotherSlot.entity)
       } {
         val anotherIndex = anotherGui.slots.indexOf(anotherSlot)

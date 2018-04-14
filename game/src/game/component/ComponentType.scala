@@ -8,6 +8,7 @@ object ComponentType {
     ModelComponent,
     BuildableComponent,
     GroundBlockerComponent,
+    EnemyComponent,
 
     TurretTowerComponent,
     RotatingRadarComponent,
