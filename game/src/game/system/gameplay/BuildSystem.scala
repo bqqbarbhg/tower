@@ -249,6 +249,9 @@ final class BuildSystemImpl extends BuildSystem {
       }
     }
 
+    if (clicked)
+      selectedTower = None
+
     if (buildEntity.isEmpty) {
       rayCastResult.clear()
       cullingSystem.queryRay(ray, MaxRayCast, CullingSystem.MaskGameplay, rayCastResult)

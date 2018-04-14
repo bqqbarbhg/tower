@@ -223,8 +223,7 @@ final class CableSystemImpl extends CableSystem {
   }
 
   def scorePath(path: Array[CableNode], targetPosition: Vector3): Double = {
-    val dir = (targetPosition - path.last.position).normalize
-    dir dot path.last.tangentOut.normalize
+    targetPosition.distanceSquaredTo(path.last.position)
   }
 
   def adjustBlockCount(blocker: GroundBlocker, delta: Int): Unit = {
@@ -378,12 +377,12 @@ final class CableSystemImpl extends CableSystem {
     val worldMid = layoutCable(srcPos, dstPos, dst.entity, cable)
 
     val (srcPath, dstPath) = if (worldMid.nonEmpty) {
-      val srcPath = srcPaths.maxBy(p => scorePath(p, worldMid.head.position - srcPos))
-      val dstPath = reverseNodes(dstPaths.maxBy(p => scorePath(p, worldMid.last.position - dstPos)))
+      val srcPath = srcPaths.minBy(p => scorePath(p, worldMid.head.position - srcPos))
+      val dstPath = reverseNodes(dstPaths.minBy(p => scorePath(p, worldMid.last.position - dstPos)))
       (srcPath, dstPath)
     } else {
-      val srcPath = srcPaths.maxBy(p => scorePath(p, dstPos - srcPos))
-      val dstPath = reverseNodes(dstPaths.maxBy(p => scorePath(p, srcPos - dstPos)))
+      val srcPath = srcPaths.minBy(p => scorePath(p, dstPos - srcPos))
+      val dstPath = reverseNodes(dstPaths.minBy(p => scorePath(p, srcPos - dstPos)))
       (srcPath, dstPath)
     }
 
