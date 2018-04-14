@@ -1,5 +1,6 @@
 package audio.source
 
+import core._
 import java.nio.ByteBuffer
 import org.lwjgl.PointerBuffer
 import org.lwjgl.stb.STBVorbis._
@@ -14,17 +15,25 @@ class VorbisCursor(source: VorbisSource) extends SampleCursor {
     handle
   }
 
-  private var aChannels = Array(0)
-  private var pFrames = MemoryUtil.memAllocPointer(1)
+  val ChunkSize = 2048
+  private var pData = MemoryUtil.memAllocFloat(ChunkSize * source.numChannels)
+  private var pFrames = MemoryUtil.memAllocPointer(source.numChannels)
+  private val channels = Array.tabulate(source.numChannels)(ix => {
+    val buf = pData.slice()
+    buf.position(ix * ChunkSize)
+    buf.limit(buf.position + ChunkSize)
+    pFrames.put(ix, buf)
+    buf
+  })
 
   private var totalFrame: Int = 0
   private var bufFrame: Int = 0
   private var bufNumFrames: Int = 0
-  private var bufNumChannels: Int = 0
-  private var channels: PointerBuffer = null
   private var atBeginning = true
 
   override def read(data: Array[Float], offsetInFrames: Int, numFrames: Int): Unit = {
+    require(totalFrame + numFrames <= source.numFrames)
+    // println(s"${offsetInFrames}-${offsetInFrames+numFrames} of ${source.numFrames}")
 
     var dstSample = offsetInFrames * 2
     val dstLastSample = (offsetInFrames + numFrames) * 2
@@ -40,8 +49,8 @@ class VorbisCursor(source: VorbisSource) extends SampleCursor {
       val dstLeft = (dstLastSample - dstSample) >> 1
       val endFrame = math.min(localFrame + dstLeft, bufNumFrames)
       if (localFrame < endFrame) {
-        if (bufNumChannels == 1) {
-          val mono = channels.getFloatBuffer(0, bufNumFrames)
+        if (source.numChannels == 1) {
+          val mono = channels(0)
           while (localFrame < endFrame) {
             val sample = mono.get(localFrame)
             data(dstSample + 0) = sample
@@ -49,9 +58,9 @@ class VorbisCursor(source: VorbisSource) extends SampleCursor {
             dstSample += 2
             localFrame += 1
           }
-        } else if (bufNumChannels == 2) {
-          val left = channels.getFloatBuffer(0, bufNumFrames)
-          val right = channels.getFloatBuffer(0, bufNumFrames)
+        } else if (source.numChannels == 2) {
+          val left = channels(0)
+          val right = channels(1)
           while (localFrame < endFrame) {
             data(dstSample + 0) = left.get(localFrame)
             data(dstSample + 1) = right.get(localFrame)
@@ -65,10 +74,7 @@ class VorbisCursor(source: VorbisSource) extends SampleCursor {
       // If there's more to read get the next frame and read some more
       if (dstSample == dstLastSample) return
       bufFrame = 0
-      bufNumFrames = stb_vorbis_get_frame_float(handle, aChannels, pFrames)
-      bufNumChannels = aChannels(0)
-      assert(bufNumChannels >= 1 && bufNumChannels <= 2)
-      channels = pFrames.getPointerBuffer(0, bufNumChannels)
+      bufNumFrames = stb_vorbis_get_samples_float(handle, pFrames, ChunkSize)
     }
   }
 
@@ -86,10 +92,11 @@ class VorbisCursor(source: VorbisSource) extends SampleCursor {
   override def close(): Unit = {
     stb_vorbis_close(handle)
     MemoryUtil.memFree(pFrames)
+    MemoryUtil.memFree(pData)
   }
 }
 
-class VorbisSource(val data: ByteBuffer) extends SampleSource {
+class VorbisSource(val data: ByteBuffer, val numFrames: Int, val numChannels: Int) extends SampleSource {
   override def open(): SampleCursor = new VorbisCursor(this)
 
   override def unload(): Unit = {

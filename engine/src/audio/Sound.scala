@@ -58,7 +58,7 @@ class Sound(val filename: Identifier) {
         data.order(ByteOrder.LITTLE_ENDIAN)
         data.put(src)
         data.position(0)
-        new source.VorbisSource(data)
+        new source.VorbisSource(data, lengthInFrames, numChannels)
       case "PCMW" =>
         val samples = new Array[Short](this.numChannels * this.lengthInFrames)
         src.asShortBuffer.get(samples)
