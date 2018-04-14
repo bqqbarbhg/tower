@@ -260,7 +260,7 @@ final class CableSystemImpl extends CableSystem {
     val path = AStar.search(GroundSearchState(bx, by, ex, ey, goal), 10000)
 
     var dropStart = path.indexWhere(p => p.x < bx - 1 || p.x > bx + 1 || p.y < by - 1 || p.y > by + 1)
-    var dropEnd = path.reverseIterator.indexWhere(p => p.x < ex - 1 || p.x > ex + 1 || p.y < ey - 1 || p.y > ex + 1)
+    var dropEnd = path.reverseIterator.indexWhere(p => p.x < ex - 1 || p.x > ex + 1 || p.y < ey - 1 || p.y > ey + 1)
 
     if (dropStart <= 0) dropStart = 1
     if (dropEnd <= 0) dropEnd = 1
