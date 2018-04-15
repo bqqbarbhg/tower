@@ -31,7 +31,7 @@ object OpenExr {
       */
     def putAttrib(name: String, typ: String, write: ByteBuffer => Unit): Unit = {
 
-      // Write the attribute into a temporary buffer
+      // Write the attribute value into a temporary buffer
       tempBytes.position(0)
       write(tempBytes)
       val valueSize = tempBytes.position
@@ -63,6 +63,8 @@ object OpenExr {
     dst.putInt(version | flags)
 
     // -- Component Three: Header
+    // The header component of the single-part file holds a single header (for single-part files).
+    // Each header is a sequence of attributes ended by a null byte.
 
     putAttrib("channels", "chlist", b => {
       for (ch <- Array("B", "G", "R")) {
