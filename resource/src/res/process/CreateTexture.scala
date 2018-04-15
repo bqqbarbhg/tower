@@ -13,6 +13,26 @@ import res.intermediate._
   */
 object CreateTexture {
 
+  /** Convert an image to a single channel texture */
+  def toR8(image: Image): Texture = {
+    val tex = new Texture(image.width, image.height, Texture.Format.R)
+    val data = MemoryUtil.memAlloc(image.width * image.height)
+    var y = 0
+    while (y < image.height) {
+      var x = 0
+      while (x < image.width) {
+        val pixel = image.getPixel(x, y)
+        val base = (y * image.width + x) * 1
+        data.put(base, image.getPixelSrgb(x, y)._1.toByte)
+        x += 1
+      }
+      y += 1
+    }
+
+    tex.levelData = Array(data)
+    tex
+  }
+
   /** Convert an image to an RGBA texture */
   def toRgba8(image: Image): Texture = {
     val tex = new Texture(image.width, image.height, Texture.Format.Rgba)
@@ -86,8 +106,7 @@ object CreateTexture {
       y <- 0 until image.height
       x <- 0 until image.width
     } {
-      val pixel = image.getPixel(x, y)
-      val (r, g, b, a) = if (image.srgb) pixel.toSrgb8 else pixel.toLinear8
+      val (r, g, b, a) = image.getPixelSrgb(x, y)
       val base = (y * image.width + x) * 2
       data.put(base + 0, r.toByte)
       data.put(base + 1, g.toByte)
@@ -129,7 +148,11 @@ object CreateTexture {
 
         } else {
           if (config.colorDepth == 8) {
-            levels.map(level => toRgba8(level))
+            config.channels match {
+              case 1 => levels.map(level => toR8(level))
+              case 2 => levels.map(level => toRg8(level))
+              case _ => levels.map(level => toRgba8(level))
+            }
           } else if (config.colorDepth == 16) {
             if (hasAlpha) {
               levels.map(level => toRgba16(level))

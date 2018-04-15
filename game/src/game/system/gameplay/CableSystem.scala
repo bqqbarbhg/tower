@@ -88,8 +88,8 @@ object CableSystemImpl {
 
     override def setPulse(relativePos: Double): Unit = {
       if (mesh != null) {
-        mesh.pulseSize = 5.0
-        mesh.pulsePosition = (relativePos * (mesh.length + 2.0 * mesh.pulseSize)) - mesh.pulseSize
+        mesh.pulseSize = 15.0
+        mesh.pulsePosition = relativePos * (mesh.length + mesh.pulseSize)
       }
     }
 

@@ -238,7 +238,7 @@ class Canvas {
   def render(): Unit = {
     val renderer = Renderer.get
 
-    renderer.setDepthMode(false, false)
+    renderer.setDepth(Renderer.DepthNone)
 
     val sb = Canvas.shared.get.spriteBatch
     var sbNeedsFlush = false

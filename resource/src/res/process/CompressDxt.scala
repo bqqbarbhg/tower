@@ -74,8 +74,8 @@ object CompressDxt {
     val dst = MemoryUtil.memAlloc(dstSize)
 
     for {
-      y <- 0 until numBlocksX
-      x <- 0 until numBlocksY
+      y <- 0 until numBlocksY
+      x <- 0 until numBlocksX
     } {
       for {
         dy <- 0 until 4

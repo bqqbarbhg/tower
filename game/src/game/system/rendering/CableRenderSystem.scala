@@ -12,6 +12,7 @@ import game.system.rendering.CableRenderSystem._
 import game.system.rendering.CableRenderSystemImpl._
 import game.system.rendering.AmbientSystem.Probe
 import gfx.Model
+import platform.AppWindow
 import util.geometry.Aabb
 import util.BinarySearch
 
@@ -22,22 +23,16 @@ object CableRenderSystem {
   class CableMeshPart(val mesh: CableMesh) {
 
     var lightProbes: Array[Probe] = null
+    var distancePerRing: Array[Float] = null
     var vertexBuffer: VertexBuffer = null
     var numRings: Int = 0
     var aabb: Aabb = null
 
-    def draw(): Unit = {
+    def drawImpl(minRing: Int, maxRing: Int): Unit = {
       val impl = cableRenderSystem.asInstanceOf[CableRenderSystemImpl]
       val renderer = Renderer.get
-      var baseRing = 0
+      var baseRing = minRing
 
-      renderer.pushUniform(LightProbeUniform, u => LightProbeUniform.write(u, lightProbes))
-      renderer.pushUniform(CablePulseUniform, u => {
-        val invSize = 1.0 / mesh.pulseSize
-        CablePulseUniform.Pulse.set(u, mesh.pulsePosition.toFloat, mesh.pulseSize.toFloat, invSize.toFloat, 0.0f)
-      })
-
-      val maxRing = numRings - 1
       while (baseRing < maxRing) {
         val toDraw = math.min(maxRing - baseRing, impl.MaxRingsPerDraw)
         val quadsToDraw = impl.VertsPerRing * toDraw
@@ -45,6 +40,42 @@ object CableRenderSystem {
         renderer.drawElements(quadsToDraw * 6, impl.indexBuffer, vertexBuffer, baseVertex = baseVertex)
         baseRing += toDraw
       }
+    }
+
+    def drawRange(begin: Double, end: Double): Unit = {
+      val beginF = begin.toFloat
+      val endF = end.toFloat
+
+      val num = distancePerRing.length
+      val beginRing = math.max(BinarySearch.upperBoundRight(0, num, ix => distancePerRing(ix) <= beginF), 0)
+      val endRing = math.min(BinarySearch.upperBound(0, num, ix => distancePerRing(ix) > endF), numRings - 1)
+
+      if (endRing > beginRing) {
+        drawImpl(beginRing, endRing)
+      }
+    }
+
+    def draw(): Unit = {
+      val renderer = Renderer.get
+      renderer.pushUniform(LightProbeUniform, u => LightProbeUniform.write(u, lightProbes))
+      drawImpl(0, numRings - 1)
+    }
+
+    def drawPulse(): Unit = {
+      // mesh.pulsePosition = mesh.length * (0.7 + (AppWindow.currentTime * 0.03) % 0.2)
+      // mesh.pulseSize = mesh.length * 0.4
+
+      if (mesh.pulseSize <= 0.001) return
+      val begin = mesh.pulsePosition - mesh.pulseSize
+      val end = mesh.pulsePosition
+
+      val renderer = Renderer.get
+      renderer.pushUniform(CablePulseUniform, u => {
+        val invSize = 1.0 / mesh.pulseSize
+        CablePulseUniform.Pulse.set(u, mesh.pulsePosition.toFloat, mesh.pulseSize.toFloat, invSize.toFloat, 0.0f)
+      })
+
+      drawRange(begin, end)
     }
 
     def unload(): Unit = {
@@ -138,7 +169,7 @@ object CableRenderSystemImpl {
     import render.VertexSpec.DataFmt._
     VertexSpec(Vector(
       Attrib(3, F32, Identifier("Position")),
-      Attrib(1, F32, Identifier("Distance")),
+      Attrib(2, F32, Identifier("TexCoord")),
       Attrib(3, F32, Identifier("Normal")),
       Attrib(4, UI8, Identifier("ProbeIndex")),
       Attrib(4, UN8, Identifier("ProbeWeight")),
@@ -411,6 +442,7 @@ class CableRenderSystemImpl extends CableRenderSystem {
 
     val partProbes = ArrayBuffer[Probe]()
     var partNumRings = 0
+    val partDistancePerRing = ArrayBuffer[Float]()
 
     var minX = Double.PositiveInfinity
     var minY = Double.PositiveInfinity
@@ -428,6 +460,7 @@ class CableRenderSystemImpl extends CableRenderSystem {
       part.numRings = partNumRings
       part.lightProbes = partProbes.toArray
       part.vertexBuffer = VertexBuffer.createStatic(CableSpec, finished)
+      part.distancePerRing = partDistancePerRing.toArray
 
       minX -= radius
       minY -= radius
@@ -447,6 +480,7 @@ class CableRenderSystemImpl extends CableRenderSystem {
 
       vertexData.position(0)
       partProbes.clear()
+      partDistancePerRing.clear()
       partNumRings = 0
     }
 
@@ -473,6 +507,8 @@ class CableRenderSystemImpl extends CableRenderSystem {
         return
       }
 
+      partDistancePerRing += length.toFloat
+
       minX = math.min(pos.x, minX)
       minY = math.min(pos.y, minY)
       minZ = math.min(pos.z, minZ)
@@ -492,6 +528,8 @@ class CableRenderSystemImpl extends CableRenderSystem {
       val probeIx = ix0 | ix1 << 8 | ix2 << 16 | ix3 << 24
       val probeWg = wg0 | wg1 << 8 | wg2 << 16 | wg3 << 24
 
+      val angleToUv = 1.0 / (math.Pi * 2.0)
+
       var ix = 0
       var angle = 0.0
       while (ix < VertsPerRing) {
@@ -506,6 +544,7 @@ class CableRenderSystemImpl extends CableRenderSystem {
         vertexData.putFloat((pos.y + ny * radius).toFloat)
         vertexData.putFloat((pos.z + nz * radius).toFloat)
         vertexData.putFloat(length.toFloat)
+        vertexData.putFloat((angle * angleToUv).toFloat)
         vertexData.putFloat(nx.toFloat)
         vertexData.putFloat(ny.toFloat)
         vertexData.putFloat(nz.toFloat)

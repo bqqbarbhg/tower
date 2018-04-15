@@ -54,7 +54,7 @@ object EditorMain extends App {
     val exposure = 4.0
 
     val renderer = Renderer.get
-    val readTarget = renderer.currentRenderTarget
+    val readTarget = globalRenderSystem.mainTargetMsaa
     val w = readTarget.width
     val h = readTarget.height
 
@@ -89,29 +89,46 @@ object EditorMain extends App {
       putPixel(r + b * LookupSize, g, Color(cr, cg, cb))
     }
 
-    val fixedPixels = Memory.alloc(w * h * 3 * 2)
-    var y = 0
-    while (y < h) {
-      var src = (h - y - 1) * w * 3 * 4
-      val srcEnd = src + w * 3 * 4
-      while (src < srcEnd) {
-        val f = floatPixels.getFloat(src)
-        val i = clamp((f / exposure * 65535.0 + 0.5).toInt, 0, 0xFFFF)
-        fixedPixels.putShort(i.toShort)
-        src += 4
+    if (false) {
+      val fixedPixels = Memory.alloc(w * h * 3 * 2)
+      var y = 0
+      while (y < h) {
+        var src = (h - y - 1) * w * 3 * 4
+        val srcEnd = src + w * 3 * 4
+        while (src < srcEnd) {
+          val f = floatPixels.getFloat(src)
+          val i = clamp((f / exposure * 65535.0 + 0.5).toInt, 0, 0xFFFF)
+          fixedPixels.putShort(i.toShort)
+          src += 4
+        }
+        y += 1
       }
-      y += 1
+
+      fixedPixels.finish()
+      val tiffBuffer = Memory.alloc(fixedPixels.capacity * 4)
+      io.format.Tiff.writeLinearTiffRgb16(tiffBuffer, fixedPixels, w, h)
+      tiffBuffer.finish()
+      tiffBuffer.writeToFile("temp/screenshot_16.tiff")
+      Memory.free(tiffBuffer)
+      Memory.free(fixedPixels)
+    } else {
+      var ix = 0
+      val num = w * h * 3
+      while (ix < num) {
+        val x = floatPixels.getFloat(ix * 4)
+        val y = x / exposure
+        floatPixels.putFloat(ix * 4, y.toFloat)
+        ix += 1
+      }
+
+      val exrBuffer = Memory.alloc(floatPixels.capacity * 4)
+      io.format.OpenExr.writeLinearOpenExrFloat32(exrBuffer, floatPixels, w, h)
+      exrBuffer.finish()
+      exrBuffer.writeToFile("temp/screenshot.exr")
+      Memory.free(exrBuffer)
     }
 
-    fixedPixels.finish()
-    val tiffBuffer = Memory.alloc(fixedPixels.capacity * 4)
-    io.format.Tiff.writeLinearTiffRgb16(tiffBuffer, fixedPixels, w, h)
-
-    tiffBuffer.finish()
-    tiffBuffer.writeToFile("temp/screenshot_16.tiff")
-    Memory.free(tiffBuffer)
     Memory.free(floatPixels)
-    Memory.free(fixedPixels)
     writeTarget.unload()
   }
 

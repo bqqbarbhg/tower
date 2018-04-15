@@ -44,7 +44,8 @@ object Tiff {
 
       buffer.putShort(fields.length.toShort)
 
-      for (field <- fields) {
+      val sorted = fields.sortBy(_.tag)
+      for (field <- sorted) {
         buffer.putShort(field.tag.toShort)
         buffer.putShort(field.typ.toShort)
         buffer.putInt(field.num)
@@ -77,6 +78,10 @@ object Tiff {
   def writeLinearTiffRgb16(dst: ByteBuffer, data: ByteBuffer, width: Int, height: Int, scanLinePitch: Int, pixelPitch: Int): Unit = {
     val buffer = dst.sliceEx
 
+    def linearToTiffGamma(v: Short): Short = {
+      v
+    }
+
     // Header: Endianness of rest of the file
     if (buffer.order == ByteOrder.LITTLE_ENDIAN) {
       // Little (Intel)
@@ -102,9 +107,9 @@ object Tiff {
       var p = y * scanLinePitch
       var x = 0
       while (x < width) {
-        buffer.putShort(data.getShort(p + 0))
-        buffer.putShort(data.getShort(p + 2))
-        buffer.putShort(data.getShort(p + 4))
+        buffer.putShort(linearToTiffGamma(data.getShort(p + 0)))
+        buffer.putShort(linearToTiffGamma(data.getShort(p + 2)))
+        buffer.putShort(linearToTiffGamma(data.getShort(p + 4)))
         x += 1
         p += pixelPitch
       }
@@ -123,10 +128,10 @@ object Tiff {
     fields.word(BitsPerSample, 16, 16, 16)
     fields.word(SamplesPerPixel, 3)
 
-    fields.wordList(TransferFunction, (0x0000 to 0xFFFF))
-
     fields.dword(StripOffsets, offsetOfData)
     fields.dword(StripByteCounts, width * height * 3 * 2)
+
+    fields.wordList(TransferFunction, (0 until 3).flatMap(_ => 0x0000 to 0xFFFF))
 
     val directoryOffset = fields.writeIfd()
     buffer.putInt(offsetOfDirectoryOffset, directoryOffset)

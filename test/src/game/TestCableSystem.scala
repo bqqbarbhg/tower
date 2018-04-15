@@ -2,7 +2,6 @@ package game
 
 import core._
 import asset._
-import game.TestEngine._
 import render._
 import game.system._
 import io.Toml
@@ -349,8 +348,8 @@ object TestCableSystem extends App {
   rendering.ambientPointLightSystem.addLight(lightEntity, Vector3(100.0, 80.0, 20.0), Vector3(0.6, 0.5, 0.5) * 2.7, 100.0)
   rendering.ambientPointLightSystem.addLight(lightEntity, Vector3(-20.0, 50.0, -20.0), Vector3(0.5, 0.5, 0.8) * 3.4, 150.0)
 
-  val head = model.findNode(Identifier("Head"))
-  val barrel = model.findNode(Identifier("Barrel"))
+  val head = model.findNode(Identifier("Head")).get
+  val barrel = model.findNode(Identifier("Barrel")).get
 
   val ambientAmount = 1.0
   val groundColor = Color.rgb(0x8a857f)

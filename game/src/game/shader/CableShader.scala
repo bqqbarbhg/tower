@@ -9,7 +9,6 @@ object CableShader extends ShaderAsset("shader/mesh/cable") {
 
   uniform(GlobalSceneUniform)
   uniform(LightProbeUniform)
-  uniform(CablePulseUniform)
 
 }
 

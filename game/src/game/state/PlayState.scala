@@ -29,6 +29,7 @@ import menu.gui.TextBox
 import task.{Scheduler, Task}
 import util.geometry.Frustum
 import util.BufferUtils._
+import render.Renderer._
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -43,6 +44,9 @@ object PlayState {
   val TestPlaceMask = TextureAsset("game/tower/turret_basic/placemask.png.s2tx")
   val NoiseTex = TextureAsset("effect/noise.png.s2tx")
 
+  val CablePulseMask = TextureAsset("effect/pulse/mask/basic.png.s2tx")
+  val CablePulseTex = TextureAsset("effect/pulse/tex/hexagon.png.s2tx")
+
   val Assets = new AssetBundle("PlayState",
     PauseMenu.Assets,
     TutorialSystem.Assets,
@@ -55,7 +59,11 @@ object PlayState {
     InstancedMeshShader,
     SkinnedMeshShader,
     CableShader,
+    CablePulseShader,
     IdleMusic,
+
+    CablePulseMask,
+    CablePulseTex,
   )
 }
 
@@ -498,10 +506,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     val renderer = Renderer.get
 
-    renderer.setCull(true)
-    renderer.setDepthMode(true, true)
     renderer.setWriteSrgb(false)
-    renderer.setBlend(Renderer.BlendNone)
+    renderer.setMode(DepthWrite, BlendNone, CullNormal)
     renderer.setRenderTarget(globalRenderSystem.mainTargetMsaa)
     renderer.clear(Some(Color.Black), Some(1.0))
 
@@ -550,11 +556,21 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     renderer.setTexture(GroundShader.Textures.Albedo, GroundTexture.get.texture)
 
-
     GroundShader.get.use()
 
     for (ground <- visibleGround) {
       ground.draw()
+    }
+
+    renderer.setMode(DepthTest, BlendAddAlpha, CullNormal)
+
+    CablePulseShader.get.use()
+
+    renderer.setTexture(CablePulseShader.Textures.Mask, CablePulseMask.get.texture)
+    renderer.setTexture(CablePulseShader.Textures.Texture, CablePulseTex.get.texture)
+
+    for (cable <- visibleCables) {
+      cable.drawPulse()
     }
 
     buildSystem.renderIngameGui(viewProjection)
@@ -624,16 +640,13 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     if (globalRenderSystem.renderingEnabled) {
       renderScene(dt)
 
-      renderer.setBlend(Renderer.BlendNone)
-      renderer.setDepthMode(true, true)
       renderer.setWriteSrgb(false)
+      renderer.setMode(DepthWrite, BlendNone, CullNone)
       DebugDraw.render(viewProjection)
     }
 
-    renderer.setDepthMode(false, false)
-    renderer.setCull(false)
     renderer.setWriteSrgb(false)
-    renderer.setBlend(Renderer.BlendNone)
+    renderer.setMode(DepthNone, BlendNone, CullNone)
     renderer.setRenderTarget(globalRenderSystem.msaaResolveTarget)
 
     TonemapShader.get.use()
@@ -657,7 +670,6 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     renderer.drawQuad()
 
-    renderer.setCull(false)
     renderer.setWriteSrgb(true)
     canvas.render()
 

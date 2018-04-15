@@ -8,6 +8,7 @@ object Texture {
 
   object Format {
     val Rgba = "RGBA"
+    val R = "R..."
     val Rg = "RG.."
     val Dxt1 = "DXT1"
     val Dxt5 = "DXT5"

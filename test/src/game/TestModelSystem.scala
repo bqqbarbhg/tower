@@ -2,7 +2,6 @@ package game
 
 import core._
 import asset._
-import game.TestEngine._
 import render._
 import game.system._
 import io.Toml
@@ -100,7 +99,7 @@ object TestModelSystem extends App {
 
   cullingSystem.addAabb(entity, Aabb(Vector3.Zero, Vector3(3.0, 3.0, 3.0)), CullingSystem.MaskRender)
 
-  val radar = model.findNode(Identifier("Radar"))
+  val radar = model.findNode(Identifier("Radar")).get
 
   object GlobalUniform extends UniformBlock("GlobalUniform") {
     val ViewProjection = mat4("ViewProjection")

@@ -48,6 +48,16 @@ object RendererGl {
   case object BlendAddAlpha extends BlendMode(true, GL_SRC_ALPHA, GL_ONE)
   case object BlendMultiply extends BlendMode(true, GL_ZERO, GL_SRC_COLOR)
 
+  abstract class CullMode(val enable: Boolean, val reverse: Boolean)
+  case object CullNone extends CullMode(false, false)
+  case object CullNormal extends CullMode(true, false)
+  case object CullReverse extends CullMode(true, true)
+
+  abstract class DepthMode(val test: Boolean, val write: Boolean)
+  case object DepthNone extends DepthMode(false, false)
+  case object DepthTest extends DepthMode(true, false)
+  case object DepthWrite extends DepthMode(true, true)
+
   /**
     * A re-usable reference to an uniform block.
     * Note that it may have a limited lifetime depending on how it was obtained!
@@ -96,6 +106,8 @@ class RendererGl {
   }
 
   private var prevBlendMode: BlendMode = BlendNone
+  private var prevCullMode: CullMode = CullNone
+  private var prevDepthMode: DepthMode = DepthNone
 
   private var writeSrgb: Boolean = false
   private var activeTarget: RenderTargetGl = null
@@ -316,16 +328,30 @@ class RendererGl {
     }
   }
 
-  def setDepthMode(write: Boolean, test: Boolean): Unit = {
-    glDepthMask(write)
-    if (test) glEnable (GL_DEPTH_TEST)
-    else      glDisable(GL_DEPTH_TEST)
-  }
-
   def setWriteSrgb(enabled: Boolean): Unit = {
     writeSrgb = enabled
     if (enabled) glEnable (GL_FRAMEBUFFER_SRGB)
     else         glDisable(GL_FRAMEBUFFER_SRGB)
+  }
+
+  def setMode(depth: DepthMode, blend: BlendMode, cull: CullMode): Unit = {
+    setDepth(depth)
+    setBlend(blend)
+    setCull(cull)
+  }
+
+  def setDepth(mode: DepthMode): Unit = {
+    if (mode == prevDepthMode) return
+
+    if (mode.write != prevDepthMode.write)
+      glDepthMask(mode.write)
+
+    if (mode.test != prevDepthMode.test) {
+      if (mode.test) glEnable (GL_DEPTH_TEST)
+      else           glDisable(GL_DEPTH_TEST)
+    }
+
+    prevDepthMode = mode
   }
 
   def setBlend(mode: BlendMode): Unit = {
@@ -342,14 +368,26 @@ class RendererGl {
     prevBlendMode = mode
   }
 
-  def setCull(enable: Boolean): Unit = {
-    if (enable) {
-      glEnable(GL_CULL_FACE)
-      glFrontFace(GL_CCW)
-      glCullFace(GL_BACK)
-    } else {
-      glDisable(GL_CULL_FACE)
+  def setCull(mode: CullMode): Unit = {
+    if (mode == prevCullMode) return
+
+    if (mode.reverse != prevCullMode.reverse) {
+      if (mode.reverse) {
+        glFrontFace(GL_CW)
+      } else {
+        glFrontFace(GL_CCW)
+      }
     }
+
+    if (mode.enable != prevCullMode.enable) {
+      if (mode.enable) {
+        glEnable(GL_CULL_FACE)
+      } else {
+        glDisable(GL_CULL_FACE)
+      }
+    }
+
+    prevCullMode = mode
   }
 
   def blitRenderTargetColor(dst: RenderTargetGl, src: RenderTargetGl): Unit = {

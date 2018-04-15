@@ -154,6 +154,11 @@ abstract class Image(val width: Int, val height: Int, val srgb: Boolean) extends
   def getPixel(x: Int, y: Int): Color
   def setPixel(x: Int, y: Int, color: Color): Unit
 
+  def getPixelSrgb(x: Int, y: Int): (Int, Int, Int, Int) = {
+    val pixel = getPixel(x, y)
+    if (srgb) pixel.toSrgb8 else pixel.toLinear8
+  }
+
   def getPixelSrgbInt(x: Int, y: Int): Int = {
     val pixel = getPixel(x, y)
     if (srgb) pixel.toSrgbInt8 else pixel.toLinearInt8

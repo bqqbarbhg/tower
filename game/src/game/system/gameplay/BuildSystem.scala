@@ -21,6 +21,7 @@ import game.system.rendering.CullingSystem.RayHit
 import locale.Locale
 import locale.LocaleString._
 import platform.{AppWindow, KeyEvent}
+import render.Renderer._
 import ui.Canvas.TextStyle
 import ui.InputSet.InputArea
 import ui.LineBatch.HermiteNode
@@ -282,8 +283,7 @@ final class BuildSystemImpl extends BuildSystem {
   override def renderPreview(): Unit = {
     val renderer = Renderer.get
 
-    renderer.setDepthMode(false, true)
-    renderer.setBlend(Renderer.BlendAddAlpha)
+    renderer.setMode(DepthTest, BlendAddAlpha, CullNone)
 
     for (preview <- buildPreview if preview.visible) {
       val models = modelSystem.collectModels(preview.entity)
@@ -504,9 +504,7 @@ final class BuildSystemImpl extends BuildSystem {
   override def renderIngameGui(viewProjection: Matrix4): Unit = {
     val renderer = Renderer.get
 
-    renderer.setCull(false)
-    renderer.setDepthMode(false, true)
-    renderer.setBlend(Renderer.BlendPremultipliedAlpha)
+    renderer.setMode(DepthTest, BlendPremultipliedAlpha, CullNone)
 
     // Borrow the Canvas SpriteBatch
     val sb = Canvas.shared.get.spriteBatch

@@ -22,6 +22,7 @@ import game.system.audio._
 import locale.LocaleString._
 import main.GameStartup
 import util.geometry.Frustum
+import render.Renderer._
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -129,9 +130,10 @@ class MenuState extends GameState {
     renderer.beginFrame()
     renderer.setWriteSrgb(false)
     renderer.setRenderTarget(globalRenderSystem.mainTargetMsaa)
-    renderer.setDepthMode(true, true)
+
+    renderer.setMode(DepthWrite, BlendNone, CullNormal)
+
     renderer.clear(Some(Color.rgb(0x707070)), Some(1.0))
-    renderer.setBlend(Renderer.BlendNone)
 
     inputSet.update()
 
@@ -233,10 +235,8 @@ class MenuState extends GameState {
     }
 
 
-    renderer.setDepthMode(false, false)
-    renderer.setCull(false)
+    renderer.setMode(DepthNone, BlendNone, CullNone)
     renderer.setWriteSrgb(false)
-    renderer.setBlend(Renderer.BlendNone)
     renderer.setRenderTarget(globalRenderSystem.msaaResolveTarget)
 
     TonemapShader.get.use()

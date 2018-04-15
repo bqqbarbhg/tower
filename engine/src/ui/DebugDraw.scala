@@ -136,7 +136,7 @@ object DebugDraw {
     })
 
     val renderer = Renderer.get
-    renderer.setDepthMode(false, false)
+    renderer.setDepth(Renderer.DepthNone)
 
     LineShader.get.use()
 
