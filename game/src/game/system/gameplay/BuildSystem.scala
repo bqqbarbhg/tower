@@ -215,8 +215,8 @@ final class BuildSystemImpl extends BuildSystem {
         val h = buildC.gridHeight
         val offX = 0.5 * (w - 1)
         val offY = 0.5 * (h - 1)
-        val roundX = (math.round(point.x / GridSize) + offX) * GridSize - GridSize * offX
-        val roundZ = (math.round(point.z / GridSize) + offY) * GridSize - GridSize * offY
+        val roundX = (math.round(point.x / GridSize - offX) + offX) * GridSize
+        val roundZ = (math.round(point.z / GridSize - offY) + offY) * GridSize
         Vector3(roundX, 0.0, roundZ)
       })
 
