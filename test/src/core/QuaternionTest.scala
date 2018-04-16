@@ -11,6 +11,14 @@ class QuaternionTest extends FlatSpec with Matchers {
   val Epsilon = 1e-4f
   implicit val doubleEq = TolerantNumerics.tolerantDoubleEquality(Epsilon)
 
+  def assertEqual(a: Vector3, b: Vector3): Unit = {
+    withClue(s"$a == $b:") {
+      assert(a.x === b.x)
+      assert(a.y === b.y)
+      assert(a.z === b.z)
+    }
+  }
+
   def assertEqual(a: Quaternion, b: Quaternion): Unit = {
     withClue(s"$a == $b:") {
       assert(a.x === b.x)
@@ -95,6 +103,29 @@ class QuaternionTest extends FlatSpec with Matchers {
       Vector3( 0.0000000, -1.0000000,  0.0000000),
       Vector3(-0.9742724,  0.0000000, -0.2253735))
     assertEqual(q, Quaternion(0.7827431, 0.0, -0.6223449, 0.0))
+  }
+
+  "fromAxisAngle" should "match Matrix43 conventions" in {
+    val q = Quaternion.fromAxisAngle(Vector3.Up, 1.0)
+    val m = Matrix43.rotateY(1.0)
+    val v = Vector3(1.0, 2.0, 3.0)
+
+    assertEqual(m.projectPoint(v), q.rotate(v))
+  }
+
+  "rotate" should "do nothing with identity quaternion" in {
+    val v = Vector3(3.0, -3.0, 10.0)
+    assertEqual(v, Quaternion.Identity.rotate(v))
+  }
+
+  it should "rotate axes correctly" in {
+    val x = Vector3(0.3710692,-0.9182390,-0.1383648)
+    val y = Vector3(-0.8427673,-0.2704403,-0.4654088)
+    val z = Vector3(0.3899371,0.2893082,-0.8742138)
+    val q = Quaternion.fromAxes(x, y, z)
+    assertEqual(x, q.rotate(Vector3(1.0, 0.0, 0.0)))
+    assertEqual(y, q.rotate(Vector3(0.0, 1.0, 0.0)))
+    assertEqual(z, q.rotate(Vector3(0.0, 0.0, 1.0)))
   }
 
 }

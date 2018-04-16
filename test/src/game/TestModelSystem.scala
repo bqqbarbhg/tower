@@ -171,7 +171,7 @@ object TestModelSystem extends App {
 
     renderer.beginFrame()
     renderer.setRenderTarget(renderTarget)
-    renderer.setDepthMode(true, true)
+    renderer.setDepth(Renderer.DepthNone)
     renderer.setWriteSrgb(true)
     renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
 
@@ -201,7 +201,7 @@ object TestModelSystem extends App {
     })
 
 
-    renderer.setCull(true)
+    renderer.setCull(Renderer.CullNormal)
 
     val shader = TestModelShader.get
     shader.use()

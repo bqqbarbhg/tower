@@ -3,6 +3,12 @@ package core
 object Quaternion {
   val Identity = Quaternion(0.0, 0.0, 0.0, 1.0)
 
+  def fromAxisAngle(v: Vector3, a: Double): Quaternion = {
+    val sin = math.sin(a * 0.5)
+    val cos = math.cos(a * 0.5)
+    Quaternion(v.x * sin, v.y * sin, v.z * sin, cos)
+  }
+
   def fromAxes(x: Vector3, y: Vector3, z: Vector3): Quaternion = {
     val trace = x.x + y.y + z.z
     if (trace > 0.0) {
@@ -57,5 +63,21 @@ case class Quaternion(x: Double, y: Double, z: Double, w: Double) {
   def +(q: Quaternion): Quaternion = Quaternion(x + q.x, y + q.y, z + q.z, w + q.w)
   def -(q: Quaternion): Quaternion = Quaternion(x - q.x, y - q.y, z - q.z, w - q.w)
   def unary_- = Quaternion(-x, -y, -z, -w)
+
+  def rotate(v: Vector3): Vector3 = {
+    val qv = x*v.x + y*v.y + z*v.z
+    val qq = x*x + y*y + z*z
+
+    val a = 2.0 * qv
+    val b = w*w - qq
+    val c = 2.0 * w
+
+    def cross(v: Vector3): Vector3 = Vector3(y*v.z - v.y*z, z*v.x - v.z*x, x*v.y - v.x*y)
+
+    val rx = a*x + b*v.x + c*(y*v.z - v.y*z)
+    val ry = a*y + b*v.y + c*(z*v.x - v.z*x)
+    val rz = a*z + b*v.z + c*(x*v.y - v.x*y)
+    Vector3(rx, ry, rz)
+  }
 }
 

@@ -25,6 +25,7 @@ import game.system.rendering
 import game.system.rendering.ModelSystem.{MeshInstanceCollection, ModelInstance}
 import game.system.rendering.CableRenderSystem._
 import game.system.rendering.GroundSystem.GroundPlate
+import render.Renderer._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -688,7 +689,7 @@ object TestCableSystem extends App {
     renderer.beginFrame()
 
     renderer.setRenderTarget(normalBendTarget)
-    renderer.setDepthMode(false, false)
+    renderer.setDepth(DepthNone)
     renderer.setWriteSrgb(false)
     renderer.clear(Some(Color(0.0, 0.0, 0.0, 0.0)), None)
 
@@ -706,7 +707,7 @@ object TestCableSystem extends App {
     spriteBatch.flush()
 
     renderer.setRenderTarget(shadowTarget)
-    renderer.setDepthMode(true, true)
+    renderer.setDepth(DepthWrite)
     renderer.setWriteSrgb(false)
     renderer.clear(None, Some(1.0))
 
@@ -729,7 +730,7 @@ object TestCableSystem extends App {
     }
 
     renderer.setRenderTarget(renderTarget)
-    renderer.setDepthMode(true, true)
+    renderer.setDepth(DepthWrite)
     renderer.setWriteSrgb(true)
     renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
 
@@ -739,7 +740,7 @@ object TestCableSystem extends App {
       GlobalUniform.ViewPosition.set(u, viewPos, 0.0f)
     })
 
-    renderer.setCull(true)
+    renderer.setCull(CullNormal)
 
     val shader = TestModelShader.get
     shader.use(p => {
@@ -970,8 +971,8 @@ object TestCableSystem extends App {
 
     renderer.clear(Some(Color.Black), Some(1.0))
     renderer.setBlend(Renderer.BlendNone)
-    renderer.setDepthMode(false, false)
-    renderer.setCull(false)
+    renderer.setDepth(DepthNone)
+    renderer.setCull(CullNone)
 
     if (resToggle) {
       renderer.blitRenderTargetColor(resolveTarget, renderTarget)
@@ -1001,7 +1002,7 @@ object TestCableSystem extends App {
     renderer.drawQuad()
 
     renderer.setBlend(Renderer.BlendAlpha)
-    renderer.setDepthMode(false, false)
+    renderer.setDepth(DepthNone)
 
     {
       val draws = ArrayBuffer[ui.Font.TextDraw]()

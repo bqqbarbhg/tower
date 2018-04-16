@@ -46,6 +46,11 @@ class Entity(val static: Boolean, var name: String, val prototype: EntityType = 
     */
   var position: Vector3 = Vector3.Zero
 
+  /**
+    * Orientation of the entity in the world.
+    */
+  var rotation: Quaternion = Quaternion.Identity
+
   def setFlag(index: Int): Unit = {
     require(index >= 0 && index < 256, s"Flag index out of range: $index")
 

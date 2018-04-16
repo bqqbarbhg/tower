@@ -25,6 +25,7 @@ import locale.LocaleInfo
 import platform.AppWindow.WindowStyle
 import render.SamplerBlock.NoSamplers
 import render.opengl._
+import render.Renderer._
 import task.{Task, TaskExecutor}
 import ui.Font.TextDraw
 
@@ -382,7 +383,7 @@ object TestScene extends App {
     modelState.updateMatrices()
 
     renderer.setRenderTarget(shadowTarget)
-    renderer.setDepthMode(true, true)
+    renderer.setDepth(DepthWrite)
     renderer.clear(None, Some(1.0))
 
     renderer.pushUniform(GlobalUniform, u => {
@@ -412,10 +413,9 @@ object TestScene extends App {
     }
 
     renderer.setRenderTarget(RenderTarget.Backbuffer)
-    renderer.setDepthMode(true, true)
+    renderer.setDepth(DepthWrite)
     renderer.clear(Some(Color.rgb(0x6495ED)), Some(1.0))
 
-    renderer.setDepthMode(true, true)
     renderer.setBlend(Renderer.BlendNone)
 
 
@@ -475,7 +475,7 @@ object TestScene extends App {
       }
     }
 
-    renderer.setDepthMode(false, false)
+    renderer.setDepth(DepthNone)
     renderer.setBlend(Renderer.BlendAlpha)
 
     val fg = Color.rgb(0xffffff)
