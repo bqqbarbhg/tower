@@ -68,8 +68,8 @@ class CompactArrayPool[A >: Null <: ElementBase : ClassTag] extends Seq[A] {
       elem.compactPoolIndexChanged(index)
     }
 
-    arr(num) = null
     num -= 1
+    arr(num) = null
   }
 
 }

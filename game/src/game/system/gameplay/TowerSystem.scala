@@ -11,6 +11,7 @@ import TowerSystemImpl._
 import game.system.gameplay.ConnectionSystem.Connection
 
 import scala.collection.mutable
+import scala.util.Random
 
 object TowerSystem {
 
@@ -22,6 +23,7 @@ object TowerSystem {
   class Slot(val entity: Entity, val isInput: Boolean, val locale: String, val cablePrefix: String = "") {
     var connectedSlot: Option[Slot] = None
     var connection: Option[Connection] = None
+    var prevMessage: Message = MessageNone
 
     def sendQueued(msg: Message): Unit = {
       for (conn <- connection) conn.sendQueued(msg)
@@ -29,7 +31,16 @@ object TowerSystem {
     def sendIfEmpty(msg: Message): Unit = {
       for (conn <- connection) conn.sendIfEmpty(msg)
     }
-    def receive: Message = connection.map(_.receive()).getOrElse(MessageNone)
+    def peek: Message = connection.map(_.receive()).getOrElse(MessageNone)
+    def pop: Message = {
+      val cur = peek
+      if (!(cur eq prevMessage)) {
+        prevMessage = cur
+        cur
+      } else {
+        MessageNone
+      }
+    }
 
     def isEmpty: Boolean = connection.exists(_.isEmpty)
 
@@ -87,6 +98,8 @@ object TowerSystemImpl {
     var spinNode: Option[NodeInstance] = model.findNode(component.spinBone)
 
     var spin: Double = 0.0
+    var spinVel: Double = 0.0
+
     var aimAngle: Double = 0.0
     var targetAngle: Double = 0.0
     var visualAngle: Double = 0.0
@@ -95,16 +108,19 @@ object TowerSystemImpl {
     val slotTargetIn = new Slot(entity, true, "slot.turret.targetIn")
     val slotTargetOut = new Slot(entity, false, "slot.turret.targetOut")
 
+    var targetTime = -100.0
+
     override val slots: Array[Slot] = Array(
       slotTargetIn,
       slotTargetOut,
     )
 
     def update(dt: Double): Unit = {
-      slotTargetIn.receive match {
+      slotTargetIn.peek match {
         case m: MessageTarget =>
           val dx = m.position.x - entity.position.x
           val dz = m.position.z - entity.position.z
+          targetTime = m.time
           targetAngle = math.atan2(dx, -dz)
 
         case _ =>
@@ -121,7 +137,14 @@ object TowerSystemImpl {
 
       visualAngle = wrapAngle(visualAngle + visualVel * dt)
 
-      spin += dt * 5.0
+      val time = towerSystem.time
+      if (math.abs(deltaAngle) < 0.3 && targetTime + 2.0 >= time) {
+        spinVel += dt * component.visualSpinSpeed
+      }
+
+      spinVel *= math.pow(component.visualSpinFriction, dt / (1.0 / 60.0))
+
+      spin += spinVel * dt
     }
 
     override def updateVisible(): Unit = {
@@ -184,6 +207,7 @@ object TowerSystemImpl {
   }
 
   class Splitter(val entity: Entity, val component: SplitterComponent) extends Tower {
+    val random = new Random()
     val slotInput = new Slot(entity, true, "slot.splitter.input", component.cableNodeIn)
     val slotOutputA = new Slot(entity, false, "slot.splitter.outputA", component.cableNodeOutA)
     val slotOutputB = new Slot(entity, false, "slot.splitter.outputB", component.cableNodeOutB)
@@ -195,6 +219,24 @@ object TowerSystemImpl {
     )
 
     override def update(dt: Double): Unit = {
+
+      slotInput.pop match {
+        case MessageNone =>
+        case msg =>
+
+          if (slotOutputA.isEmpty && slotOutputB.isEmpty) {
+            if (random.nextBoolean()) {
+              slotOutputA.sendQueued(msg)
+            } else {
+              slotOutputB.sendQueued(msg)
+            }
+          } else if (slotOutputA.isEmpty) {
+            slotOutputA.sendQueued(msg)
+          } else if (slotOutputB.isEmpty) {
+            slotOutputB.sendQueued(msg)
+          }
+      }
+
     }
 
     override def updateVisible(): Unit = {

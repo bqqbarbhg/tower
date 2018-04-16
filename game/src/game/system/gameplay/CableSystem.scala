@@ -2,7 +2,7 @@ package game.system.gameplay
 
 import core._
 import asset.ModelAsset
-import game.component.ModelComponent
+import game.component.{BuildableComponent, ModelComponent}
 import game.system._
 import game.system.Entity._
 import game.system.base._
@@ -203,18 +203,18 @@ final class CableSystemImpl extends CableSystem {
   val cells = new SparseGrid[GroundCell](CellSize, CellOffset, (x, y) => new GroundCell(x, y))
   val cablesToGenerate = new ArrayBuffer[CableImpl]()
 
-  case class GroundSearchState(x: Int, y: Int, gx: Int, gy: Int, goalEntity: Entity) extends AStar.State[GroundSearchState] {
+  case class GroundSearchState(x: Int, y: Int, gxMin: Int, gxMax: Int, gyMin: Int, gyMax: Int, goalEntity: Entity) extends AStar.State[GroundSearchState] {
     def weight: Double = cells.getCell(Math.floorDiv(x, 2), Math.floorDiv(y, 2)).map(c => {
-      if (x == gx && y == gy) return 1.0
+      if (goal) return 1.0
       if (!c.testPoint(x * CellSize.x * 0.5 + CellOffset.x, y * CellSize.y * 0.5 + CellOffset.y, Some(goalEntity))) return 100.0
       1.0 + c.moveWeight * CableTweak.surroundingBlockerWeight
     }).getOrElse(1.0)
 
     override def neighbors: Iterable[(GroundSearchState, Double)] = {
-      val a = GroundSearchState(x - 1, y, gx, gy, goalEntity)
-      val b = GroundSearchState(x + 1, y, gx, gy, goalEntity)
-      val c = GroundSearchState(x, y - 1, gx, gy, goalEntity)
-      val d = GroundSearchState(x, y + 1, gx, gy, goalEntity)
+      val a = GroundSearchState(x - 1, y, gxMin, gxMax, gyMin, gyMax, goalEntity)
+      val b = GroundSearchState(x + 1, y, gxMin, gxMax, gyMin, gyMax, goalEntity)
+      val c = GroundSearchState(x, y - 1, gxMin, gxMax, gyMin, gyMax, goalEntity)
+      val d = GroundSearchState(x, y + 1, gxMin, gxMax, gyMin, gyMax, goalEntity)
       val res = new Array[(GroundSearchState, Double)](4)
       res(0) = (a, a.weight)
       res(1) = (b, b.weight)
@@ -223,11 +223,13 @@ final class CableSystemImpl extends CableSystem {
       res
     }
     override def heuristic: Double = {
+      val gx = clamp(x, gxMin, gxMax)
+      val gy = clamp(y, gyMin, gyMax)
       val dx = gx - x
       val dy = gy - y
       math.sqrt(dx*dx + dy*dy)
     }
-    override def goal: Boolean = x == gx && y == gy
+    override def goal: Boolean = x >= gxMin && y >= gyMin && x <= gxMax && y <= gyMax
   }
 
   def findCablePathsForEntity(entity: Entity): Array[ModelCablePath] = {
@@ -270,17 +272,40 @@ final class CableSystemImpl extends CableSystem {
     }
   }
 
-  def layoutCable(from: Vector3, to: Vector3, goal: Entity, cable: CableImpl): Seq[CableNode] = {
-    val begin2D = Vector2(from.x, from.z) - CellOffset
-    val end2D = Vector2(to.x, to.z) - CellOffset
+  def layoutCable(from: Vector3, to: Vector3, fromC: BuildableComponent, toC: BuildableComponent, goal: Entity, cable: CableImpl): Seq[CableNode] = {
+
+    val begin2D = Vector2(from.x, from.z) - CellOffset + fromC.cableOffset
+    val end2D = Vector2(to.x, to.z) - CellOffset + toC.cableOffset
+
     val bx = math.round(begin2D.x / CellSize.x * 2.0).toInt
     val by = math.round(begin2D.y / CellSize.y * 2.0).toInt
     val ex = math.round(end2D.x / CellSize.x * 2.0).toInt
     val ey = math.round(end2D.y / CellSize.y * 2.0).toInt
-    val path = AStar.search(GroundSearchState(bx, by, ex, ey, goal), 10000)
 
-    var dropStart = path.indexWhere(p => p.x < bx - 1 || p.x > bx + 1 || p.y < by - 1 || p.y > by + 1)
-    var dropEnd = path.reverseIterator.indexWhere(p => p.x < ex - 1 || p.x > ex + 1 || p.y < ey - 1 || p.y > ey + 1)
+    val bxMin = bx + fromC.cableMinX
+    val byMin = by + fromC.cableMinY
+    val bxMax = bx + fromC.cableMaxX
+    val byMax = by + fromC.cableMaxY
+    val exMin = ex + toC.cableMinX
+    val eyMin = ey + toC.cableMinY
+    val exMax = ex + toC.cableMaxX
+    val eyMax = ey + toC.cableMaxY
+
+    val starts = new ArrayBuffer[GroundSearchState]()
+
+    for (x <- bxMin to bxMax) {
+      starts += GroundSearchState(x, byMin, exMin, exMax, eyMin, eyMax, goal)
+      starts += GroundSearchState(x, byMax, exMin, exMax, eyMin, eyMax, goal)
+    }
+    for (y <- (byMin + 1) to (byMax - 1)) {
+      starts += GroundSearchState(bxMin, y, exMin, exMax, eyMin, eyMax, goal)
+      starts += GroundSearchState(bxMax, y, exMin, exMax, eyMin, eyMax, goal)
+    }
+
+    val path = AStar.search(starts, 10000)
+
+    var dropStart = path.indexWhere(p => p.x < bxMin || p.x > bxMax || p.y < byMin || p.y > byMax)
+    var dropEnd = path.reverseIterator.indexWhere(p => p.x < exMin || p.x > exMax || p.y < eyMin || p.y > eyMax)
 
     if (dropStart <= 0) dropStart = 1
     if (dropEnd <= 0) dropEnd = 1
@@ -397,7 +422,10 @@ final class CableSystemImpl extends CableSystem {
     val srcPaths = if (srcModelPaths.nonEmpty) srcModelPaths.map(_.nodes) else DummyPaths
     val dstPaths = if (dstModelPaths.nonEmpty) dstModelPaths.map(_.nodes) else DummyPaths
 
-    val worldMid = layoutCable(srcPos, dstPos, dst.entity, cable)
+    val srcBuildable = src.entity.prototype.find(BuildableComponent).get
+    val dstBuildable = dst.entity.prototype.find(BuildableComponent).get
+
+    val worldMid = layoutCable(srcPos, dstPos, srcBuildable, dstBuildable, dst.entity, cable)
 
     val (srcPath, dstPath) = if (worldMid.nonEmpty) {
       val srcPath = srcPaths.minBy(p => scorePath(p, worldMid.head.position - srcPos))

@@ -32,6 +32,12 @@ class TurretTowerComponent extends Component {
   /** Speed remaining per 1/60s */
   var visualTurnFriction: DoubleProp.Type = 0.9
 
+  /** How fast does `spinBone` spin */
+  var visualSpinSpeed: DoubleProp.Type = 5.0
+
+  /** Speed remaining per 1/60s */
+  var visualSpinFriction: DoubleProp.Type = 0.9
+
   override def dependencies: Iterable[ComponentType] = Some(ModelComponent)
 
   override def create(entity: Entity): Unit = {

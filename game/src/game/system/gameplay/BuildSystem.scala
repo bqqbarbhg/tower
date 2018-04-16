@@ -206,12 +206,17 @@ final class BuildSystemImpl extends BuildSystem {
     val ray = Ray.fromUnnormalized(near, far - near)
 
     for (buildE <- buildEntity) {
+      val buildC = buildE.find(BuildableComponent).get
       selectedTower = None
 
       val t = ray.intersect(GroundPlane)
       var groundPoint = t.map(ray.point).map(point => {
-        val roundX = (math.floor(point.x / GridSize) + 0.0) * GridSize + GridSize * 0.5
-        val roundZ = (math.floor(point.z / GridSize) + 0.0) * GridSize + GridSize * 0.5
+        val w = buildC.gridWidth
+        val h = buildC.gridHeight
+        val offX = 0.5 * (w - 1)
+        val offY = 0.5 * (h - 1)
+        val roundX = (math.round(point.x / GridSize) + offX) * GridSize - GridSize * offX
+        val roundZ = (math.round(point.z / GridSize) + offY) * GridSize - GridSize * offY
         Vector3(roundX, 0.0, roundZ)
       })
 

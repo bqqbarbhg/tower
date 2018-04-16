@@ -3,6 +3,7 @@ package ui
 import asset._
 import core._
 import gfx.RingVertexBufferAsset
+import platform.AppWindow
 import render.VertexSpec.{Attrib, DataFmt}
 import render._
 import util.geometry.Aabb
@@ -31,9 +32,11 @@ object DebugDraw {
 
   case class Line(begin: Vector3, end: Vector3, beginColor: Color, endColor: Color)
   case class Line2D(begin: Vector2, end: Vector2, beginColor: Color, endColor: Color)
+  case class Persist(expiryTime: Double, callback: () => Unit)
 
   private val lines = new ArrayBuffer[Line]()
   private val lines2D = new ArrayBuffer[Line2D]()
+  private var persists = new ArrayBuffer[Persist]()
 
   def drawConnectedLine(vertices: Iterable[Vector3], color: Color): Unit = {
     drawConnectedLine(vertices.map(v => (v, color)))
@@ -74,7 +77,17 @@ object DebugDraw {
   def drawLine2D(begin: Vector2, end: Vector2, beginColor: Color, endColor: Color): Unit = drawLine2D(Line2D(begin, end, beginColor, endColor))
   def drawLine2D(line: Line2D): Unit = lines2D += line
 
+  def persist(duration: Double)(callback: => Unit): Unit = {
+    persists += Persist(AppWindow.currentTime + duration, () => callback)
+  }
+
   def render(viewProjection: Matrix4): Unit = {
+    val time = AppWindow.currentTime
+    persists = persists.filter(_.expiryTime >= time)
+    for (p <- persists) {
+      p.callback()
+    }
+
     if (lines.isEmpty) return
 
     val numVerts = lines.length * 2

@@ -2,6 +2,7 @@ package core
 
 object Vector2 {
   val Zero = Vector2(0.0, 0.0)
+  val One = Vector2(1.0, 1.0)
 
   def lerp(a: Vector2, b: Vector2, t: Double): Vector2 = a * (1.0 - t) + b * t
 

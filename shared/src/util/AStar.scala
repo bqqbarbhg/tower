@@ -25,10 +25,15 @@ object AStar {
     }
   }
 
-  def search[S <: State[S] : ClassTag](initial: S, maxIterations: Int): Array[S] = {
-    val firstOpen = OpenState(initial, 0.0, 0.0, 1, initial :: Nil)
-    val openSet = mutable.PriorityQueue(firstOpen)(new StateOrdering[S])
-    val closedSet = mutable.HashSet[S](initial)
+  def search[S <: State[S] : ClassTag](initial: S, maxIterations: Int): Array[S] = search(Some(initial), maxIterations)
+
+  def search[S <: State[S] : ClassTag](initial: TraversableOnce[S], maxIterations: Int): Array[S] = {
+
+    val initialSeq = initial.toSeq
+    val firstOpen = initialSeq.map(s => OpenState(s, 0.0, 0.0, 1, s :: Nil))
+
+    val openSet = mutable.PriorityQueue(firstOpen : _*)(new StateOrdering[S])
+    val closedSet = mutable.HashSet[S](initialSeq : _*)
     var iter = 0
 
     while (openSet.nonEmpty && iter < maxIterations) {

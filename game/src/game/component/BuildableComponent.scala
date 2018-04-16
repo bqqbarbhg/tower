@@ -20,6 +20,13 @@ class BuildableComponent extends Component {
   var icon: IdentifierProp.Type = Identifier.Empty
   var locale: StringProp.Type = ""
   var placeSound: StringProp.Type = ""
+  var gridWidth: IntProp.Type = 1
+  var gridHeight: IntProp.Type = 1
+  var cableOffset: Vector2Prop.Type = Vector2.Zero
+  var cableMinX: IntProp.Type = -1
+  var cableMinY: IntProp.Type = -1
+  var cableMaxX: IntProp.Type = 1
+  var cableMaxY: IntProp.Type = 1
 
   override def assets: Iterable[LoadableAsset] = Some(SoundAsset(placeSound))
 }
