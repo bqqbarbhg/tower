@@ -8,9 +8,15 @@ import game.system.rendering._
 import game.system.rendering.ModelSystem._
 import TowerSystem._
 import TowerSystemImpl._
+import asset.{AssetBundle, AtlasAsset}
 import game.system.gameplay.ConnectionSystem.Connection
+import ui.Canvas
+import ui.SpriteBatch.SpriteDraw
+import render._
+import render.Renderer._
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
 object TowerSystem {
@@ -57,6 +63,9 @@ object TowerSystem {
     }
   }
 
+  val Assets = new AssetBundle("TowerSystem",
+    HudAtlas)
+
 }
 
 sealed trait TowerSystem extends EntityDeleteListener {
@@ -78,6 +87,15 @@ sealed trait TowerSystem extends EntityDeleteListener {
 
   /** Synced time between towers */
   def time: Double
+
+  /** Register an in-flight target message to show to the player */
+  def addTargetMessage(msg: MessageTarget): Unit
+
+  /** Mark position as focused by a turret in the GUI */
+  def updateTurretTarget(pos: Vector3): Unit
+
+  /** Render GUI used by this system */
+  def renderIngameGui(viewProjection: Matrix4): Unit
 
 }
 
@@ -109,6 +127,7 @@ object TowerSystemImpl {
     val slotTargetOut = new Slot(entity, false, "slot.turret.targetOut")
 
     var targetTime = -100.0
+    var targetPos = Vector3.Zero
 
     override val slots: Array[Slot] = Array(
       slotTargetIn,
@@ -116,11 +135,13 @@ object TowerSystemImpl {
     )
 
     def update(dt: Double): Unit = {
+
       slotTargetIn.peek match {
         case m: MessageTarget =>
           val pos = entity.inverseTransformPoint(m.position)
           targetTime = m.time
           targetAngle = math.atan2(-pos.x, -pos.z)
+          targetPos = m.position
 
         case _ =>
       }
@@ -138,6 +159,7 @@ object TowerSystemImpl {
 
       val time = towerSystem.time
       if (math.abs(deltaAngle) < 0.3 && targetTime + 2.0 >= time) {
+        towerSystem.updateTurretTarget(targetPos)
         spinVel += dt * component.visualSpinSpeed
       }
 
@@ -187,7 +209,9 @@ object TowerSystemImpl {
 
             val delta = math.abs(wrapAngle(angle - enemyAngle))
             if (delta <= dt * 4.0 + 0.05) {
-              slotTargetOut.sendQueued(MessageTarget(enemy.position, towerSystem.time))
+              val msg = MessageTarget(enemy.position, towerSystem.time)
+              slotTargetOut.sendQueued(msg)
+              towerSystem.addTargetMessage(msg)
               return
             }
 
@@ -281,6 +305,16 @@ object TowerSystemImpl {
     def detachAll(): Unit = for (slot <- slots) slot.detach()
   }
 
+  class TargetVisual(val position: Vector3, val time: Double, val addTime: Double)
+  class TurretVisual(val addTime: Double) {
+    var time: Double = 0.0
+  }
+
+  val HudAtlas = AtlasAsset("atlas/hud.s2at")
+
+  val TargetMarkSprite = Identifier("gui/hud/target_mark.png")
+  val TurretMarkSprite = Identifier("gui/hud/turret_mark.png")
+
 }
 
 final class TowerSystemImpl extends TowerSystem {
@@ -290,6 +324,10 @@ final class TowerSystemImpl extends TowerSystem {
   val entityToTower = new mutable.HashMap[Entity, Tower]()
   val entityToSlots = new mutable.HashMap[Entity, SlotContainer]()
   var timeImpl: Double = 0.0
+
+  val visibleTargetVisuals = new ArrayBuffer[TargetVisual]()
+  val visibleTurretVisuals = new mutable.HashMap[Vector3, TurretVisual]()
+  val turretVisualToDelete = new ArrayBuffer[Vector3]()
 
   def getSlotContainer(entity: Entity): SlotContainer = {
     entityToSlots.getOrElseUpdate(entity, {
@@ -381,5 +419,98 @@ final class TowerSystemImpl extends TowerSystem {
 
   override def time: Double = timeImpl
 
+  override def addTargetMessage(msg: MessageTarget): Unit = {
+    val vis = new TargetVisual(msg.position, msg.time, timeImpl)
+    visibleTargetVisuals += vis
+  }
+
+  override def updateTurretTarget(pos: Vector3): Unit = {
+    val vis = visibleTurretVisuals.getOrElseUpdate(pos, new TurretVisual(timeImpl))
+    vis.time = timeImpl
+  }
+
+  override def renderIngameGui(viewProjection: Matrix4): Unit = {
+    val renderer = Renderer.get
+    val sb = Canvas.shared.get.spriteBatch
+    val sd = new SpriteDraw()
+
+    renderer.setMode(DepthNone, BlendPremultipliedAlpha, CullNone)
+
+    val size = globalRenderSystem.screenHeight * 0.05
+
+    var ix = 0
+    val cutoffDuration = 3.0
+    val cutoffTime = timeImpl - cutoffDuration
+    while (ix < visibleTargetVisuals.length) {
+      val vis = visibleTargetVisuals(ix)
+      if (vis.time <= cutoffTime) {
+        visibleTargetVisuals(ix) = visibleTargetVisuals.last
+        visibleTargetVisuals.trimEnd(1)
+      } else {
+
+        val projected = viewProjection.projectPoint(vis.position + Vector3(0.0, 3.0, 0.0))
+        val x = (projected.x + 1.0) * 0.5 * globalRenderSystem.screenWidth
+        val y = (1.0 - (projected.y + 1.0) * 0.5) * globalRenderSystem.screenHeight
+
+        val addT = timeImpl - vis.addTime
+        val t = (timeImpl - vis.time) / cutoffDuration
+        val startT = math.min(addT * 10.0, 1.0)
+        val start = smoothStep(startT * 0.5 + 0.5) * 2.0 - 1.0
+
+        val scale = size * (1.0 + (1.0 - start))
+
+        val alpha = (1.0 - t) * start
+
+        sd.sprite = TargetMarkSprite
+        sd.anchorX = 0.5f
+        sd.anchorY = 0.5f
+        sd.m11 = scale.toFloat
+        sd.m22 = scale.toFloat
+        sd.m13 = x.toFloat
+        sd.m23 = y.toFloat
+        sd.color = Color.White.copy(a = alpha)
+        sb.draw(sd)
+
+        ix += 1
+      }
+    }
+
+    val turretCutoffDuration = 0.5
+    for ((pos, vis) <- visibleTurretVisuals) {
+      val delta = timeImpl - vis.time
+      if (delta >= turretCutoffDuration) {
+        turretVisualToDelete += pos
+      } else {
+        val projected = viewProjection.projectPoint(pos + Vector3(0.0, 3.0, 0.0))
+        val x = (projected.x + 1.0) * 0.5 * globalRenderSystem.screenWidth
+        val y = (1.0 - (projected.y + 1.0) * 0.5) * globalRenderSystem.screenHeight
+
+        val addT = timeImpl - vis.addTime
+        val t = delta / turretCutoffDuration
+        val startT = math.min(addT * 10.0, 1.0)
+        val start = smoothStep(startT * 0.5 + 0.5) * 2.0 - 1.0
+
+        val alpha = (1.0 - t) * start
+
+        sd.sprite = TurretMarkSprite
+        sd.anchorX = 0.5f
+        sd.anchorY = 0.5f
+        sd.m11 = size.toFloat
+        sd.m22 = size.toFloat
+        sd.m13 = x.toFloat
+        sd.m23 = y.toFloat
+        sd.color = Color.White.copy(a = alpha)
+        sb.draw(sd)
+      }
+    }
+
+    for (pos <- turretVisualToDelete) {
+      visibleTurretVisuals.remove(pos)
+    }
+
+    turretVisualToDelete.clear()
+
+    sb.flush()
+  }
 }
 

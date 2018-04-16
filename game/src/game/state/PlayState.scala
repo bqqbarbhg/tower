@@ -683,6 +683,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     renderer.drawQuad()
 
     renderer.setWriteSrgb(true)
+
+    towerSystem.renderIngameGui(viewProjection)
     canvas.render()
 
     LayoutDebugger.render()

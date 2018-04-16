@@ -558,6 +558,7 @@ class OptionsMenu(val inputs: InputSet, val canvas: Canvas) {
     addBind("cameraRight", opt.cameraRight, opt.cameraRight_=)
     addBind("cameraBoost", opt.cameraBoost, opt.cameraBoost_=)
     addBind("delete", opt.delete, opt.delete_=)
+    addBind("rotate", opt.rotate, opt.rotate_=)
 
     elements += new Padding(10.0)
 

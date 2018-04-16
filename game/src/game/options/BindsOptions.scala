@@ -11,7 +11,7 @@ class BindsOptions extends SimpleSerializable {
   var cameraRight: String = "D"
   var cameraBoost: String = "LeftShift"
   var delete: String = "Delete"
-  var rotate: String = "Rotate"
+  var rotate: String = "R"
 
   var bar1: String = "Num1"
   var bar2: String = "Num2"
