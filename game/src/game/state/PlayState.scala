@@ -394,6 +394,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     var cables: BoolProp.Type = false
     var groundBlockers: BoolProp.Type = false
     var cableParts: BoolProp.Type = false
+    var cullRender: BoolProp.Type = false
+    var cullGameplay: BoolProp.Type = false
   }
 
   var cameraPos = Vector3.Zero
@@ -502,6 +504,12 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       for (part <- visibleCables) {
         DebugDraw.drawAabb(part.aabb, color)
       }
+    }
+    if (DebugView.cullRender) {
+      cullingSystem.debugDrawCulling(frustum, CullingSystem.MaskRender)
+    }
+    if (DebugView.cullGameplay) {
+      cullingSystem.debugDrawCulling(frustum, CullingSystem.MaskGameplay)
     }
 
     val renderer = Renderer.get

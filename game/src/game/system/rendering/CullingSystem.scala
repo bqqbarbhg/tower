@@ -8,6 +8,7 @@ import game.system.Entity._
 import util.geometry._
 import CullingSystem._
 import CullingSystemImpl._
+import ui.DebugDraw
 
 object CullingSystem {
 
@@ -64,6 +65,9 @@ sealed trait CullingSystem extends EntityDeleteListener {
     queryRay(ray, maxResults, mask, results)
     results
   }
+
+  /** Draw a debug view of the culling bounds and partitioning structure for a mask */
+  def debugDrawCulling(frustum: Frustum, mask: Int): Unit
 }
 
 object CullingSystemImpl {
@@ -613,5 +617,56 @@ final class CullingSystemImpl extends CullingSystem {
       queryQuadTreeRay(quadTreeGameplay, ray, results, maxResults, mask)
   }
 
+  def debugDrawCullables(cullables: CullableContainer, frustum: Frustum, mask: Int): Unit = {
+    val color = Color.rgb(0xFF5555)
+
+    for (aabb <- cullables.aabbList) {
+      if ((aabb.mask & mask) != 0 && frustum.intersects(aabb.aabb)) {
+        DebugDraw.drawAabb(aabb.aabb, color)
+      }
+    }
+
+    for (sphere <- cullables.sphereList) {
+      if ((sphere.mask & mask) != 0 && frustum.intersects(sphere.sphere)) {
+        val s = sphere.sphere
+        val r = s.radius
+        DebugDraw.drawLine(s.center, Vector3(-r , 0.0, 0.0), color)
+        DebugDraw.drawLine(s.center, Vector3(+r , 0.0, 0.0), color)
+        DebugDraw.drawLine(s.center, Vector3(0.0, -r , 0.0), color)
+        DebugDraw.drawLine(s.center, Vector3(0.0, +r , 0.0), color)
+        DebugDraw.drawLine(s.center, Vector3(0.0, 0.0, -r ), color)
+        DebugDraw.drawLine(s.center, Vector3(0.0, 0.0, +r ), color)
+      }
+    }
+
+  }
+
+  def debugDrawQuadTree(node: QuadTreeNode, frustum: Frustum, mask: Int): Unit = {
+    if (!frustum.intersects(node.bounds)) return
+
+    val min = node.bounds.min
+    val max = node.bounds.max.copy(y = 5.0)
+    DebugDraw.drawAabb(min, max, Color.rgb(0x444444))
+
+    debugDrawCullables(node.cullables, frustum, mask)
+
+    if (!node.isLeaf) {
+      debugDrawQuadTree(node.c00, frustum, mask)
+      debugDrawQuadTree(node.c01, frustum, mask)
+      debugDrawQuadTree(node.c10, frustum, mask)
+      debugDrawQuadTree(node.c11, frustum, mask)
+    }
+  }
+
+  override def debugDrawCulling(frustum: Frustum, mask: Int): Unit = {
+    debugDrawCullables(globalContainer, frustum, mask)
+
+    if ((mask & MaskTreeRender) != 0)
+      debugDrawQuadTree(quadTreeRender, frustum, mask)
+    if ((mask & MaskTreeLight) != 0)
+      debugDrawQuadTree(quadTreeLight, frustum, mask)
+    if ((mask & MaskTreeGameplay) != 0)
+      debugDrawQuadTree(quadTreeGameplay, frustum, mask)
+  }
 }
 
