@@ -435,6 +435,35 @@ possibilities to splitting updates into overlapping tasks and creating some sort
 of mutual exclusion dependency, for when tasks `A` and `B` may not run at the same time,
 but `A -> B` and `B -> A` are both valid.
 
+#### Tonemapping
+
+Using physically based linear high-dynamic-range light values in the renderer means that the resulting image
+doesn't fit well for monitors to display. This means we need to apply a [tonemapping][wiki-tonemap]
+function to the image to compress it for the low-dynamic-range display. First, I tried to implement
+John Hable's [Filmic Tonemapping with Piecewise Power Curves][fw-piecewise-tonemap], but I wasn't
+satisfied with how it was turning out. Then I decided to go with [the lookup table approach][witness-colorgrade]
+in which you can take a snapshot from the game with an identity color matrix, manipulate
+that image in any software of your choosing, then extract the color transformation from the
+now transformed color matrix.
+
+I wanted the exported reference image to have more than 8 bits per channel for HDR
+data. This means that the simplest export format [bmp][wiki-bmp] is off the table.
+I wanted to find a high bitdepth file format that [Krita][krita] supports, which
+wouldn't require any compression on the exporting end (so 16-bit [png][wiki-png]
+are out). First I implemented a [TIFF][wiki-tiff] exporter which seemed to work
+fine and was good enough to author the main menu colorgrade, but after adding
+textures to the game it turned out something was off: Krita didn't support TIFF's
+[TransferFunction][tiff-transferfunction], which meant that I couldn't represent
+HDR data without serious banding. To fix this I implemented a minimal [OpenEXR][wiki-openexr]
+exporter which is nice (apart from the absolutely baffling file format) since it
+supports floating point image data.
+
+In the end the lookup method to tonemapping works fine even for HDR to LDR transform
+when using a lookup table that covers a fixed maximum exposure and has sample points
+distributed in a square curve. A nice detail of the asset processing sytem is that you can
+save the modified screenshots as-is (instead of having to crop the color matrix)
+which gives some context to the raw assets.
+
 [wiki-sprite-sheet]: https://en.wikipedia.org/wiki/Texture_atlas
 [wiki-texture-compression]: https://en.wikipedia.org/wiki/Texture_compression
 [wiki-mipmap]: https://en.wikipedia.org/wiki/Mipmap
@@ -444,6 +473,11 @@ but `A -> B` and `B -> A` are both valid.
 [wiki-msaa]: https://en.wikipedia.org/wiki/Multisample_anti-aliasing
 [wiki-fxaa]: https://en.wikipedia.org/wiki/Fast_approximate_anti-aliasing
 [wiki-deferred]: https://en.wikipedia.org/wiki/Deferred_shading
+[wiki-tonemap]: https://en.wikipedia.org/wiki/Tone_mapping
+[wiki-bmp]: https://en.wikipedia.org/wiki/BMP_file_format
+[wiki-tiff]: https://en.wikipedia.org/wiki/TIFF
+[wiki-png]: https://en.wikipedia.org/wiki/Portable_Network_Graphics
+[wiki-openexr]: https://en.wikipedia.org/wiki/OpenEXR
 [gh-toml]: https://github.com/toml-lang/toml
 [gh-stb-oversample]: https://github.com/nothings/stb/tree/master/tests/oversample
 [gh-finnish-hyphenator]: https://github.com/vepasto/finnish-hyphenator
@@ -456,3 +490,7 @@ but `A -> B` and `B -> A` are both valid.
 [json]: http://json.org/
 [sylvan-uvopt]: https://www.sebastiansylvan.com/post/LeastSquaresTextureSeams/
 [pdf-clustered]: http://www.cse.chalmers.se/~uffe/clustered_shading_preprint.pdf
+[fw-piecewise-tonemap]: http://filmicworlds.com/blog/filmic-tonemapping-with-piecewise-power-curves/
+[witness-colorgrade]: http://the-witness.net/news/2012/08/fun-with-in-engine-color-grading/
+[krita]: https://krita.org/en/
+[tiff-transferfunction]: https://www.awaresystems.be/imaging/tiff/tifftags/transferfunction.html
