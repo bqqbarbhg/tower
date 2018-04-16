@@ -168,7 +168,7 @@ object Matrix43 {
     * Unsafe version of `appendTranslate()`
     * Apply translation to `a` and store result unsafely in mutable `r`.
     *
-    * Equivalent to: `r = Matrix43.createTranslation(translation) * a`
+    * Equivalent to: `r = Matrix43.translate(translation) * a`
     */
   def unsafeAppendTranslate(r: Matrix43, a: Matrix43, translation: Vector3): Unit = {
     r.m11 = a.m11; r.m12 = a.m12; r.m13 = a.m13
@@ -183,7 +183,7 @@ object Matrix43 {
   /**
     * Apply translation to `a`.
     *
-    * Equivalent to: `Matrix43.createTranslation(translation) * a`
+    * Equivalent to: `Matrix43.translate(translation) * a`
     */
   def appendTranslate(a: Matrix43, translation: Vector3): Matrix43 = {
     val r = new Matrix43.Unsafe()
@@ -241,6 +241,32 @@ object Matrix43 {
     r.m32 = z.y
     r.m33 = z.z
     r.m34 = -origin dot z
+    r
+  }
+
+  def unsafeWorld(r: Matrix43, translation: Vector3, rotation: Quaternion): Unit = {
+    val x = rotation.x
+    val y = rotation.y
+    val z = rotation.z
+    val w = rotation.w
+
+    r.m11 = 1.0 - 2.0*y*y - 2.0*z*z
+    r.m12 = 2.0*x*y - 2.0*z*w
+    r.m13 = 2.0*x*z + 2.0*y*w
+    r.m21 = 2.0*x*y + 2.0*z*w
+    r.m22 = 1.0 - 2.0*x*x - 2.0*z*z
+    r.m23 = 2.0*y*z - 2.0*x*w
+    r.m31 = 2.0*x*z - 2.0*y*w
+    r.m32 = 2.0*y*z + 2.0*x*w
+    r.m33 = 1.0 - 2.0*x*x - 2.0*y*y
+    r.m14 = translation.x
+    r.m24 = translation.y
+    r.m34 = translation.z
+  }
+
+  def world(translation: Vector3, rotation: Quaternion): Matrix43 = {
+    val r = new Matrix43.Unsafe()
+    unsafeWorld(r, translation, rotation)
     r
   }
 

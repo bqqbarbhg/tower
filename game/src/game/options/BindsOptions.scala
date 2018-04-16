@@ -11,6 +11,7 @@ class BindsOptions extends SimpleSerializable {
   var cameraRight: String = "D"
   var cameraBoost: String = "LeftShift"
   var delete: String = "Delete"
+  var rotate: String = "Rotate"
 
   var bar1: String = "Num1"
   var bar2: String = "Num2"
@@ -32,6 +33,7 @@ class BindsOptions extends SimpleSerializable {
     cameraBoost = v.field("cameraBoost", cameraBoost)
     invertScroll = v.field("invertScroll", invertScroll)
     delete = v.field("delete", delete)
+    rotate = v.field("rotate", rotate)
   }
 
 }

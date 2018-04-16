@@ -151,8 +151,9 @@ object ModelSystemImpl {
 
     var nodes = Array[NodeInstanceImpl]()
     var poolIndex: Int = -1
-    var lastFrameUpdated: Long = 0L
+    var lastFrameUpdated: Long = -1L
     var worldTransform = new Matrix43.Unsafe()
+    var entityTransform = new Matrix43.Unsafe()
 
     override def findNode(name: Identifier): Option[NodeInstance] = {
       if (name == Identifier.Empty) return None
@@ -187,8 +188,11 @@ final class ModelSystemImpl extends ModelSystem {
     val model = modelInst.model
     val state = modelInst.state
 
-    Matrix43.unsafeAppendTranslate(modelInst.worldTransform, modelInst.transform, entity.position)
-    state.worldTransform = modelInst.worldTransform
+    if (!entity.static || modelInst.lastFrameUpdated < 0L) {
+      Matrix43.unsafeWorld(modelInst.entityTransform, entity.position, entity.rotation)
+      modelInst.worldTransform.unsafeMul(modelInst.transform, modelInst.entityTransform)
+      state.worldTransform = modelInst.worldTransform
+    }
 
     for (node <- modelInst.nodes) {
       state.nodeLocalMatrix(node.index) = node.localTransform
@@ -261,8 +265,8 @@ final class ModelSystemImpl extends ModelSystem {
       val model = models(ix).asInstanceOf[ModelInstanceImpl]
 
       if (model.lastFrameUpdated != currentFrameIndex) {
-        model.lastFrameUpdated = currentFrameIndex
         updateModel(model)
+        model.lastFrameUpdated = currentFrameIndex
       }
 
       ix += 1

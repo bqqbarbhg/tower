@@ -118,10 +118,9 @@ object TowerSystemImpl {
     def update(dt: Double): Unit = {
       slotTargetIn.peek match {
         case m: MessageTarget =>
-          val dx = m.position.x - entity.position.x
-          val dz = m.position.z - entity.position.z
+          val pos = entity.inverseTransformPoint(m.position)
           targetTime = m.time
-          targetAngle = math.atan2(dx, -dz)
+          targetAngle = math.atan2(-pos.x, -pos.z)
 
         case _ =>
       }
@@ -177,13 +176,14 @@ object TowerSystemImpl {
       def findTarget(): Unit = {
         for (enemy <- enemySystem.queryEnemiesAround(entity.position, component.radius)) {
 
-          val dx = enemy.position.x - entity.position.x
-          val dz = enemy.position.z - entity.position.z
+          val pos = entity.inverseTransformPoint(enemy.position)
+          val dx = pos.x
+          val dz = pos.z
           val lenSq = dx*dx + dz*dz
 
           if (lenSq > 0.01) {
             val invLen = 1.0 / math.sqrt(lenSq)
-            val enemyAngle = math.atan2(dx, -dz)
+            val enemyAngle = math.atan2(-dx, -dz)
 
             val delta = math.abs(wrapAngle(angle - enemyAngle))
             if (delta <= dt * 4.0 + 0.05) {

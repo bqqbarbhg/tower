@@ -137,12 +137,22 @@ object BuildSystemImpl {
 
   case class SlotRef(gui: WireGui, slot: Int)
 
+  val BuildRotations = Array(
+    Quaternion.fromAxisAngle(Vector3.Up, math.Pi * -0.0),
+    Quaternion.fromAxisAngle(Vector3.Up, math.Pi * -0.5),
+    Quaternion.fromAxisAngle(Vector3.Up, math.Pi * -1.0),
+    Quaternion.fromAxisAngle(Vector3.Up, math.Pi * -1.5),
+  )
+
   val GridSize = 4.0
 }
 
 final class BuildSystemImpl extends BuildSystem {
   var buildEntity: Option[EntityType] = None
   var buildPreview: Option[BuildPreview] = None
+  var buildRotation: Quaternion = Quaternion.Identity
+  var buildRotationIndex: Int = 0
+
   var prevMouseDown: Boolean = false
   var buildBlockerEntities = new ArrayBuffer[Entity]()
   var rayCastResult = new ArrayBuffer[RayHit]()
@@ -152,6 +162,7 @@ final class BuildSystemImpl extends BuildSystem {
   var selectedTower: Option[Entity] = None
 
   val deleteBind = KeyEvent.NameToKey.get(Options.current.binds.delete).getOrElse(KeyEvent.Delete)
+  val rotateBind = KeyEvent.NameToKey.get(Options.current.binds.rotate).getOrElse('R'.toInt)
 
   val ingameGuiWorld = Matrix43.world(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, 1.0), Vector3(0.0, 1.0, 0.0), Vector3(0.0, 2.0, 0.0))
 
@@ -209,6 +220,11 @@ final class BuildSystemImpl extends BuildSystem {
       val buildC = buildE.find(BuildableComponent).get
       selectedTower = None
 
+      for (e <- AppWindow.keyDownEvents if e.key == rotateBind) {
+        buildRotationIndex = (buildRotationIndex + 1) % BuildRotations.length
+        buildRotation = BuildRotations(buildRotationIndex)
+      }
+
       val t = ray.intersect(GroundPlane)
       var groundPoint = t.map(ray.point).map(point => {
         val w = buildC.gridWidth
@@ -232,7 +248,7 @@ final class BuildSystemImpl extends BuildSystem {
 
         if (clicked) {
           if (validPlace) {
-            entitySystem.create(buildE, point)
+            entitySystem.create(buildE, point, buildRotation)
 
             for (buildC <- buildE.find(BuildableComponent)) {
               val sound = SoundAsset(buildC.placeSound)
@@ -248,8 +264,10 @@ final class BuildSystemImpl extends BuildSystem {
       }
 
       for (preview <- buildPreview) {
-        for (point <- groundPoint)
+        for (point <- groundPoint) {
           preview.entity.position = point + Vector3(0.0, 0.01, 0.0)
+          preview.entity.rotation = buildRotation
+        }
         preview.time += dt
         preview.valid = validPlace
         preview.visible = groundPoint.nonEmpty

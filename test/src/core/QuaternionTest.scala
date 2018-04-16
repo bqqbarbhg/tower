@@ -56,6 +56,25 @@ class QuaternionTest extends FlatSpec with Matchers {
     }
   }
 
+  "multiply" should "concatenate two rotations" in {
+    val axis = Vector3(1.0, 2.0, 3.0).normalize
+    val q0 = Quaternion.fromAxisAngle(axis, 0.25)
+    val q1 = Quaternion.fromAxisAngle(axis, 0.75)
+    val q2 = Quaternion.fromAxisAngle(axis, 1.0)
+    assertEqual(q0*q1, q2)
+  }
+
+  "inverse" should "result in identity when multiplied with non-inverted normalized" in {
+    val q = Quaternion.fromAxes(
+      Vector3(0.3710692,-0.9182390,-0.1383648),
+      Vector3(-0.8427673,-0.2704403,-0.4654088),
+      Vector3(0.3899371,0.2893082,-0.8742138),
+    )
+
+    assertEqual(q * q.inverse, Quaternion.Identity)
+    assertEqual(q.inverse * q, Quaternion.Identity)
+  }
+
   "fromAxes" should "return Identity for identity axes" in {
     val q = Quaternion.fromAxes(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0), Vector3(0.0, 0.0, 1.0))
     assertEqual(q, Quaternion.Identity)
@@ -113,6 +132,13 @@ class QuaternionTest extends FlatSpec with Matchers {
     assertEqual(m.projectPoint(v), q.rotate(v))
   }
 
+  it should "be consistent with inverse" in {
+    val axis = Vector3(1.0, 2.0, 3.0)
+    val q1 = Quaternion.fromAxisAngle(axis, 1.0)
+    val q2 = Quaternion.fromAxisAngle(axis, -1.0).inverse
+    assertEqual(q1, q2)
+  }
+
   "rotate" should "do nothing with identity quaternion" in {
     val v = Vector3(3.0, -3.0, 10.0)
     assertEqual(v, Quaternion.Identity.rotate(v))
@@ -126,6 +152,15 @@ class QuaternionTest extends FlatSpec with Matchers {
     assertEqual(x, q.rotate(Vector3(1.0, 0.0, 0.0)))
     assertEqual(y, q.rotate(Vector3(0.0, 1.0, 0.0)))
     assertEqual(z, q.rotate(Vector3(0.0, 0.0, 1.0)))
+  }
+
+  "rotateInverse" should "be equal to q.inverse.rotate()" in {
+    val x = Vector3(0.3710692,-0.9182390,-0.1383648)
+    val y = Vector3(-0.8427673,-0.2704403,-0.4654088)
+    val z = Vector3(0.3899371,0.2893082,-0.8742138)
+    val v = Vector3(1.0, 2.0, 3.0)
+    val q = Quaternion.fromAxes(x, y, z)
+    assertEqual(q.rotateInverse(v), q.inverse.rotate(v))
   }
 
 }

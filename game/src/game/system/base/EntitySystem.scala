@@ -13,7 +13,7 @@ sealed trait EntitySystem {
   def registerEntity(entity: Entity): Int
 
   /** Create a new entity from a type */
-  def create(entityType: EntityType, position: Vector3): Entity
+  def create(entityType: EntityType, position: Vector3, rotation: Quaternion = Quaternion.Identity): Entity
 
   /** Queue the removel of an entity from the world */
   def delete(entity: Entity): Unit
@@ -40,9 +40,10 @@ final class EntitySystemImpl extends EntitySystem {
 
   override def registerEntity(entity: Entity): Int = allEntities.add(entity)
 
-  def create(entityType: EntityType, position: Vector3): Entity = {
+  def create(entityType: EntityType, position: Vector3, rotation: Quaternion): Entity = {
     val entity = new Entity(entityType.static, entityType.name, entityType)
     entity.position = position
+    entity.rotation = rotation
     for (comp <- entityType.components) {
       comp.create(entity)
     }

@@ -64,6 +64,16 @@ case class Quaternion(x: Double, y: Double, z: Double, w: Double) {
   def -(q: Quaternion): Quaternion = Quaternion(x - q.x, y - q.y, z - q.z, w - q.w)
   def unary_- = Quaternion(-x, -y, -z, -w)
 
+  def *(q: Quaternion): Quaternion = {
+    val rw = w*q.w - x*q.x - y*q.y - z*q.z
+    val rx = w*q.x + x*q.w - y*q.z + z*q.y
+    val ry = w*q.y + x*q.z + y*q.w - z*q.x
+    val rz = w*q.z - x*q.y + y*q.x + z*q.w
+    Quaternion(rx, ry, rz, rw)
+  }
+
+  def inverse: Quaternion = Quaternion(-x, -y, -z, w)
+
   def rotate(v: Vector3): Vector3 = {
     val qv = x*v.x + y*v.y + z*v.z
     val qq = x*x + y*y + z*z
@@ -72,12 +82,29 @@ case class Quaternion(x: Double, y: Double, z: Double, w: Double) {
     val b = w*w - qq
     val c = 2.0 * w
 
-    def cross(v: Vector3): Vector3 = Vector3(y*v.z - v.y*z, z*v.x - v.z*x, x*v.y - v.x*y)
+    val rx = a*x + b*v.x + c*(y*v.z - v.y*z)
+    val ry = a*y + b*v.y + c*(z*v.x - v.z*x)
+    val rz = a*z + b*v.z + c*(x*v.y - v.x*y)
+    Vector3(rx, ry, rz)
+  }
+
+  def rotateInverse(v: Vector3): Vector3 = {
+    val x = -this.x
+    val y = -this.y
+    val z = -this.z
+
+    val qv = x*v.x + y*v.y + z*v.z
+    val qq = x*x + y*y + z*z
+
+    val a = 2.0 * qv
+    val b = w*w - qq
+    val c = 2.0 * w
 
     val rx = a*x + b*v.x + c*(y*v.z - v.y*z)
     val ry = a*y + b*v.y + c*(z*v.x - v.z*x)
     val rz = a*z + b*v.z + c*(x*v.y - v.x*y)
     Vector3(rx, ry, rz)
   }
+
 }
 

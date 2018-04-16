@@ -192,6 +192,15 @@ object CableSystemImpl {
   class GroundBlocker(val entity: Entity, val minX: Int, val minY: Int, val maxX: Int, val maxY: Int, val minWorld: Vector2, val maxWorld: Vector2, val next: GroundBlocker) {
   }
 
+  def extraWeightToDistance(link: Vector3, x: Int, y: Int): Double = {
+    val pos = Vector3(x.toDouble * CellSize.x * 0.5 + CellOffset.x, 0.0, y.toDouble * CellSize.y * 0.5 + CellOffset.y)
+
+    DebugDraw.persist(5.0) {
+      DebugDraw.drawLine(link, pos, Color.rgb(0xFF0000))
+    }
+
+    clamp(0.0, 1.0, pos.distanceSquaredTo(link) * 0.1) * 10.0
+  }
 
 }
 
@@ -204,11 +213,15 @@ final class CableSystemImpl extends CableSystem {
   val cablesToGenerate = new ArrayBuffer[CableImpl]()
 
   case class GroundSearchState(x: Int, y: Int, gxMin: Int, gxMax: Int, gyMin: Int, gyMax: Int, goalEntity: Entity) extends AStar.State[GroundSearchState] {
-    def weight: Double = cells.getCell(Math.floorDiv(x, 2), Math.floorDiv(y, 2)).map(c => {
-      if (goal) return 1.0
-      if (!c.testPoint(x * CellSize.x * 0.5 + CellOffset.x, y * CellSize.y * 0.5 + CellOffset.y, Some(goalEntity))) return 100.0
-      1.0 + c.moveWeight * CableTweak.surroundingBlockerWeight
-    }).getOrElse(1.0)
+    def weight: Double = {
+      val score = cells.getCell(Math.floorDiv(x, 2), Math.floorDiv(y, 2)).map(c => {
+        if (goal) return 1.0
+        if (!c.testPoint(x * CellSize.x * 0.5 + CellOffset.x, y * CellSize.y * 0.5 + CellOffset.y, Some(goalEntity))) return 100.0
+        1.0 + c.moveWeight * CableTweak.surroundingBlockerWeight
+      }).getOrElse(1.0)
+
+      score
+    }
 
     override def neighbors: Iterable[(GroundSearchState, Double)] = {
       val a = GroundSearchState(x - 1, y, gxMin, gxMax, gyMin, gyMax, goalEntity)
@@ -272,7 +285,7 @@ final class CableSystemImpl extends CableSystem {
     }
   }
 
-  def layoutCable(from: Vector3, to: Vector3, fromC: BuildableComponent, toC: BuildableComponent, goal: Entity, cable: CableImpl): Seq[CableNode] = {
+  def layoutCable(from: Vector3, to: Vector3, fromLink: Vector3, toLink: Vector3, fromC: BuildableComponent, toC: BuildableComponent, goal: Entity, cable: CableImpl): Seq[CableNode] = {
 
     val begin2D = Vector2(from.x, from.z) - CellOffset + fromC.cableOffset
     val end2D = Vector2(to.x, to.z) - CellOffset + toC.cableOffset
@@ -291,15 +304,20 @@ final class CableSystemImpl extends CableSystem {
     val exMax = ex + toC.cableMaxX
     val eyMax = ey + toC.cableMaxY
 
-    val starts = new ArrayBuffer[GroundSearchState]()
+    val starts = new ArrayBuffer[(GroundSearchState, Double)]()
+
+    def startState(x: Int, y: Int): (GroundSearchState, Double) = {
+      val extra = extraWeightToDistance(fromLink, x, y)
+      (GroundSearchState(x, y, exMin, exMax, eyMin, eyMax, goal), extra)
+    }
 
     for (x <- bxMin to bxMax) {
-      starts += GroundSearchState(x, byMin, exMin, exMax, eyMin, eyMax, goal)
-      starts += GroundSearchState(x, byMax, exMin, exMax, eyMin, eyMax, goal)
+      starts += startState(x, byMin)
+      starts += startState(x, byMax)
     }
     for (y <- (byMin + 1) to (byMax - 1)) {
-      starts += GroundSearchState(bxMin, y, exMin, exMax, eyMin, eyMax, goal)
-      starts += GroundSearchState(bxMax, y, exMin, exMax, eyMin, eyMax, goal)
+      starts += startState(bxMin, y)
+      starts += startState(bxMax, y)
     }
 
     val path = AStar.search(starts, 10000)
@@ -413,6 +431,13 @@ final class CableSystemImpl extends CableSystem {
 
     val entity = new Entity(true, "Cable")
 
+    val worldPointToSrc = src.entity.inverseTransformPoint _
+    val worldPointToDst = dst.entity.inverseTransformPoint _
+    val srcPointToWorld = src.entity.transformPoint _
+    val dstPointToWorld = dst.entity.transformPoint _
+    val srcDirToWorld = src.entity.transformDirection _
+    val dstDirToWorld = dst.entity.transformDirection _
+
     val srcPos = src.entity.position
     val dstPos = dst.entity.position
 
@@ -425,20 +450,26 @@ final class CableSystemImpl extends CableSystem {
     val srcBuildable = src.entity.prototype.find(BuildableComponent).get
     val dstBuildable = dst.entity.prototype.find(BuildableComponent).get
 
-    val worldMid = layoutCable(srcPos, dstPos, srcBuildable, dstBuildable, dst.entity, cable)
+    val srcLink = srcPointToWorld(srcPaths.head.head.position)
+    val dstLink = dstPointToWorld(dstPaths.head.head.position)
+
+    val worldMid = layoutCable(srcPos, dstPos, srcLink, dstLink, srcBuildable, dstBuildable, dst.entity, cable)
 
     val (srcPath, dstPath) = if (worldMid.nonEmpty) {
-      val srcPath = srcPaths.minBy(p => scorePath(p, worldMid.head.position - srcPos))
-      val dstPath = reverseNodes(dstPaths.minBy(p => scorePath(p, worldMid.last.position - dstPos)))
+      val srcPath = srcPaths.minBy(p => scorePath(p, worldPointToSrc(worldMid.head.position)))
+      val dstPath = reverseNodes(dstPaths.minBy(p => scorePath(p, worldPointToDst(worldMid.last.position))))
       (srcPath, dstPath)
     } else {
-      val srcPath = srcPaths.minBy(p => scorePath(p, dstPos - srcPos))
-      val dstPath = reverseNodes(dstPaths.minBy(p => scorePath(p, srcPos - dstPos)))
+      val srcPath = srcPaths.minBy(p => scorePath(p, worldPointToSrc(dstPos)))
+      val dstPath = reverseNodes(dstPaths.minBy(p => scorePath(p, worldPointToDst(srcPos))))
       (srcPath, dstPath)
     }
 
-    val worldSrc = srcPath.map(n => n.copy(position = n.position + srcPos))
-    val worldDst = dstPath.map(n => n.copy(position = n.position + dstPos))
+
+    val worldSrc = srcPath.map(n => n.copy(position = srcPointToWorld(n.position),
+      tangentIn = srcDirToWorld(n.tangentIn), tangentOut = srcDirToWorld(n.tangentOut)))
+    val worldDst = dstPath.map(n => n.copy(position = dstPointToWorld(n.position),
+      tangentIn = dstDirToWorld(n.tangentIn), tangentOut = dstDirToWorld(n.tangentOut)))
 
     val path = worldSrc ++ worldMid ++ worldDst
 

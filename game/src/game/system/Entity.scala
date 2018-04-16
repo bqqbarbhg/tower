@@ -51,6 +51,34 @@ class Entity(val static: Boolean, var name: String, val prototype: EntityType = 
     */
   var rotation: Quaternion = Quaternion.Identity
 
+  /**
+    * Transform a point from the entity's local space to world space.
+    */
+  def transformPoint(localPoint: Vector3): Vector3 = {
+    rotation.rotate(localPoint) + position
+  }
+
+  /**
+    * Transform a vector from the entity's local space to world space.
+    */
+  def transformDirection(localDirection: Vector3): Vector3 = {
+    rotation.rotate(localDirection)
+  }
+
+  /**
+    * Transform a point from the entity's world space to local space.
+    */
+  def inverseTransformPoint(worldPoint: Vector3): Vector3 = {
+    rotation.rotateInverse(worldPoint - position)
+  }
+
+  /**
+    * Transform a vector from the entity's world space to local space.
+    */
+  def inverseTransformDirection(worldDirection: Vector3): Vector3 = {
+    rotation.rotateInverse(worldDirection)
+  }
+
   def setFlag(index: Int): Unit = {
     require(index >= 0 && index < 256, s"Flag index out of range: $index")
 
