@@ -306,7 +306,7 @@ final class BuildSystemImpl extends BuildSystem {
   override def renderPreview(): Unit = {
     val renderer = Renderer.get
 
-    renderer.setMode(DepthTest, BlendAddAlpha, CullNone)
+    renderer.setMode(DepthTest, BlendAddAlpha, CullNormal)
 
     for (preview <- buildPreview if preview.visible) {
       val models = modelSystem.collectModels(preview.entity)

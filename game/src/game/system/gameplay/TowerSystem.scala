@@ -243,6 +243,36 @@ object TowerSystemImpl {
     }
   }
 
+  class Merger(val entity: Entity, val component: MergerComponent) extends Tower {
+    val random = new Random()
+    val slotOutput = new Slot(entity, false, "slot.merger.output", component.cableNodeOut)
+    val slotInputA = new Slot(entity, true, "slot.merger.inputA", component.cableNodeInA)
+    val slotInputB = new Slot(entity, true, "slot.merger.inputB", component.cableNodeInB)
+
+    override def slots: Array[Slot] = Array(
+      slotOutput,
+      slotInputA,
+      slotInputB,
+    )
+
+    override def update(dt: Double): Unit = {
+
+      slotInputA.pop match {
+        case MessageNone =>
+        case msg => slotOutput.sendIfEmpty(msg)
+      }
+
+      slotInputB.pop match {
+        case MessageNone =>
+        case msg => slotOutput.sendIfEmpty(msg)
+      }
+
+    }
+
+    override def updateVisible(): Unit = {
+    }
+  }
+
   val NoSlots = Array[Slot]()
 
   class SlotContainer(val entity: Entity) {
@@ -273,6 +303,7 @@ final class TowerSystemImpl extends TowerSystem {
       case c: TurretTowerComponent => new Turret(entity, c)
       case c: RotatingRadarComponent => new RotatingRadar(entity, c)
       case c: SplitterComponent => new Splitter(entity, c)
+      case c: MergerComponent => new Merger(entity, c)
     }
 
     if (entity.hasFlag(Flag_Tower)) {

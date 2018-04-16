@@ -194,12 +194,9 @@ object CableSystemImpl {
 
   def extraWeightToDistance(link: Vector3, x: Int, y: Int): Double = {
     val pos = Vector3(x.toDouble * CellSize.x * 0.5 + CellOffset.x, 0.0, y.toDouble * CellSize.y * 0.5 + CellOffset.y)
-
-    DebugDraw.persist(5.0) {
-      DebugDraw.drawLine(link, pos, Color.rgb(0xFF0000))
-    }
-
-    clamp(0.0, 1.0, pos.distanceSquaredTo(link) * 0.1) * 10.0
+    val near = clamp(0.0, 1.0, pos.distanceSquaredTo(link) * 0.1) * 10.0
+    val far = clamp(0.0, 1.0, pos.distanceTo(link) * 0.1) * 5.0
+    near + far
   }
 
 }
@@ -212,22 +209,27 @@ final class CableSystemImpl extends CableSystem {
   val cells = new SparseGrid[GroundCell](CellSize, CellOffset, (x, y) => new GroundCell(x, y))
   val cablesToGenerate = new ArrayBuffer[CableImpl]()
 
-  case class GroundSearchState(x: Int, y: Int, gxMin: Int, gxMax: Int, gyMin: Int, gyMax: Int, goalEntity: Entity) extends AStar.State[GroundSearchState] {
+  case class GroundSearchState(x: Int, y: Int, gxMin: Int, gxMax: Int, gyMin: Int, gyMax: Int, goalEntity: Entity, goalLink: Vector3) extends AStar.State[GroundSearchState] {
     def weight: Double = {
-      val score = cells.getCell(Math.floorDiv(x, 2), Math.floorDiv(y, 2)).map(c => {
-        if (goal) return 1.0
-        if (!c.testPoint(x * CellSize.x * 0.5 + CellOffset.x, y * CellSize.y * 0.5 + CellOffset.y, Some(goalEntity))) return 100.0
-        1.0 + c.moveWeight * CableTweak.surroundingBlockerWeight
+      var score = cells.getCell(Math.floorDiv(x, 2), Math.floorDiv(y, 2)).map(c => {
+        if (goal) 1.0 else {
+          if (!c.testPoint(x * CellSize.x * 0.5 + CellOffset.x, y * CellSize.y * 0.5 + CellOffset.y, Some(goalEntity))) return 100.0
+          1.0 + c.moveWeight * CableTweak.surroundingBlockerWeight
+        }
       }).getOrElse(1.0)
+
+      if (goal) {
+        score += extraWeightToDistance(goalLink, x, y)
+      }
 
       score
     }
 
     override def neighbors: Iterable[(GroundSearchState, Double)] = {
-      val a = GroundSearchState(x - 1, y, gxMin, gxMax, gyMin, gyMax, goalEntity)
-      val b = GroundSearchState(x + 1, y, gxMin, gxMax, gyMin, gyMax, goalEntity)
-      val c = GroundSearchState(x, y - 1, gxMin, gxMax, gyMin, gyMax, goalEntity)
-      val d = GroundSearchState(x, y + 1, gxMin, gxMax, gyMin, gyMax, goalEntity)
+      val a = GroundSearchState(x - 1, y, gxMin, gxMax, gyMin, gyMax, goalEntity, goalLink)
+      val b = GroundSearchState(x + 1, y, gxMin, gxMax, gyMin, gyMax, goalEntity, goalLink)
+      val c = GroundSearchState(x, y - 1, gxMin, gxMax, gyMin, gyMax, goalEntity, goalLink)
+      val d = GroundSearchState(x, y + 1, gxMin, gxMax, gyMin, gyMax, goalEntity, goalLink)
       val res = new Array[(GroundSearchState, Double)](4)
       res(0) = (a, a.weight)
       res(1) = (b, b.weight)
@@ -308,7 +310,7 @@ final class CableSystemImpl extends CableSystem {
 
     def startState(x: Int, y: Int): (GroundSearchState, Double) = {
       val extra = extraWeightToDistance(fromLink, x, y)
-      (GroundSearchState(x, y, exMin, exMax, eyMin, eyMax, goal), extra)
+      (GroundSearchState(x, y, exMin, exMax, eyMin, eyMax, goal, toLink), extra)
     }
 
     for (x <- bxMin to bxMax) {

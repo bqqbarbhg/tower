@@ -206,6 +206,7 @@ final class ModelSystemImpl extends ModelSystem {
       if (!model.model.loaded) {
         model.model = model.asset.get
         model.state = new ModelState(model.model)
+        model.lastFrameUpdated = -1L
         for (ref <- model.nodes) {
           ref.index = model.model.findNodeByName(ref.name)
         }

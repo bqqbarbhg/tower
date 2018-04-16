@@ -79,19 +79,21 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
   val categories = Vector(
     new Category(Identifier("gui/bar/icon_turret.png")),
     new Category(Identifier("gui/bar/icon_radar.png")),
-    new Category(Identifier("gui/bar/icon_cable.png")) {
-      wireCategory = true
-    },
+    new Category(Identifier("gui/bar/icon_cable.png")),
     new Category(Identifier("gui/bar/icon_structure.png")),
   )
 
   categories(0).items = Vector(
     new Item(EntityTypeAsset("entity/tower/turret_basic.es.toml").get),
-    new Item(EntityTypeAsset("entity/tower/splitter.es.toml").get),
   )
 
   categories(1).items = Vector(
     new Item(EntityTypeAsset("entity/tower/radar_basic.es.toml").get),
+  )
+
+  categories(2).items = Vector(
+    new Item(EntityTypeAsset("entity/tower/splitter.es.toml").get),
+    new Item(EntityTypeAsset("entity/tower/merger.es.toml").get),
   )
 
   var openCategory: Option[Category] = None
