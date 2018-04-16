@@ -62,9 +62,6 @@ object CableRenderSystem {
     }
 
     def drawPulse(): Unit = {
-      // mesh.pulsePosition = mesh.length * (0.7 + (AppWindow.currentTime * 0.03) % 0.2)
-      // mesh.pulseSize = mesh.length * 0.4
-
       if (mesh.pulseSize <= 0.001) return
       val begin = mesh.pulsePosition - mesh.pulseSize
       val end = mesh.pulsePosition

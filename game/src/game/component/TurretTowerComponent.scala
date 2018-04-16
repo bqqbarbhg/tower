@@ -56,6 +56,9 @@ class TurretTowerComponent extends Component {
   /** Time in seconds to shoot an outdated target */
   var shootTime: DoubleProp.Type = 3.0
 
+  /** Distance from `shootOrigin` to spawn bullets from */
+  var bulletExitDistance: DoubleProp.Type = 0.0
+
   override def dependencies: Iterable[ComponentType] = Some(ModelComponent)
 
   override def create(entity: Entity): Unit = {

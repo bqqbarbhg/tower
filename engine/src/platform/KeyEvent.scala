@@ -11,6 +11,7 @@ object KeyEvent {
   val Delete = GLFW_KEY_DELETE
   val Home = GLFW_KEY_HOME
   val End = GLFW_KEY_END
+  val Tab = GLFW_KEY_TAB
 
   val LeftShift = GLFW_KEY_LEFT_SHIFT
 

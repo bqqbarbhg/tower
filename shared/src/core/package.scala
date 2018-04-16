@@ -82,6 +82,12 @@ package object core {
 
   def smoothStep(t: Double): Double = t * t * (3.0 - 2.0 * t)
 
+  /** Compute delta-time "independent" multiplicative value.
+    * Value is calibrated to match 60fps behavior. */
+  def powDt(value: Double, dt: Double): Double = {
+    math.pow(value, dt / (1.0 / 60.0))
+  }
+
   def wrapAngle(angle: Double): Double = {
     val amount = angle * (1.0 / (math.Pi * 2.0)) + 0.5
     (amount - math.floor(amount) - 0.5) * math.Pi * 2.0

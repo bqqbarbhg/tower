@@ -129,7 +129,6 @@ object TowerSystemImpl {
     var visualVel: Double = 0.0
 
     val slotTargetIn = new Slot(entity, true, "slot.turret.targetIn")
-    val slotTargetOut = new Slot(entity, false, "slot.turret.targetOut")
 
     var targetTime = -100.0
     var targetPos = Vector3.Zero
@@ -139,7 +138,6 @@ object TowerSystemImpl {
 
     override val slots: Array[Slot] = Array(
       slotTargetIn,
-      slotTargetOut,
     )
 
     def update(dt: Double): Unit = {
@@ -161,7 +159,7 @@ object TowerSystemImpl {
       var visualDeltaAngle = wrapAngle(aimAngle - visualAngle)
       val visualSpeed = component.visualTurnSpeed * dt
       visualVel += wrapAngle(clamp(visualDeltaAngle, -visualSpeed, visualSpeed))
-      visualVel *= math.pow(component.visualTurnFriction, dt / (1.0 / 60.0))
+      visualVel *= powDt(component.visualTurnFriction, dt)
 
       visualAngle = wrapAngle(visualAngle + visualVel * dt)
 
@@ -186,7 +184,7 @@ object TowerSystemImpl {
       }
       aimTime = clamp(aimTime, 0.0, component.aimDuration)
 
-      spinVel *= math.pow(component.visualSpinFriction, dt / (1.0 / 60.0))
+      spinVel *= powDt(component.visualSpinFriction, dt)
 
       spin += spinVel * dt
     }
@@ -197,9 +195,19 @@ object TowerSystemImpl {
 
       cullingSystem.queryRay(ray, component.shootDistance, MaxShootRes, CullingSystem.MaskEnemy, sharedShootRes)
 
-      if (sharedShootRes.nonEmpty) {
+      val minT = if (sharedShootRes.nonEmpty) {
         val closest = sharedShootRes.minBy(_.t)
         enemySystem.doDamage(closest.entity, component.shootDamage)
+        shootPos.distanceTo(closest.entity.position)
+      } else {
+        component.shootDistance
+      }
+
+      val realT = minT - component.bulletExitDistance
+      if (realT > 0.1) {
+        val pos = shootPos + dir * component.bulletExitDistance
+        bulletSystem.addBullet(pos, dir * realT, realT * 0.005)
+        bulletSystem.addSmoke(pos, dir, 0.4)
       }
 
       sharedShootRes.clear()

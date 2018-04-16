@@ -7,7 +7,7 @@ import org.lwjgl.system.MemoryUtil
 object SharedQuadIndexBuffer extends DynamicAsset("SharedQuadIndexBuffer", new SharedQuadIndexBuffer)
 
 class SharedQuadIndexBuffer extends Unloadable {
-  val numQuads = math.max(Font.MaxQuadsPerDraw, SpriteBatch.BatchMaxSprites)
+  val numQuads = math.max(math.max(Font.MaxQuadsPerDraw, SpriteBatch.BatchMaxSprites), BillboardBatch.BatchMaxSprites)
 
   val indexBuffer = {
     val data = MemoryUtil.memAlloc(numQuads * 6 * 2)

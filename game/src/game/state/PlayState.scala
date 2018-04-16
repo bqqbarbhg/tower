@@ -52,6 +52,7 @@ object PlayState {
     TutorialSystem.Assets,
     HotbarMenu.Assets,
     BuildSystem.Assets,
+    BulletSystem.Assets,
 
     GroundTexture,
     Colorgrade,
@@ -299,7 +300,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     {
       val maxLinear = CameraTweak.zoomInterpolateLinear * dt
-      Camera.interpolatedZoom += math.pow(CameraTweak.zoomInterpolateExponential, dt / (1.0 / 60.0)) * (Camera.zoom - Camera.interpolatedZoom)
+      Camera.interpolatedZoom += powDt(CameraTweak.zoomInterpolateExponential, dt) * (Camera.zoom - Camera.interpolatedZoom)
       Camera.interpolatedZoom += clamp(Camera.zoom - Camera.interpolatedZoom, -maxLinear, maxLinear)
     }
 
@@ -331,10 +332,10 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
       val moveSpeed = lerp(CameraTweak.moveSpeedLow, CameraTweak.moveSpeedHigh, relHeight)
 
-      cameraVel *= math.pow(0.5, dt / (1.0 / 60.0))
+      cameraVel *= powDt(0.5, dt)
       cameraVel += move * moveSpeed * boost * dt
     } else {
-      cameraVel *= math.pow(0.8, dt / (1.0 / 60.0))
+      cameraVel *= powDt(0.8, dt)
     }
 
     val stopSpeed = lerp(CameraTweak.stopSpeedLow, CameraTweak.stopSpeedHigh, relHeight)
@@ -585,6 +586,10 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       cable.drawPulse()
     }
 
+    renderer.setMode(DepthTest, BlendPremultipliedAlpha, CullNone)
+
+    bulletSystem.renderBullets(viewProjection, cameraPos)
+
     buildSystem.renderIngameGui(viewProjection)
 
     buildSystem.renderPreview()
@@ -595,8 +600,16 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     AppWindow.pollEvents()
 
     val time = AppWindow.currentTime
-    val dt = time - prevTime
+    var dt = time - prevTime
     prevTime = time
+
+    if (AppWindow.keyDown(KeyEvent.Tab)) {
+      if (AppWindow.keyDown(KeyEvent.LeftShift)) {
+        dt *= 0.05
+      } else {
+        dt *= 0.2
+      }
+    }
 
     inputs.update()
 
@@ -628,7 +641,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     val screenHeight = globalRenderSystem.screenHeight
     val aspectRatio = screenWidth.toDouble / screenHeight.toDouble
 
-    val cameraPos = Vector3(Camera.position.x, cameraHeight, Camera.position.y)
+    cameraPos = Vector3(Camera.position.x, cameraHeight, Camera.position.y)
     val fov = math.toRadians(CameraTweak.fov)
 
     val relHeight = (Camera.interpolatedZoom - CameraTweak.minZoom) / (CameraTweak.maxZoom - CameraTweak.minZoom)
@@ -641,6 +654,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     buildSystem.update(dt, invViewProjection, inputs)
     buildSystem.renderBuildGui(canvas, viewProjection)
+
+    bulletSystem.updateBullets(dt)
 
     enemySystem.update(dt)
 
