@@ -78,7 +78,7 @@ object GraphicsOptions {
     var vertexMapMode: String = "Persistent"
     var useUniformBuffers: Boolean = true
     var useVaoCache: Boolean = true
-    var useRowMajorMatrices: Boolean = true
+    var useRowMajorMatrices: Boolean = false
     var useImmutableTextureStorage: Boolean = true
     var preset: String = ""
 
@@ -124,7 +124,7 @@ object GraphicsOptions {
         vertexMapMode = "Persistent"
         useUniformBuffers = true
         useVaoCache = true
-        useRowMajorMatrices = true
+        useRowMajorMatrices = false
         useImmutableTextureStorage = true
         preset = "Modern"
       }),
