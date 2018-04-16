@@ -195,10 +195,6 @@ object TowerSystemImpl {
       val dir = (targetPos - shootPos).normalizeOr { return }
       val ray = Ray(shootPos, dir)
 
-      DebugDraw.persist(0.1) {
-        DebugDraw.drawLine(shootPos, shootPos + dir * component.shootDistance, Color.White)
-      }
-
       cullingSystem.queryRay(ray, component.shootDistance, MaxShootRes, CullingSystem.MaskEnemy, sharedShootRes)
 
       if (sharedShootRes.nonEmpty) {
