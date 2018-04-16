@@ -384,7 +384,7 @@ package.
 
 When starting to build the prototype asset processing pipeline it turned out
 that configuration files are a necessity. The options for the file format were
-[JSON][json], [YAML][yaml], [TOML][gh-toml], and some custom format. I discarded
+[JSON][json], [YAML][wiki-yaml], [TOML][gh-toml], and some custom format. I discarded
 JSON first as it doesn't have comments and has an unfortunate amount of line-noise
 for simple configuration purposes. YAML on the other hand looks pretty nice but
 is overly complicated. TOML is a very minimalistic .ini-inspired _config file format_,
