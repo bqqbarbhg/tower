@@ -1,5 +1,102 @@
 # Project document
 
+## Code quality disclaimer
+
+The engine has a ton of non-idiomatic and ugly Scala. This is all for one
+major reason: to fight the garbage collector. Common wisdom in programming
+is to avoid premature optimization. Sadly garbage collection overhead is not'
+like having hot inner loops that you can diagnose and optimize. Everything
+contributes a little bit, and at some point the game is stuttering.
+
+For the best experience the game shouldn't allocate at all outside of loading
+breaks, but that limits the programming style drastically in Scala, as it
+doesn't have real value types. However if assuming that the JVM we're running
+on has a generational garbage collector it's alright to generate _short lived garbage_.
+For instance `Vector3` is represented as an immutable class and new ones are
+created constantly, but since they're not retained for long the garbage collector
+hit is reduced.
+
+Another thing to note is using `while`-loops instead of `for`-loops. This is
+not for GC reasons, but since Scala `for`-loops are extremely slow, as they're
+transparently transformed into invocations of `foreach` with an abstract
+callback argument. This means all the locals need to be lifted into a closure
+and all the optimizations are off the table. Also in many places I use nullable
+references instead of `Option`, since `Option` always requires and indirection
+which adds both cache and GC overhead.
+
+During the project I experimented with a ton of different approaches to making
+Scala performant. In the oldest pieces of code I used to split data up to
+structure-of-arrays style code such as (`IdentifierIx` is an alias for `Int`):
+
+```scala
+// Meshes
+var meshParentNode: Array[Int] = Array[Int]()
+var meshName: Array[IdentifierIx] = Array[IdentifierIx]()
+var meshResource: Array[IdentifierIx] = Array[IdentifierIx]()
+var meshMaterialIndex: Array[Int] = Array[Int]()
+var meshes: Array[Mesh] = Array[Mesh]()
+var numMeshes: Int = 0
+```
+
+This is the only way to get contiguous arrays on JVM. If the code would have
+been better Scala it might have looked something like this:
+
+```scala
+case class MeshInfo(parentIndex: Int,
+					name: Identifier,
+					resource: Identifier,
+					materialIndex: Int
+					mesh: Mesh)
+
+var meshes: Vector[MeshInfo] = Vector[MeshInfo]()
+```
+
+However here every `MeshInfo` instance is it's own reference somewhere in
+memory, and the internal tree structure `Vector` causes even more GC overhead.
+It's debatable if optimizing this actually has any benefit, since models generally
+have a low amount of meshes anyway, but I was still getting adjusted. If I'd
+do the class now I wouldn't bother with this optimization.
+
+After getting fed up with dealing with the separate arrays I went one step
+further. I made `Struct` which allows you to create contiguous array of
+heterogenic data C-style. The usage looks like this:
+
+```scala
+object CharInfo extends Struct {
+  /** Amount to advance per character */
+  val Advance = float
+  /** Offset into the kerning table */
+  val KernOffset = int
+  /** Number of entries in the kern table for this character */
+  val KernCount = int
+  /** Amount the character spans before the current position */
+  val LeftSideBearing = float
+}
+
+...
+
+val D = this.data
+val CA = charInfoBase + index * CharInfo.size
+
+val kernOffset = CharInfo.KernOffset.get(D,CA)
+val kernCount = CharInfo.KernCount.get(D,CA)
+```
+
+Here the data is laid out manually in a `ByteBuffer` and accessed through
+getters. Potentially extremely overkill, but this has very low GC overhead and
+assuming JVM does the right thing should result in very good performance.
+This approach is not used except in places that have hundreds of instances.
+Both of these approaches are overkill for most features and the game code itself
+barely uses anything like this. 
+
+Still to be honest, most of the code quality issues can't be explained on such
+noble merits. The scope of the project was just too large for the timespan and
+I had to make sacrifices on the quality. There's abstractions half-baked just up
+to the level sufficent for the game. There's parallel systems to do same things
+as I got fed up with the old systems and made newer ways to do things. As such
+the codebase is quite organic and possibly the youngest legacy codebase I have
+worked with.
+
 ## Asset pipeline
 
 The game needs hand-crafted assets, such as sounds, textures, and models.
