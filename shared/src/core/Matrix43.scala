@@ -33,8 +33,8 @@ object Matrix43 {
     val c = math.cos(angle)
     val s = math.sin(angle)
     m.m22 = c
-    m.m23 = s
-    m.m32 = -s
+    m.m23 = -s
+    m.m32 = s
     m.m33 = c
     m
   }
@@ -57,8 +57,8 @@ object Matrix43 {
     val c = math.cos(angle)
     val s = math.sin(angle)
     m.m11 = c
-    m.m12 = s
-    m.m21 = -s
+    m.m12 = -s
+    m.m21 = s
     m.m22 = c
     m
   }
@@ -96,6 +96,26 @@ object Matrix43 {
     m.m14 = x
     m.m24 = y
     m.m34 = z
+    m
+  }
+
+  /** Rotation */
+  def rotate(rotation: Quaternion): Matrix43 = {
+    val x = rotation.x
+    val y = rotation.y
+    val z = rotation.z
+    val w = rotation.w
+
+    val m = new Matrix43.Unsafe()
+    m.m11 = 1.0 - 2.0*y*y - 2.0*z*z
+    m.m12 = 2.0*x*y - 2.0*z*w
+    m.m13 = 2.0*x*z + 2.0*y*w
+    m.m21 = 2.0*x*y + 2.0*z*w
+    m.m22 = 1.0 - 2.0*x*x - 2.0*z*z
+    m.m23 = 2.0*y*z - 2.0*x*w
+    m.m31 = 2.0*x*z - 2.0*y*w
+    m.m32 = 2.0*y*z + 2.0*x*w
+    m.m33 = 1.0 - 2.0*x*x - 2.0*y*y
     m
   }
 

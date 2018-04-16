@@ -190,5 +190,26 @@ class Matrix43Test extends FlatSpec with Matchers {
 
   }
 
+  "rotate" should "be compatible with axis rotations (X)" in {
+    val q = Quaternion.fromAxisAngle(Vector3(1.0, 0.0, 0.0), 1.0)
+    val m1 = Matrix43.rotateX(1.0)
+    val m2 = Matrix43.rotate(q)
+    assertEqualAndAffine(m1, m2)
+  }
+
+  it should "be compatible with axis rotations (Y)" in {
+    val q = Quaternion.fromAxisAngle(Vector3(0.0, 1.0, 0.0), 1.0)
+    val m1 = Matrix43.rotateY(1.0)
+    val m2 = Matrix43.rotate(q)
+    assertEqualAndAffine(m1, m2)
+  }
+
+  it should "be compatible with axis rotations (Z)" in {
+    val q = Quaternion.fromAxisAngle(Vector3(0.0, 0.0, 1.0), 1.0)
+    val m1 = Matrix43.rotateZ(1.0)
+    val m2 = Matrix43.rotate(q)
+    assertEqualAndAffine(m1, m2)
+  }
+
 }
 
