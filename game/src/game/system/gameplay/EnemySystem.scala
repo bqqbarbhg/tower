@@ -16,7 +16,13 @@ sealed trait EnemySystem extends EntityDeleteListener {
 
   /** Query around an area. Guaranteed to return all enemies in a sphere
     * centered at `position` with radius `radius`. */
-  def queryEnemiesAround(position: Vector3, radius: Double): Iterator[Entity]
+  def queryEnemiesAround(position: Vector3, radius: Double): Iterator[(Entity, Vector3)]
+
+  /** Update all the active enemies */
+  def update(dt: Double): Unit
+
+  /** Do damage to an enemy */
+  def doDamage(entity: Entity, amount: Double): Unit
 
 }
 
@@ -27,6 +33,9 @@ object EnemySystemImpl {
 
   class Enemy(val entity: Entity, val component: EnemyComponent) extends CompactArrayPool.Element {
     var state: Int = StateUndefined
+    var health: Double = component.health
+
+    var aimPos: Vector3 = Vector3.Zero
   }
 
 }
@@ -47,10 +56,12 @@ final class EnemySystemImpl extends EnemySystem {
     entityToEnemy(entity) = enemy
   }
 
-  override def queryEnemiesAround(position: Vector3, radius: Double): Iterator[Entity] = {
+  override def queryEnemiesAround(position: Vector3, radius: Double): Iterator[(Entity, Vector3)] = {
     // @Todo: Optimize this if needed...
     val radiusSq = radius * radius
-    enemiesActive.iterator.filter(_.entity.position.distanceSquaredTo(position) <= radiusSq).map(_.entity)
+    enemiesActive.iterator
+      .filter(_.aimPos.distanceSquaredTo(position) <= radiusSq)
+      .map(e => (e.entity, e.aimPos))
   }
 
   override def entitiesDeleted(entities: EntitySet): Unit = {
@@ -62,6 +73,22 @@ final class EnemySystemImpl extends EnemySystem {
       }
 
       e.clearFlag(Flag_Enemy)
+    }
+  }
+
+  override def update(dt: Double): Unit = {
+    for (enemy <- enemiesActive) {
+      enemy.aimPos = enemy.entity.transformPoint(enemy.component.aimPosition)
+    }
+  }
+
+  override def doDamage(entity: Entity, amount: Double): Unit = {
+    for (enemy <- entityToEnemy.get(entity)) {
+      enemy.health -= amount
+
+      if (enemy.health <= 0.0) {
+        enemy.entity.delete()
+      }
     }
   }
 

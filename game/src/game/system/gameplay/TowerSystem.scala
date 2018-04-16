@@ -10,10 +10,12 @@ import TowerSystem._
 import TowerSystemImpl._
 import asset.{AssetBundle, AtlasAsset}
 import game.system.gameplay.ConnectionSystem.Connection
-import ui.Canvas
+import game.system.rendering.CullingSystem.RayHit
+import ui.{Canvas, DebugDraw}
 import ui.SpriteBatch.SpriteDraw
 import render._
 import render.Renderer._
+import util.geometry._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -109,6 +111,9 @@ object TowerSystemImpl {
     def updateVisible(): Unit
   }
 
+  val MaxShootRes = 16
+  val sharedShootRes = new ArrayBuffer[RayHit](MaxShootRes)
+
   class Turret(val entity: Entity, val component: TurretTowerComponent) extends Tower {
     val model = modelSystem.collectModels(entity).head
 
@@ -128,6 +133,9 @@ object TowerSystemImpl {
 
     var targetTime = -100.0
     var targetPos = Vector3.Zero
+    var shootTimer: Double = 0.0
+    val shootPos = entity.transformPoint(component.shootOrigin)
+    var aimTime: Double = 0.0
 
     override val slots: Array[Slot] = Array(
       slotTargetIn,
@@ -158,14 +166,47 @@ object TowerSystemImpl {
       visualAngle = wrapAngle(visualAngle + visualVel * dt)
 
       val time = towerSystem.time
-      if (math.abs(deltaAngle) < 0.3 && targetTime + 2.0 >= time) {
+      if (math.abs(deltaAngle) < 0.1 && targetTime + component.shootTime >= time) {
         towerSystem.updateTurretTarget(targetPos)
         spinVel += dt * component.visualSpinSpeed
+        aimTime += dt
+
+        if (aimTime >= component.aimDuration - 0.001) {
+          shootTimer -= dt
+          var shotsDone = 0
+          val MaxShotsPerFrame = 10
+          while (shootTimer < 0 && shotsDone < MaxShotsPerFrame) {
+            shotsDone += 1
+            shootTimer += component.shootInterval
+            shoot()
+          }
+        }
+      } else {
+        aimTime -= dt
       }
+      aimTime = clamp(aimTime, 0.0, component.aimDuration)
 
       spinVel *= math.pow(component.visualSpinFriction, dt / (1.0 / 60.0))
 
       spin += spinVel * dt
+    }
+
+    def shoot(): Unit = {
+      val dir = (targetPos - shootPos).normalizeOr { return }
+      val ray = Ray(shootPos, dir)
+
+      DebugDraw.persist(0.1) {
+        DebugDraw.drawLine(shootPos, shootPos + dir * component.shootDistance, Color.White)
+      }
+
+      cullingSystem.queryRay(ray, component.shootDistance, MaxShootRes, CullingSystem.MaskEnemy, sharedShootRes)
+
+      if (sharedShootRes.nonEmpty) {
+        val closest = sharedShootRes.minBy(_.t)
+        enemySystem.doDamage(closest.entity, component.shootDamage)
+      }
+
+      sharedShootRes.clear()
     }
 
     override def updateVisible(): Unit = {
@@ -196,9 +237,9 @@ object TowerSystemImpl {
       angle += dt * 2.0
 
       def findTarget(): Unit = {
-        for (enemy <- enemySystem.queryEnemiesAround(entity.position, component.radius)) {
+        for ((enemy, worldPos) <- enemySystem.queryEnemiesAround(entity.position, component.radius)) {
 
-          val pos = entity.inverseTransformPoint(enemy.position)
+          val pos = entity.inverseTransformPoint(worldPos)
           val dx = pos.x
           val dz = pos.z
           val lenSq = dx*dx + dz*dz
@@ -209,7 +250,7 @@ object TowerSystemImpl {
 
             val delta = math.abs(wrapAngle(angle - enemyAngle))
             if (delta <= dt * 4.0 + 0.05) {
-              val msg = MessageTarget(enemy.position, towerSystem.time)
+              val msg = MessageTarget(worldPos, towerSystem.time)
               slotTargetOut.sendQueued(msg)
               towerSystem.addTargetMessage(msg)
               return
@@ -448,7 +489,7 @@ final class TowerSystemImpl extends TowerSystem {
         visibleTargetVisuals.trimEnd(1)
       } else {
 
-        val projected = viewProjection.projectPoint(vis.position + Vector3(0.0, 3.0, 0.0))
+        val projected = viewProjection.projectPoint(vis.position)
         val x = (projected.x + 1.0) * 0.5 * globalRenderSystem.screenWidth
         val y = (1.0 - (projected.y + 1.0) * 0.5) * globalRenderSystem.screenHeight
 
@@ -481,7 +522,7 @@ final class TowerSystemImpl extends TowerSystem {
       if (delta >= turretCutoffDuration) {
         turretVisualToDelete += pos
       } else {
-        val projected = viewProjection.projectPoint(pos + Vector3(0.0, 3.0, 0.0))
+        val projected = viewProjection.projectPoint(pos)
         val x = (projected.x + 1.0) * 0.5 * globalRenderSystem.screenWidth
         val y = (1.0 - (projected.y + 1.0) * 0.5) * globalRenderSystem.screenHeight
 

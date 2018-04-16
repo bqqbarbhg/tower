@@ -642,6 +642,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     buildSystem.update(dt, invViewProjection, inputs)
     buildSystem.renderBuildGui(canvas, viewProjection)
 
+    enemySystem.update(dt)
+
     cableSystem.generateCables()
     entitySystem.processDeletions()
 

@@ -10,7 +10,8 @@ object Ray {
 
 case class Ray(origin: Vector3, direction: Vector3) {
 
-  def intersect(aabb: Aabb): Option[Double] = {
+  def intersect(aabb: Aabb): Option[Double] = intersect(aabb, Double.PositiveInfinity)
+  def intersect(aabb: Aabb, maxDistance: Double): Option[Double] = {
     val ox = aabb.center.x - origin.x
     val oy = aabb.center.y - origin.y
     val oz = aabb.center.z - origin.z
@@ -36,14 +37,15 @@ case class Ray(origin: Vector3, direction: Vector3) {
     tMin = math.max(tMin, math.min(t1, t2))
     tMax = math.min(tMax, math.max(t1, t2))
 
-    if (tMin <= tMax && tMax >= 0.0) {
+    if (tMin <= tMax && tMax >= 0.0 && tMin <= maxDistance) {
       Some(math.max(tMin, 0.0))
     } else {
       None
     }
   }
 
-  def intersect(plane: Plane): Option[Double] = {
+  def intersect(plane: Plane): Option[Double] = intersect(plane, Double.PositiveInfinity)
+  def intersect(plane: Plane, maxDistance: Double): Option[Double] = {
     val on = origin dot plane.normal
     val dn = direction dot plane.normal
 
@@ -53,10 +55,11 @@ case class Ray(origin: Vector3, direction: Vector3) {
     }
 
     val t = (plane.d - on) / dn
-    if (t >= 0.0) Some(t) else None
+    if (t >= 0.0 && t <= maxDistance) Some(t) else None
   }
 
-  def intersect(sphere: Sphere): Option[Double] = {
+  def intersect(sphere: Sphere): Option[Double] = intersect(sphere, Double.PositiveInfinity)
+  def intersect(sphere: Sphere, maxDistance: Double): Option[Double] = {
     val ox = sphere.center.x - origin.x
     val oy = sphere.center.y - origin.y
     val oz = sphere.center.z - origin.z
@@ -68,7 +71,8 @@ case class Ray(origin: Vector3, direction: Vector3) {
     if (sqDisc < 0.0) return None
 
     val disc = math.sqrt(sqDisc)
-    Some(ud - disc)
+    val t = ud - disc
+    if (t >= 0.0 && t <= maxDistance) Some(t) else None
   }
 
   def point(t: Double): Vector3 = origin + direction * t

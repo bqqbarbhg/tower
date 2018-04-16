@@ -17,6 +17,12 @@ class EnemyComponent extends Component {
   override def propertySet: PropertySet = EnemyComponent.propertySet
   override def componentType = EnemyComponent
 
+  /** Local position turrets will aim for */
+  var aimPosition: Vector3Prop.Type = Vector3.Zero
+
+  /** How much health (hitpoints) does the enemy have* */
+  var health: DoubleProp.Type = 100.0
+
   override def create(entity: Entity): Unit = {
     enemySystem.addEnemy(entity, this)
   }

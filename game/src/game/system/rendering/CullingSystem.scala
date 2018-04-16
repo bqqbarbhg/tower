@@ -78,12 +78,12 @@ sealed trait CullingSystem extends EntityDeleteListener {
   }
 
   /** Cast a ray and return _arbitrary_ intersecting objects (with hit distance) to existing `results`. */
-  def queryRay(ray: Ray, maxResults: Int, mask: Int, results: ArrayBuffer[RayHit]): Unit
+  def queryRay(ray: Ray, maxDistance: Double, maxResults: Int, mask: Int, results: ArrayBuffer[RayHit]): Unit
 
   /** Cast a ray and return _arbitrary_ intersecting objects (with hit distance). */
-  def queryRay(ray: Ray, maxResults: Int, mask: Int): ArrayBuffer[RayHit] = {
+  def queryRay(ray: Ray, maxDistance: Double, maxResults: Int, mask: Int): ArrayBuffer[RayHit] = {
     val results = new ArrayBuffer[RayHit](math.min(maxResults, 32))
-    queryRay(ray, maxResults, mask, results)
+    queryRay(ray, maxDistance, maxResults, mask, results)
     results
   }
 
@@ -596,10 +596,10 @@ final class CullingSystemImpl extends CullingSystem {
     results.length >= maxResults
   }
 
-  def queryCullableRay(cullables: CullableContainer, ray: Ray, results: ArrayBuffer[RayHit], maxResults: Int, mask: Int): Unit = {
+  def queryCullableRay(cullables: CullableContainer, ray: Ray, maxDistance: Double, results: ArrayBuffer[RayHit], maxResults: Int, mask: Int): Unit = {
     for (aabb <- cullables.aabbList) {
       if ((aabb.mask & mask) != 0) {
-        for (t <- ray.intersect(aabb.aabb)) {
+        for (t <- ray.intersect(aabb.aabb, maxDistance)) {
           if (addToRayQueryResults(aabb.cullable.entity, t, results, maxResults)) return
         }
       }
@@ -607,35 +607,35 @@ final class CullingSystemImpl extends CullingSystem {
 
     for (sphere <- cullables.sphereList) {
       if ((sphere.mask & mask) != 0) {
-        for (t <- ray.intersect(sphere.sphere)) {
+        for (t <- ray.intersect(sphere.sphere, maxDistance)) {
           if (addToRayQueryResults(sphere.cullable.entity, t, results, maxResults)) return
         }
       }
     }
   }
 
-  def queryQuadTreeRay(node: QuadTreeNode, ray: Ray, results: ArrayBuffer[RayHit], maxResults: Int, mask: Int): Unit = {
-    if (results.length >= maxResults || ray.intersect(node.bounds).isEmpty) return
+  def queryQuadTreeRay(node: QuadTreeNode, ray: Ray, maxDistance: Double, results: ArrayBuffer[RayHit], maxResults: Int, mask: Int): Unit = {
+    if (results.length >= maxResults || ray.intersect(node.bounds, maxDistance).isEmpty) return
 
-    queryCullableRay(node.cullables, ray, results, maxResults, mask)
+    queryCullableRay(node.cullables, ray, maxDistance, results, maxResults, mask)
 
     if (!node.isLeaf) {
-      queryQuadTreeRay(node.c00, ray, results, maxResults, mask)
-      queryQuadTreeRay(node.c01, ray, results, maxResults, mask)
-      queryQuadTreeRay(node.c10, ray, results, maxResults, mask)
-      queryQuadTreeRay(node.c11, ray, results, maxResults, mask)
+      queryQuadTreeRay(node.c00, ray, maxDistance, results, maxResults, mask)
+      queryQuadTreeRay(node.c01, ray, maxDistance, results, maxResults, mask)
+      queryQuadTreeRay(node.c10, ray, maxDistance, results, maxResults, mask)
+      queryQuadTreeRay(node.c11, ray, maxDistance, results, maxResults, mask)
     }
   }
 
-  override def queryRay(ray: Ray, maxResults: Int, mask: Int, results: ArrayBuffer[RayHit]): Unit = {
-    queryCullableRay(globalContainer, ray, results, maxResults, mask)
+  override def queryRay(ray: Ray, maxDistance: Double, maxResults: Int, mask: Int, results: ArrayBuffer[RayHit]): Unit = {
+    queryCullableRay(globalContainer, ray, maxDistance, results, maxResults, mask)
 
     if ((mask & MaskTreeRender) != 0)
-      queryQuadTreeRay(quadTreeRender, ray, results, maxResults, mask)
+      queryQuadTreeRay(quadTreeRender, ray, maxDistance, results, maxResults, mask)
     if ((mask & MaskTreeLight) != 0)
-      queryQuadTreeRay(quadTreeLight, ray, results, maxResults, mask)
+      queryQuadTreeRay(quadTreeLight, ray, maxDistance, results, maxResults, mask)
     if ((mask & MaskTreeGameplay) != 0)
-      queryQuadTreeRay(quadTreeGameplay, ray, results, maxResults, mask)
+      queryQuadTreeRay(quadTreeGameplay, ray, maxDistance, results, maxResults, mask)
   }
 
   def debugDrawCullables(cullables: CullableContainer, frustum: Frustum, mask: Int): Unit = {

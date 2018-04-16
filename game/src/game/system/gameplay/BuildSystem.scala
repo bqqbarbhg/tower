@@ -279,7 +279,7 @@ final class BuildSystemImpl extends BuildSystem {
 
     if (buildEntity.isEmpty) {
       rayCastResult.clear()
-      cullingSystem.queryRay(ray, MaxRayCast, CullingSystem.MaskTower, rayCastResult)
+      cullingSystem.queryRay(ray, Double.PositiveInfinity, MaxRayCast, CullingSystem.MaskTower, rayCastResult)
       val towers = rayCastResult.iterator.filter(_.entity.hasFlag(Flag_Tower))
       if (towers.nonEmpty) {
         val closest = towers.minBy(_.t)

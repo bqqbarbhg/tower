@@ -24,10 +24,10 @@ class TurretTowerComponent extends Component {
   var spinBone: IdentifierProp.Type = Identifier.Empty
 
   /** How fast does the turret aim */
-  var turnSpeed: DoubleProp.Type = 5.0
+  var turnSpeed: DoubleProp.Type = 7.0
 
   /** How fast does the visual follow the actual aim */
-  var visualTurnSpeed: DoubleProp.Type = 15.0
+  var visualTurnSpeed: DoubleProp.Type = 35.0
 
   /** Speed remaining per 1/60s */
   var visualTurnFriction: DoubleProp.Type = 0.9
@@ -37,6 +37,24 @@ class TurretTowerComponent extends Component {
 
   /** Speed remaining per 1/60s */
   var visualSpinFriction: DoubleProp.Type = 0.9
+
+  /** Time interval between shots */
+  var shootInterval: DoubleProp.Type = 0.3
+
+  /** Where to do the raycast to target */
+  var shootOrigin: Vector3Prop.Type = Vector3.Zero
+
+  /** How far to shoot */
+  var shootDistance: DoubleProp.Type = 10.0
+
+  /** How long does it take to start shooting after locking onto target */
+  var aimDuration: DoubleProp.Type = 0.7
+
+  /** How much damage does the turret do per shot */
+  var shootDamage: DoubleProp.Type = 10.0
+
+  /** Time in seconds to shoot an outdated target */
+  var shootTime: DoubleProp.Type = 3.0
 
   override def dependencies: Iterable[ComponentType] = Some(ModelComponent)
 
