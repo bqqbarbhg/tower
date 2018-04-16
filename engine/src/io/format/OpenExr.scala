@@ -37,7 +37,7 @@ object OpenExr {
       val valueSize = tempBytes.position
       tempBytes.position(0)
       val slice = tempBytes.sliceEx
-      slice.limit(num)
+      slice.limit(valueSize)
 
       puts(dst, name)       // Attribute name
       puts(dst, typ)        // Attribute type
