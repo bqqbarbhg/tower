@@ -44,6 +44,16 @@ object EntityFile {
     buffer.putMagic("s2es")
     buffer.putVersion(Version)
 
+    val static = entity.map("static") match {
+      case SBool(v) => v
+      case _ => false
+    }
+
+    var flags = 0x00
+    if (static) flags |= 0x01
+
+    buffer.putInt(flags)
+
     val multiMaps = entity.map.pairs.collect { case (s: String, m: SArray) => (s, m) }
     val multis = for {
       (k, v) <- multiMaps

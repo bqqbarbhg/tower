@@ -25,16 +25,28 @@ class UnstructuredBinaryReader(val buffer: ByteBuffer) extends AnyVal {
       val dataType = buffer.getInt()
       props.properties.find(_.name == name) match {
         case Some(prop) =>
-          dataType match {
-            case DataDouble => prop.setGenericWithConversion(obj, buffer.getDouble())
-            case DataInt => prop.setGenericWithConversion(obj, buffer.getInt())
-            case DataString => prop.setGenericWithConversion(obj, buffer.getString())
-            case DataObject =>
-              val product = prop.asInstanceOf[ProductProp]
-              val productObj = product.makeProductInstance
-              read(productObj)
-              product.setProductInstance(obj, productObj)
+
+          props.customConverters.get(name) match {
+            case Some(conv) =>
+              dataType match {
+                case DataDouble => conv.set(obj, prop, buffer.getDouble())
+                case DataInt => conv.set(obj, prop, buffer.getInt())
+                case DataString => conv.set(obj, prop, buffer.getString())
+              }
+
+            case None =>
+              dataType match {
+                case DataDouble => prop.setGenericWithConversion(obj, buffer.getDouble())
+                case DataInt => prop.setGenericWithConversion(obj, buffer.getInt())
+                case DataString => prop.setGenericWithConversion(obj, buffer.getString())
+                case DataObject =>
+                  val product = prop.asInstanceOf[ProductProp]
+                  val productObj = product.makeProductInstance
+                  read(productObj)
+                  product.setProductInstance(obj, productObj)
+              }
           }
+
 
         case None => skipType(dataType)
       }

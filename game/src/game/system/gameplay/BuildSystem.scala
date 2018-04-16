@@ -222,7 +222,7 @@ final class BuildSystemImpl extends BuildSystem {
 
       for (point <- groundPoint) {
         val bounds = Aabb(point, Vector3(1.0, 5.0, 1.0))
-        cullingSystem.queryAabb(bounds, MaxBlockers, CullingSystem.MaskGameplay, buildBlockerEntities)
+        cullingSystem.queryAabb(bounds, MaxBlockers, CullingSystem.MaskTower, buildBlockerEntities)
         validPlace = buildBlockerEntities.isEmpty
 
         if (clicked) {
@@ -256,7 +256,7 @@ final class BuildSystemImpl extends BuildSystem {
 
     if (buildEntity.isEmpty) {
       rayCastResult.clear()
-      cullingSystem.queryRay(ray, MaxRayCast, CullingSystem.MaskGameplay, rayCastResult)
+      cullingSystem.queryRay(ray, MaxRayCast, CullingSystem.MaskTower, rayCastResult)
       val towers = rayCastResult.iterator.filter(_.entity.hasFlag(Flag_Tower))
       if (towers.nonEmpty) {
         val closest = towers.minBy(_.t)

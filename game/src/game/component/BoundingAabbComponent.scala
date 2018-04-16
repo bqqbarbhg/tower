@@ -1,5 +1,7 @@
 package game.component
 
+import java.nio.ByteBuffer
+
 import core.Vector3
 import game.system.Entity
 import io.property._
@@ -8,7 +10,10 @@ import util.geometry.Aabb
 
 object BoundingAabbComponent extends ComponentType("BoundingAabb") {
   private val arr = MacroPropertySet.make[BoundingAabbComponent]()
-  private val propertySet: PropertySet = new PropertySet("BoundingAabbComponent", arr)
+  private val propertySet: PropertySet = new PropertySet("BoundingAabbComponent", arr) {
+    customConverter("mask", CullingSystem.MaskConverter)
+  }
+
   override def make = new BoundingAabbComponent
   override type Type = BoundingAabbComponent
 }

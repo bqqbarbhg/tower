@@ -8,16 +8,37 @@ import game.system.Entity._
 import util.geometry._
 import CullingSystem._
 import CullingSystemImpl._
+import io.property._
 import ui.DebugDraw
 
 object CullingSystem {
 
   case class RayHit(entity: Entity, t: Double)
 
-  val MaskRender = 0x01
-  val MaskShadow = 0x02
-  val MaskLight = 0x04
-  val MaskGameplay = 0x08
+  val MaskRender = 1 << 0
+  val MaskShadow = 1 << 1
+  val MaskLight = 1 << 2
+
+  val MaskTower = 1 << 3
+  val MaskEnemy = 1 << 4
+  val MaskAnyGameplay = MaskTower | MaskEnemy
+
+  val NameToFlag = Map(
+    "Render" -> MaskRender,
+    "Shadow" -> MaskShadow,
+    "Light" -> MaskLight,
+    "Tower" -> MaskTower,
+    "Enemy" -> MaskEnemy,
+  )
+
+  object MaskConverter extends PropertySet.CustomConverter {
+    override def set(inst: PropertyContainer, prop: Property, value: String): Unit = {
+      val split = value.split(' ')
+      val flags = split.foldLeft(0)((flag, str) => flag | NameToFlag(str))
+      val p = prop.asInstanceOf[IntProp]
+      p.set(inst, flags)
+    }
+  }
 
 }
 
@@ -76,7 +97,7 @@ object CullingSystemImpl {
 
   val MaskTreeRender = MaskRender | MaskShadow
   val MaskTreeLight = MaskLight
-  val MaskTreeGameplay = MaskGameplay
+  val MaskTreeGameplay = MaskAnyGameplay
 
   final case class ContainerRef(container: CullableContainer, pool: Int, index: Int) {
     def release(): Unit = {

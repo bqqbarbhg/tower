@@ -429,6 +429,10 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     val s = new Scheduler()
 
+    s.add("Dynamic cullables")(cullingSystem)() {
+      cullingSystem.updateDynamicCullables()
+    }
+
     s.add("Viewport cull")(cullingSystem, DepEntities)() {
       cullingSystem.cullEntities(visibleEntities, frustum, CullingSystem.MaskRender)
     }
@@ -509,7 +513,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       cullingSystem.debugDrawCulling(frustum, CullingSystem.MaskRender)
     }
     if (DebugView.cullGameplay) {
-      cullingSystem.debugDrawCulling(frustum, CullingSystem.MaskGameplay)
+      cullingSystem.debugDrawCulling(frustum, CullingSystem.MaskAnyGameplay)
     }
 
     val renderer = Renderer.get

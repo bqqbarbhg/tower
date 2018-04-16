@@ -22,21 +22,27 @@ sealed trait EnemySystem extends EntityDeleteListener {
 
 object EnemySystemImpl {
 
+  val StateUndefined = 0
+  val StateActive = 1
+
   class Enemy(val entity: Entity, val component: EnemyComponent) extends CompactArrayPool.Element {
+    var state: Int = StateUndefined
   }
 
 }
 
 final class EnemySystemImpl extends EnemySystem {
 
-  val enemies = new CompactArrayPool[Enemy]()
+  val enemiesActive = new CompactArrayPool[Enemy]()
+
   val entityToEnemy = new mutable.HashMap[Entity, Enemy]()
 
   override def addEnemy(entity: Entity, component: EnemyComponent): Unit = {
     require(!entity.hasFlag(Flag_Enemy))
 
     val enemy = new Enemy(entity, component)
-    enemies.add(enemy)
+    enemy.state = StateActive
+    enemiesActive.add(enemy)
     entity.setFlag(Flag_Enemy)
     entityToEnemy(entity) = enemy
   }
@@ -44,13 +50,17 @@ final class EnemySystemImpl extends EnemySystem {
   override def queryEnemiesAround(position: Vector3, radius: Double): Iterator[Entity] = {
     // @Todo: Optimize this if needed...
     val radiusSq = radius * radius
-    enemies.iterator.filter(_.entity.position.distanceSquaredTo(position) <= radiusSq).map(_.entity)
+    enemiesActive.iterator.filter(_.entity.position.distanceSquaredTo(position) <= radiusSq).map(_.entity)
   }
 
   override def entitiesDeleted(entities: EntitySet): Unit = {
     for (e <- entities.flag(Flag_Enemy)) {
       val enemy = entityToEnemy.remove(e).get
-      enemies.remove(enemy)
+
+      if (enemy.state == StateActive) {
+        enemiesActive.remove(enemy)
+      }
+
       e.clearFlag(Flag_Enemy)
     }
   }

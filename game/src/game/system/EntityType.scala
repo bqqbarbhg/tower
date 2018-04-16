@@ -15,6 +15,9 @@ object EntityType {
     buffer.verifyMagic("s2es")
     val version = buffer.getVersion(MaxVersion)
 
+    val flags = buffer.getInt()
+    val static = (flags & 0x01) != 0
+
     val numComponents = buffer.getInt()
 
     val reader = new UnstructuredBinaryReader(buffer)
@@ -31,7 +34,7 @@ object EntityType {
 
     buffer.verifyMagic("E.es")
 
-    new EntityType(true, name, components)
+    new EntityType(static, name, components)
   }
 
 }
