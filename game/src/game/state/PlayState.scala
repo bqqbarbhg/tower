@@ -586,8 +586,6 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       cable.drawPulse()
     }
 
-    renderer.setMode(DepthTest, BlendPremultipliedAlpha, CullNone)
-
     bulletSystem.renderBullets(viewProjection, cameraPos)
 
     buildSystem.renderIngameGui(viewProjection)
