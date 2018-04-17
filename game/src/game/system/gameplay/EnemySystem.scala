@@ -8,6 +8,7 @@ import game.component._
 import game.system.gameplay._
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 sealed trait EnemySystem extends EntityDeleteListener {
 
@@ -24,6 +25,9 @@ sealed trait EnemySystem extends EntityDeleteListener {
   /** Do damage to an enemy */
   def doDamage(entity: Entity, amount: Double): Unit
 
+  /** Do damage to an enemy after some time */
+  def doDamageDelayed(entity: Entity, amount: Double, delay: Double): Unit
+
 }
 
 object EnemySystemImpl {
@@ -38,6 +42,8 @@ object EnemySystemImpl {
     var aimPos: Vector3 = Vector3.Zero
   }
 
+  class DelayedDamage(val entity: Entity, val damage: Double, var timeLeft: Double)
+
 }
 
 final class EnemySystemImpl extends EnemySystem {
@@ -45,6 +51,7 @@ final class EnemySystemImpl extends EnemySystem {
   val enemiesActive = new CompactArrayPool[Enemy]()
 
   val entityToEnemy = new mutable.HashMap[Entity, Enemy]()
+  val delayedDamage = new ArrayBuffer[DelayedDamage]()
 
   override def addEnemy(entity: Entity, component: EnemyComponent): Unit = {
     require(!entity.hasFlag(Flag_Enemy))
@@ -77,9 +84,28 @@ final class EnemySystemImpl extends EnemySystem {
   }
 
   override def update(dt: Double): Unit = {
+    {
+      var ix = 0
+      while (ix < delayedDamage.length) {
+        val damage = delayedDamage(ix)
+        damage.timeLeft -= dt
+        if (damage.timeLeft <= 0.0) {
+          doDamage(damage.entity, damage.damage)
+          delayedDamage(ix) = delayedDamage.last
+          delayedDamage.trimEnd(1)
+        } else {
+          ix += 1
+        }
+      }
+    }
+
     for (enemy <- enemiesActive) {
       enemy.aimPos = enemy.entity.transformPoint(enemy.component.aimPosition)
     }
+  }
+
+  override def doDamageDelayed(entity: Entity, amount: Double, delay: Double): Unit = {
+    delayedDamage += new DelayedDamage(entity, amount, delay)
   }
 
   override def doDamage(entity: Entity, amount: Double): Unit = {
@@ -90,6 +116,9 @@ final class EnemySystemImpl extends EnemySystem {
         enemy.entity.delete()
       }
     }
+
+
+
   }
 
 }

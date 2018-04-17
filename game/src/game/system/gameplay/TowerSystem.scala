@@ -203,19 +203,24 @@ object TowerSystemImpl {
 
       val hit = sharedShootRes.nonEmpty
       var rayT = 0.0
+      var rayEntity: Option[Entity] = None
       val minT = if (hit) {
         val closest = sharedShootRes.minBy(_.t)
-        enemySystem.doDamage(closest.entity, component.shootDamage)
         rayT = closest.t
+        rayEntity = Some(closest.entity)
         shootPos.distanceTo(closest.entity.position)
       } else {
         component.shootDistance
       }
 
       val realT = minT - component.bulletExitDistance
-      if (realT > 0.1) {
-        val bulletDuration = realT * 0.005
+      val bulletDuration = realT * 0.005
 
+      for (enemy <- rayEntity) {
+        enemySystem.doDamageDelayed(enemy, component.shootDamage, bulletDuration)
+      }
+
+      if (realT > 0.1) {
         val pos = shootPos + dir * component.bulletExitDistance
         val smokePos = shootPos + dir * component.smokeExitDistance
         val size = Vector2(14.0, 8.0)
