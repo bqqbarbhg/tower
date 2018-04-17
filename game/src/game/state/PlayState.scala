@@ -47,6 +47,8 @@ object PlayState {
   val CablePulseMask = TextureAsset("effect/pulse/mask/basic.png.s2tx")
   val CablePulseTex = TextureAsset("effect/pulse/tex/hexagon.png.s2tx")
 
+  val DrillEntity = EntityTypeAsset("entity/tower/drill.es.toml")
+
   val Assets = new AssetBundle("PlayState",
     PauseMenu.Assets,
     TutorialSystem.Assets,
@@ -54,6 +56,7 @@ object PlayState {
     BuildSystem.Assets,
     BulletSystem.Assets,
 
+    DrillEntity,
     GroundTexture,
     Colorgrade,
     GroundShader,
@@ -99,15 +102,17 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     if (loadExisting)
       loadGame()
 
+    entitySystem.create(DrillEntity.get, Vector3(0.0, 0.0, -16.0))
+
     {
-      val entity = entitySystem.create(EntityTypeAsset("entity/enemy/test.es.toml").get, Vector3(0.0, 0.0, -5.0))
+      val entity = entitySystem.create(EntityTypeAsset("entity/enemy/test.es.toml").get, Vector3(20.0, 0.0, -5.0))
       val model = modelSystem.collectModels(entity).head
       val anim = animationSystem.addAnimator(entity, model)
       anim.playLoop(0, Identifier("Move"))
     }
 
     {
-      val entity = entitySystem.create(EntityTypeAsset("entity/enemy/test.es.toml").get, Vector3(0.0, 0.0, -16.0))
+      val entity = entitySystem.create(EntityTypeAsset("entity/enemy/test.es.toml").get, Vector3(20.0, 0.0, -16.0))
       val model = modelSystem.collectModels(entity).head
       val anim = animationSystem.addAnimator(entity, model)
       anim.playLoop(0, Identifier("Move"))

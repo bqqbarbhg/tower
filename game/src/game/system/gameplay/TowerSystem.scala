@@ -309,7 +309,7 @@ object TowerSystemImpl {
     val slotOutputA = new Slot(entity, false, "slot.splitter.outputA", component.cableNodeOutA)
     val slotOutputB = new Slot(entity, false, "slot.splitter.outputB", component.cableNodeOutB)
 
-    override def slots: Array[Slot] = Array(
+    override val slots: Array[Slot] = Array(
       slotInput,
       slotOutputA,
       slotOutputB,
@@ -345,7 +345,7 @@ object TowerSystemImpl {
     val slotInputA = new Slot(entity, true, "slot.merger.inputA", component.cableNodeInA)
     val slotInputB = new Slot(entity, true, "slot.merger.inputB", component.cableNodeInB)
 
-    override def slots: Array[Slot] = Array(
+    override val slots: Array[Slot] = Array(
       slotOutput,
       slotInputA,
       slotInputB,
@@ -393,7 +393,7 @@ object TowerSystemImpl {
       blockShapeSerial = -1
     }
 
-    override def slots: Array[Slot] = Array(
+    override val slots: Array[Slot] = Array(
       slotOpen,
     )
 
@@ -434,6 +434,64 @@ object TowerSystemImpl {
       for (node <- doorNode) {
         val t = smoothStep(openAmount)
         node.localTransform = Matrix43.translate(component.moveAmount * t)
+      }
+    }
+  }
+
+  object Drill {
+    val IdleAnim = Identifier("Idle")
+    val DrillAnim = Identifier("Drill")
+  }
+
+  class Drill(val entity: Entity, val component: DrillTowerComponent) extends Tower {
+    import Drill._
+
+    val model = modelSystem.collectModels(entity).head
+    var rotateNode: Option[NodeInstance] = model.findNode(component.rotateBone)
+    val animator = animationSystem.addAnimator(entity, model)
+
+    animator.playLoop(0, IdleAnim)
+
+    var prevAngle = 0.0
+    var turnAmount = 0.0
+    var turnTime = Double.MaxValue
+
+    var rotation = 0.0
+
+    var animation: Option[AnimationSystem.AnimationChannel] = None
+
+    override val slots: Array[Slot] = Array()
+
+    override def update(dt: Double): Unit = {
+      for (anim <- animation) {
+        if (anim.isDone) {
+          animation = None
+        }
+        return
+      }
+
+      if (turnTime >= component.turnDuration + component.turnWaitTime) {
+
+        if (sharedRandom.nextDouble <= component.drillChance) {
+          animation = Some(animator.playOnce(1, DrillAnim, 0.1, 0.1))
+        } else {
+          turnTime = 0.0
+          prevAngle = wrapAngle(rotation)
+          turnAmount = (sharedRandom.nextDouble() * 2.0 - 1.0) * math.Pi
+        }
+
+      } else {
+        turnTime += dt
+        val relT = turnTime / component.turnDuration
+        val t = smoothStep(clamp(relT, 0.0, 1.0))
+        rotation = prevAngle + turnAmount * t
+      }
+
+    }
+
+    override def updateVisible(): Unit = {
+      for (node <- rotateNode) {
+        node.localTransform = Matrix43.rotateZ(rotation)
       }
     }
   }
@@ -484,6 +542,7 @@ final class TowerSystemImpl extends TowerSystem {
       case c: SplitterComponent => new Splitter(entity, c)
       case c: MergerComponent => new Merger(entity, c)
       case c: WallDoorComponent => new WallDoor(entity, c)
+      case c: DrillTowerComponent => new Drill(entity, c)
     }
 
     if (entity.hasFlag(Flag_Tower)) {

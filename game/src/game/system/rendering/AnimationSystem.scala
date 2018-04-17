@@ -22,6 +22,8 @@ object AnimationSystem {
     def time: Double
     def time_=(v: Double): Unit
 
+    def isDone: Boolean
+
     /** Abruptly remove the animation from the animator */
     def stop(): Unit
   }
@@ -62,6 +64,9 @@ object AnimationSystemImpl {
     val sortKey: Long = (layer.toLong << 32L) | (serial.toLong & 0xFFFFFFFFL)
 
     var done: Boolean = false
+
+
+    override def isDone: Boolean = done
 
     override def stop(): Unit = done = true
 

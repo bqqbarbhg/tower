@@ -15,6 +15,7 @@ object ComponentType {
     SplitterComponent,
     MergerComponent,
     WallDoorComponent,
+    DrillTowerComponent,
   )
 
 }
