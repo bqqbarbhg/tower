@@ -113,6 +113,7 @@ object TowerSystemImpl {
 
   val MaxShootRes = 16
   val sharedShootRes = new ArrayBuffer[RayHit](MaxShootRes)
+  val sharedRandom = new Random()
 
   class Turret(val entity: Entity, val component: TurretTowerComponent) extends Tower {
     val model = modelSystem.collectModels(entity).head
@@ -190,14 +191,22 @@ object TowerSystemImpl {
     }
 
     def shoot(): Unit = {
-      val dir = (targetPos - shootPos).normalizeOr { return }
+      val originalDir = (targetPos - shootPos).normalizeOr { return }
+      val dir = (originalDir + Vector3(
+        (sharedRandom.nextDouble - 0.5) * component.spread.x,
+        (sharedRandom.nextDouble - 0.5) * component.spread.y,
+        (sharedRandom.nextDouble - 0.5) * component.spread.z,
+      )).normalizeOr { return }
       val ray = Ray(shootPos, dir)
 
       cullingSystem.queryRay(ray, component.shootDistance, MaxShootRes, CullingSystem.MaskEnemy, sharedShootRes)
 
-      val minT = if (sharedShootRes.nonEmpty) {
+      val hit = sharedShootRes.nonEmpty
+      var rayT = 0.0
+      val minT = if (hit) {
         val closest = sharedShootRes.minBy(_.t)
         enemySystem.doDamage(closest.entity, component.shootDamage)
+        rayT = closest.t
         shootPos.distanceTo(closest.entity.position)
       } else {
         component.shootDistance
@@ -205,13 +214,24 @@ object TowerSystemImpl {
 
       val realT = minT - component.bulletExitDistance
       if (realT > 0.1) {
+        val bulletDuration = realT * 0.005
+
         val pos = shootPos + dir * component.bulletExitDistance
         val smokePos = shootPos + dir * component.smokeExitDistance
         val size = Vector2(14.0, 8.0)
         val beginColor = Color(1.0, 1.0, 1.0)
         val endColor = Color(0.1, 0.1, 0.1)
-        bulletSystem.addBullet(pos, dir * realT, realT * 0.005)
+        bulletSystem.addBullet(pos, dir * realT, bulletDuration)
         bulletSystem.addSmoke(smokePos, dir, 0.5, size, beginColor, endColor)
+
+        if (hit) {
+          val random = Vector3(sharedRandom.nextDouble - 0.5, sharedRandom.nextDouble - 0.5, sharedRandom.nextDouble - 0.5).normalizeOrZero
+          val right = (dir cross random).normalizeOrZero
+          val up = (right cross dir).normalizeOrZero
+          val t = rayT + 0.5
+          bulletSystem.addHit(shootPos + dir * t, right, 0.1, bulletDuration)
+          bulletSystem.addHit(shootPos + dir * t, up, 0.1, bulletDuration)
+        }
       }
 
       sharedShootRes.clear()

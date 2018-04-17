@@ -62,6 +62,9 @@ class TurretTowerComponent extends Component {
   /** Distance from `shootOrigin` to spawn smoke from */
   var smokeExitDistance: DoubleProp.Type = 0.0
 
+  /** Random offset the shot bullets */
+  var spread: Vector3Prop.Type = Vector3.Zero
+
   override def dependencies: Iterable[ComponentType] = Some(ModelComponent)
 
   override def create(entity: Entity): Unit = {
