@@ -14,6 +14,7 @@ object ComponentType {
     RotatingRadarComponent,
     SplitterComponent,
     MergerComponent,
+    WallDoorComponent,
   )
 
 }

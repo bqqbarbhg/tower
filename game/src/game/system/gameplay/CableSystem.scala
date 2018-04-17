@@ -168,19 +168,19 @@ object CableSystemImpl {
       val idy = 1.0 / d.y
 
       for (blocker <- blockers) {
-        var t1 = blocker.minWorld.x * idx
-        var t2 = blocker.maxWorld.x * idx
+        var t1 = (blocker.minWorld.x - a.x) * idx
+        var t2 = (blocker.maxWorld.x - a.x) * idx
 
         var tMin = math.min(t1, t2)
         var tMax = math.max(t1, t2)
 
-        t1 = blocker.minWorld.y * idy
-        t2 = blocker.maxWorld.y * idy
+        t1 = (blocker.minWorld.y - a.y) * idy
+        t2 = (blocker.maxWorld.y - a.y) * idy
 
         tMin = math.max(tMin, math.min(t1, t2))
         tMax = math.min(tMax, math.max(t1, t2))
 
-        if (tMin <= tMax && tMax >= 0.0 && tMax <= diffLen) {
+        if (tMin <= tMax && tMax >= 0.0 && tMin <= diffLen) {
           return false
         }
       }
@@ -210,13 +210,22 @@ final class CableSystemImpl extends CableSystem {
   val cablesToGenerate = new ArrayBuffer[CableImpl]()
 
   case class GroundSearchState(x: Int, y: Int, gxMin: Int, gxMax: Int, gyMin: Int, gyMax: Int, goalEntity: Entity, goalLink: Vector3) extends AStar.State[GroundSearchState] {
-    def weight: Double = {
-      var score = cells.getCell(Math.floorDiv(x, 2), Math.floorDiv(y, 2)).map(c => {
-        if (goal) 1.0 else {
-          if (!c.testPoint(x * CellSize.x * 0.5 + CellOffset.x, y * CellSize.y * 0.5 + CellOffset.y, Some(goalEntity))) return 100.0
-          1.0 + c.moveWeight * CableTweak.surroundingBlockerWeight
+    val pos = Vector2(x * CellSize.x * 0.5 + CellOffset.x, y * CellSize.y * 0.5 + CellOffset.y)
+    val cell = cells.getCell(Math.floorDiv(x, 2), Math.floorDiv(y, 2))
+
+    def weight(prevPos: Vector2, prevCell: Option[GroundCell]): Double = {
+      if (prevCell != cell) {
+        for (c <- prevCell) {
+          if (!c.testLineSegment(prevPos, pos)) return 100.0
         }
-      }).getOrElse(1.0)
+      }
+
+      var score = cell match {
+        case Some(c) =>
+          if (!c.testLineSegment(prevPos, pos)) return 100.0
+          1.0 + c.moveWeight * CableTweak.surroundingBlockerWeight
+        case None => 1.0
+      }
 
       if (goal) {
         score += extraWeightToDistance(goalLink, x, y)
@@ -231,10 +240,10 @@ final class CableSystemImpl extends CableSystem {
       val c = GroundSearchState(x, y - 1, gxMin, gxMax, gyMin, gyMax, goalEntity, goalLink)
       val d = GroundSearchState(x, y + 1, gxMin, gxMax, gyMin, gyMax, goalEntity, goalLink)
       val res = new Array[(GroundSearchState, Double)](4)
-      res(0) = (a, a.weight)
-      res(1) = (b, b.weight)
-      res(2) = (c, c.weight)
-      res(3) = (d, d.weight)
+      res(0) = (a, a.weight(pos, cell))
+      res(1) = (b, b.weight(pos, cell))
+      res(2) = (c, c.weight(pos, cell))
+      res(3) = (d, d.weight(pos, cell))
       res
     }
     override def heuristic: Double = {
@@ -489,13 +498,14 @@ final class CableSystemImpl extends CableSystem {
 
   override def generateCables(): Unit = {
     for (cable <- cablesToGenerate) {
-      if (cable.deleted) return
-      cable.needsToBeGenerated = false
+      if (!cable.deleted) {
+        cable.needsToBeGenerated = false
 
-      if (cable.entityImpl != null) {
-        cable.entityImpl.delete()
+        if (cable.entityImpl != null) {
+          cable.entityImpl.delete()
+        }
+        generateCable(cable)
       }
-      generateCable(cable)
     }
 
     cablesToGenerate.clear()
@@ -548,8 +558,12 @@ final class CableSystemImpl extends CableSystem {
   override def addGroundBlocker(entity: Entity, min: Vector2, max: Vector2): Unit = {
     val next = if (entity.hasFlag(Flag_GroundBlocker)) entityToGroundBlocker(entity) else null
 
-    val worldMin = Vector2(entity.position.x, entity.position.z) + min
-    val worldMax = Vector2(entity.position.x, entity.position.z) + max
+    val worldA = entity.transformPoint(Vector3(min.x, 0.0, min.y))
+    val worldB = entity.transformPoint(Vector3(max.x, 0.0, max.y))
+    val worldMin3D = Vector3.min(worldA, worldB)
+    val worldMax3D = Vector3.max(worldA, worldB)
+    val worldMin = Vector2(worldMin3D.x, worldMin3D.z)
+    val worldMax = Vector2(worldMax3D.x, worldMax3D.z)
     val cellMin = cells.getCellPosition(worldMin)
     val cellMax = cells.getCellPosition(worldMax)
     val blocker = new GroundBlocker(entity, cellMin.x, cellMin.y, cellMax.x, cellMax.y, worldMin, worldMax, next)
@@ -577,6 +591,10 @@ final class CableSystemImpl extends CableSystem {
   }
 
   override def debugDrawGroundBlockers(): Unit = {
+
+    val c = cells.createCellContaining(Vector2(16.0, 8.0))
+    c.testLineSegment(Vector2(16.0 -3.0, 8.0), Vector2(16.0 +3.0, 8.0))
+
     for (cell <- cells) {
       val min2D = cellToWorld(cell.x, cell.y)
       val min = Vector3(min2D.x, 0.0, min2D.y)

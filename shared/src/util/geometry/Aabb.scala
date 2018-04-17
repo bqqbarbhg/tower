@@ -48,5 +48,13 @@ final case class Aabb(center: Vector3, halfSize: Vector3) {
     adx <= 0.0 && ady <= 0.0 && adz <= 0.0
   }
 
+  def rotate(rotation: Quaternion): Aabb = {
+    val rotatedMin = rotation.rotate(min)
+    val rotatedMax = rotation.rotate(max)
+    val newMin = Vector3.min(rotatedMin, rotatedMax)
+    val newMax = Vector3.max(rotatedMin, rotatedMax)
+    Aabb.fromMinMax(newMin, newMax)
+  }
+
 }
 

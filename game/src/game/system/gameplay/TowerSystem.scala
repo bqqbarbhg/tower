@@ -305,7 +305,6 @@ object TowerSystemImpl {
   }
 
   class Splitter(val entity: Entity, val component: SplitterComponent) extends Tower {
-    val random = new Random()
     val slotInput = new Slot(entity, true, "slot.splitter.input", component.cableNodeIn)
     val slotOutputA = new Slot(entity, false, "slot.splitter.outputA", component.cableNodeOutA)
     val slotOutputB = new Slot(entity, false, "slot.splitter.outputB", component.cableNodeOutB)
@@ -323,7 +322,7 @@ object TowerSystemImpl {
         case msg =>
 
           if (slotOutputA.isEmpty && slotOutputB.isEmpty) {
-            if (random.nextBoolean()) {
+            if (sharedRandom.nextBoolean()) {
               slotOutputA.sendQueued(msg)
             } else {
               slotOutputB.sendQueued(msg)
@@ -342,7 +341,6 @@ object TowerSystemImpl {
   }
 
   class Merger(val entity: Entity, val component: MergerComponent) extends Tower {
-    val random = new Random()
     val slotOutput = new Slot(entity, false, "slot.merger.output", component.cableNodeOut)
     val slotInputA = new Slot(entity, true, "slot.merger.inputA", component.cableNodeInA)
     val slotInputB = new Slot(entity, true, "slot.merger.inputB", component.cableNodeInB)
@@ -368,6 +366,75 @@ object TowerSystemImpl {
     }
 
     override def updateVisible(): Unit = {
+    }
+  }
+
+  class WallDoor(val entity: Entity, val component: WallDoorComponent) extends Tower {
+    val model = modelSystem.collectModels(entity).head
+    var doorNode: Option[NodeInstance] = model.findNode(component.doorBone)
+
+    val slotOpen = new Slot(entity, true, "slot.wallDoor.open")
+
+    var isOpen = false
+    var openAmount: Double = 0.0
+
+    var blockShapeSerial = -1
+    val blockAabb = Aabb.fromMinMax(component.blockMin, component.blockMax)
+    var closedTimer: Double = 0.0
+
+    def createBlockShape(): Unit = {
+      if (blockShapeSerial >= 0) return
+      blockShapeSerial = cullingSystem.addAabb(entity, blockAabb, CullingSystem.MaskEnemy)
+    }
+
+    def removeBlockShape(): Unit = {
+      if (blockShapeSerial < 0) return
+      cullingSystem.removeShape(entity, blockShapeSerial)
+      blockShapeSerial = -1
+    }
+
+    override def slots: Array[Slot] = Array(
+      slotOpen,
+    )
+
+    override def update(dt: Double): Unit = {
+
+      if (closedTimer >= 0.0)
+        closedTimer -= dt
+
+      if (slotOpen.connection.isDefined) {
+
+        slotOpen.pop match {
+          case MessageNone =>
+          case msg => closedTimer = component.closeTime
+        }
+
+        isOpen = closedTimer <= 0.01
+
+      } else {
+        isOpen = false
+      }
+
+      if (isOpen) {
+        openAmount += dt / component.openDuration
+      } else {
+        openAmount -= dt / component.openDuration
+      }
+
+      if (openAmount > 0.5) {
+        removeBlockShape()
+      } else {
+        createBlockShape()
+      }
+
+      openAmount = clamp(openAmount, 0.0, 1.0)
+    }
+
+    override def updateVisible(): Unit = {
+      for (node <- doorNode) {
+        val t = smoothStep(openAmount)
+        node.localTransform = Matrix43.translate(component.moveAmount * t)
+      }
     }
   }
 
@@ -416,6 +483,7 @@ final class TowerSystemImpl extends TowerSystem {
       case c: RotatingRadarComponent => new RotatingRadar(entity, c)
       case c: SplitterComponent => new Splitter(entity, c)
       case c: MergerComponent => new Merger(entity, c)
+      case c: WallDoorComponent => new WallDoor(entity, c)
     }
 
     if (entity.hasFlag(Flag_Tower)) {

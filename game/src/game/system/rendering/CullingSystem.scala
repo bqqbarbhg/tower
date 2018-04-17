@@ -56,10 +56,13 @@ sealed trait CullingSystem extends EntityDeleteListener {
   def cullEntities(set: EntitySet, frustum: Frustum, mask: Int): Unit
 
   /** Attach an axis aligned bounding box to the entity. */
-  def addAabb(entity: Entity, aabb: Aabb, mask: Int): Unit
+  def addAabb(entity: Entity, aabb: Aabb, mask: Int): Int
 
   /** Attach a bounding sphere to the entity. */
-  def addSphere(entity: Entity, sphere: Sphere, mask: Int): Unit
+  def addSphere(entity: Entity, sphere: Sphere, mask: Int): Int
+
+  /** Remove a previously attached shape */
+  def removeShape(entity: Entity, serial: Int): Unit
 
   /** Add an entity that is always visible */
   def addAlwaysVisible(entity: Entity, mask: Int): Unit
@@ -99,7 +102,7 @@ object CullingSystemImpl {
   val MaskTreeLight = MaskLight
   val MaskTreeGameplay = MaskAnyGameplay
 
-  final case class ContainerRef(container: CullableContainer, pool: Int, index: Int) {
+  final case class ContainerRef(container: CullableContainer, pool: Int, index: Int, serial: Int) {
     def release(): Unit = {
       if (pool == PoolAabb) {
         container.aabbList.remove(index)
@@ -120,13 +123,68 @@ object CullingSystemImpl {
 
     var dynamicIndex: Int = -1
     var alwaysVisibleIndex: Int = -1
+
+    def removeShape(serial: Int): Unit = {
+
+      // Remove AABB
+      {
+        var prev: ShapeAabb = null
+        var shape = aabb
+        while (shape != null) {
+          if (shape.serial == serial) {
+            if (prev != null) {
+              prev.next = shape.next
+            } else {
+              aabb = shape.next
+            }
+            shape = null
+          } else {
+            prev = shape
+            shape = shape.next
+          }
+        }
+      }
+
+      // Remove sphere
+      {
+        var prev: ShapeSphere = null
+        var shape = sphere
+        while (shape != null) {
+          if (shape.serial == serial) {
+            if (prev != null) {
+              prev.next = shape.next
+            } else {
+              sphere = shape.next
+            }
+            shape = null
+          } else {
+            prev = shape
+            shape = shape.next
+          }
+        }
+      }
+
+      // Remove ref
+      var ix = 0
+      while (ix < refs.length) {
+        val ref = refs(ix)
+        if (ref.serial == serial) {
+          ref.release()
+          refs(ix) = refs.last
+          refs.trimEnd(1)
+        } else {
+          ix += 1
+        }
+      }
+
+    }
   }
 
-  final class ShapeAabb(val cullable: Cullable, var localAabb: Aabb, var aabb: Aabb, var mask: Int, val next: ShapeAabb) {
+  final class ShapeAabb(val cullable: Cullable, var localAabb: Aabb, var aabb: Aabb, var mask: Int, var next: ShapeAabb, val serial: Int) {
     var lastPassAdded: Int = -1
   }
 
-  final class ShapeSphere(val cullable: Cullable, var localSphere: Sphere, var sphere: Sphere, var mask: Int, val next: ShapeSphere) {
+  final class ShapeSphere(val cullable: Cullable, var localSphere: Sphere, var sphere: Sphere, var mask: Int, var next: ShapeSphere, val serial: Int) {
     var lastPassAdded: Int = -1
   }
 
@@ -139,25 +197,25 @@ object CullingSystemImpl {
 
     def add(shape: ShapeAabb): Unit = {
       val ix = aabbList.add(shape)
-      shape.cullable.refs += ContainerRef(this, PoolAabb, ix)
+      shape.cullable.refs += ContainerRef(this, PoolAabb, ix, shape.serial)
     }
 
     def add(shape: ShapeSphere): Unit = {
       val ix = sphereList.add(shape)
-      shape.cullable.refs += ContainerRef(this, PoolSphere, ix)
+      shape.cullable.refs += ContainerRef(this, PoolSphere, ix, shape.serial)
     }
 
     def clear(): Unit = {
       for ((shape, index) <- aabbList.sparseData.zipWithIndex) {
         if (shape != null) {
-          val ref = ContainerRef(this, PoolAabb, index)
+          val ref = ContainerRef(this, PoolAabb, index, shape.serial)
           shape.cullable.refs -= ref
         }
       }
 
       for ((shape, index) <- sphereList.sparseData.zipWithIndex) {
         if (shape != null) {
-          val ref = ContainerRef(this, PoolSphere, index)
+          val ref = ContainerRef(this, PoolSphere, index, shape.serial)
           shape.cullable.refs -= ref
         }
       }
@@ -194,6 +252,7 @@ final class CullingSystemImpl extends CullingSystem {
   val narrowSpheres = new ArrayBuffer[ShapeSphere]()
 
   var currentPass: Int = 0
+  var currentSerial: Int = 0
 
   val globalContainer = new CullableContainer()
 
@@ -205,6 +264,11 @@ final class CullingSystemImpl extends CullingSystem {
   val quadTreeRender = new QuadTreeNode(Aabb(QuadTreeOrigin, QuadTreeSize * 0.5), 1)
   val quadTreeLight = new QuadTreeNode(Aabb(QuadTreeOrigin, QuadTreeSize * 0.5), 1)
   val quadTreeGameplay = new QuadTreeNode(Aabb(QuadTreeOrigin, QuadTreeSize * 0.5), 1)
+
+  def nextSerial(): Int = {
+    currentSerial += 1
+    currentSerial
+  }
 
   class QuadTreeNode(val bounds: Aabb, val level: Int) {
     val maxOfSizeXZ = math.max(bounds.halfSize.x, bounds.halfSize.z)
@@ -502,20 +566,30 @@ final class CullingSystemImpl extends CullingSystem {
     res.toArray
   }
 
-  override def addAabb(entity: Entity, aabb: Aabb, mask: Int): Unit = {
+  override def addAabb(entity: Entity, aabb: Aabb, mask: Int): Int = {
     val cullable = getOrAddCullable(entity)
 
-    cullable.aabb = new ShapeAabb(cullable, aabb, null, mask, cullable.aabb)
+    val rotatedAabb = if (entity.rotation != Quaternion.Identity) {
+      aabb.rotate(entity.rotation)
+    } else {
+      aabb
+    }
+
+    cullable.aabb = new ShapeAabb(cullable, rotatedAabb, null, mask, cullable.aabb, nextSerial())
     if (cullable.dynamicIndex < 0)
       addShape(cullable.aabb)
+
+    cullable.aabb.serial
   }
 
-  override def addSphere(entity: Entity, sphere: Sphere, mask: Int): Unit = {
+  override def addSphere(entity: Entity, sphere: Sphere, mask: Int): Int = {
     val cullable = getOrAddCullable(entity)
 
-    cullable.sphere = new ShapeSphere(cullable, sphere, null, mask, cullable.sphere)
+    cullable.sphere = new ShapeSphere(cullable, sphere, null, mask, cullable.sphere, nextSerial())
     if (cullable.dynamicIndex < 0)
       addShape(cullable.sphere)
+
+    cullable.sphere.serial
   }
 
   override def addAlwaysVisible(entity: Entity, mask: Int): Unit = {
@@ -524,6 +598,12 @@ final class CullingSystemImpl extends CullingSystem {
     if (cullable.alwaysVisibleIndex < 0) {
       cullable.alwaysVisibleIndex = alwaysVisible.add(new AlwaysVisible(cullable, mask))
     }
+  }
+
+  override def removeShape(entity: Entity, serial: Int): Unit = {
+    val cullable = getOrAddCullable(entity)
+
+    cullable.removeShape(serial)
   }
 
   override def removeCullables(entity: Entity): Unit = {

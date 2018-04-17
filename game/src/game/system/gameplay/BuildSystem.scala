@@ -144,6 +144,7 @@ object BuildSystemImpl {
     Quaternion.fromAxisAngle(Vector3.Up, math.Pi * -1.5),
   )
 
+  val BuildRotationSwapXY = Array(false, true, false, true)
   val GridSize = 4.0
 }
 
@@ -227,8 +228,11 @@ final class BuildSystemImpl extends BuildSystem {
 
       val t = ray.intersect(GroundPlane)
       var groundPoint = t.map(ray.point).map(point => {
-        val w = buildC.gridWidth
-        val h = buildC.gridHeight
+        val (w, h) = if (BuildRotationSwapXY(buildRotationIndex)) {
+          (buildC.gridHeight, buildC.gridWidth)
+        } else {
+          (buildC.gridWidth, buildC.gridHeight)
+        }
         val offX = 0.5 * (w - 1)
         val offY = 0.5 * (h - 1)
         val roundX = (math.round(point.x / GridSize - offX) + offX) * GridSize

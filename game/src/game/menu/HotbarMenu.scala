@@ -96,6 +96,10 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
     new Item(EntityTypeAsset("entity/tower/merger.es.toml").get),
   )
 
+  categories(3).items = Vector(
+    new Item(EntityTypeAsset("entity/tower/wall_door.es.toml").get),
+  )
+
   var openCategory: Option[Category] = None
   var selectedItem: Option[Item] = None
 
