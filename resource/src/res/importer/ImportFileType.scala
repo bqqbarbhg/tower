@@ -27,7 +27,7 @@ sealed abstract class ImportFileType {
 }
 
 object ImportFileImage extends ImportFileType {
-  def version = 29
+  def version = 30
 
   def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
     dst.image = src.image

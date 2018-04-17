@@ -64,7 +64,7 @@ object LightmapRectanglePacker extends RectanglePacker {
 
   private def sortSizes(sizes: Seq[(Int, Extents)]): Iterable[(Int, Extents)] = {
     // Sort by larger extent, but break ties with the smaller one
-    sizes.sortBy(pair => math.max(pair._2.w, pair._2.h) * 32 + math.min(pair._2.w, pair._2.h))
+    sizes.sortBy(pair => math.max(pair._2.w, pair._2.h) * 32 + math.min(pair._2.w, pair._2.h)).reverse
   }
 
   override def pack(container: Extents, sizes: Map[Int, Extents]): Map[Int, Rectangle] = {
