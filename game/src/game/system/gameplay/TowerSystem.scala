@@ -208,9 +208,10 @@ object TowerSystemImpl {
         val pos = shootPos + dir * component.bulletExitDistance
         val smokePos = shootPos + dir * component.smokeExitDistance
         val size = Vector2(14.0, 8.0)
-        val color = Color(0.1, 0.1, 0.1)
+        val beginColor = Color(1.0, 1.0, 1.0)
+        val endColor = Color(0.1, 0.1, 0.1)
         bulletSystem.addBullet(pos, dir * realT, realT * 0.005)
-        bulletSystem.addSmoke(smokePos, dir, 0.5, size, color)
+        bulletSystem.addSmoke(smokePos, dir, 0.5, size, beginColor, endColor)
       }
 
       sharedShootRes.clear()

@@ -27,7 +27,7 @@ sealed trait BulletSystem {
   def addBullet(start: Vector3, distance: Vector3, duration: Double): Unit
 
   /** Add a smoke effect */
-  def addSmoke(position: Vector3, direction: Vector3, duration: Double, size: Vector2, color: Color): Unit
+  def addSmoke(position: Vector3, direction: Vector3, duration: Double, size: Vector2, beginColor: Color, endColor: Color): Unit
 
   /** Move the active bullets */
   def updateBullets(dt: Double): Unit
@@ -45,7 +45,7 @@ object BulletSystemImpl {
   val SmokeSprites = Array.tabulate(16)(ix => Identifier(s"effect/bullet/smoke_puff.png.$ix"))
 
   class Bullet(var position: Vector3, var lifetime: Double, val velocity: Vector3, val direction: Vector3)
-  class Smoke(val position: Vector3, val direction: Vector3, var time: Double, val duration: Double, val size: Vector2, val color: Color)
+  class Smoke(val position: Vector3, val direction: Vector3, var time: Double, val duration: Double, val size: Vector2, val beginColor: Color, val endColor: Color)
 }
 
 final class BulletSystemImpl extends BulletSystem {
@@ -57,8 +57,8 @@ final class BulletSystemImpl extends BulletSystem {
     bullets += new Bullet(start, duration, vel, distance.normalizeOrZero)
   }
 
-  override def addSmoke(position: Vector3, direction: Vector3, duration: Double, size: Vector2, color: Color): Unit = {
-    smokes += new Smoke(position, direction, 0.0, duration, size, color)
+  override def addSmoke(position: Vector3, direction: Vector3, duration: Double, size: Vector2, beginColor: Color, endColor: Color): Unit = {
+    smokes += new Smoke(position, direction, 0.0, duration, size, beginColor, endColor)
   }
 
   override def updateBullets(dt: Double): Unit = {
@@ -113,14 +113,17 @@ final class BulletSystemImpl extends BulletSystem {
         val smoke = smokes(ix)
 
         val size = smoke.size
-        val color = smoke.color
         val anchor = Vector2(0.1, 0.5)
-        val life = math.max((smoke.duration - smoke.time) * 3.0, 0.0)
-        val frameTime = smoke.time / smoke.duration * SmokeSprites.length
+
+        val relTime = smoke.time / smoke.duration
+        val frameTime = relTime * (SmokeSprites.length - 1)
         val frameI = clamp(frameTime.toInt, 0, SmokeSprites.length - 2)
         val frameF = clamp(frameTime - math.floor(frameTime), 0.0, 1.0)
-        bb.drawRight(SmokeSprites(frameI), smoke.position, smoke.direction, size, anchor, color.copy(a = (1.0 - frameF) * life))
-        bb.drawRight(SmokeSprites(frameI + 1), smoke.position, smoke.direction, size, anchor, color.copy(a = frameF * life))
+
+        val color = Color.lerp(smoke.beginColor, smoke.endColor, relTime)
+
+        bb.drawRight(SmokeSprites(frameI), smoke.position, smoke.direction, size, anchor, color.copy(a = 1.0 - frameF))
+        bb.drawRight(SmokeSprites(frameI + 1), smoke.position, smoke.direction, size, anchor, color.copy(a = frameF))
 
         ix += 1
       }
