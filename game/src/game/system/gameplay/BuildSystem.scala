@@ -46,7 +46,7 @@ object BuildSystem {
 
 }
 
-sealed trait BuildSystem {
+sealed trait BuildSystem extends EntityDeleteListener {
 
   /** Set the entity to present to the user as buildable.
     * May be called multiple times with the same entity. */
@@ -108,6 +108,8 @@ object BuildSystemImpl {
 
   val SlotHudEmptySprite = Identifier("gui/hud/cable_slot_empty.png")
   val SlotHudFullSprite = Identifier("gui/hud/cable_slot_full.png")
+  val SlotHudIncompatibleEmptySprite = Identifier("gui/hud/cable_slot_incompatible_empty.png")
+  val SlotHudIncompatibleFullSprite = Identifier("gui/hud/cable_slot_incompatible_full.png")
 
   val WireSprite = Identifier("gui/wire/plain.png")
 
@@ -159,14 +161,15 @@ final class BuildSystemImpl extends BuildSystem {
   var buildRotationIndex: Int = 0
 
   var prevMouseDown: Boolean = false
-  var buildBlockerEntities = new ArrayBuffer[Entity]()
+  var buildBlockerEntities = new mutable.HashSet[Entity]()
   var rayCastResult = new ArrayBuffer[RayHit]()
   var failCooldown: Double = 0.0
   var prevWireGui = mutable.HashMap[Entity, WireGui]()
   var wireGuiEnabled = false
   var selectedTower: Option[Entity] = None
   var hoveredTower: Option[Entity] = None
-  var lastHoveredTower: Option[Entity] = None
+  var prevHoveredTower: Option[Entity] = None
+  var towerHoverTime: Double = 0.0
 
   var hudSlotEntity: Entity = null
   var hudSlotInput = new InputArea()
@@ -178,6 +181,9 @@ final class BuildSystemImpl extends BuildSystem {
 
   var activeSlot: Option[SlotRef] = None
   var activeHudSlot: Option[Slot] = None
+
+  val gridOccupied = new mutable.HashMap[(Int, Int), Entity]()
+  val entityToGridArea = new mutable.HashMap[Entity, (Int, Int, Int, Int)]()
 
   val lineBatch = new LineBatch()
 
@@ -203,12 +209,36 @@ final class BuildSystemImpl extends BuildSystem {
     }
   }
 
+  def collectGridIntersecting(result: mutable.HashSet[Entity], x: Int, y: Int, w: Int, h: Int): Unit = {
+    for (xx <- x until x + w; yy <- y until y + h) {
+      gridOccupied.get(xx, yy) match {
+        case Some(e) => result += e
+        case None =>
+      }
+    }
+  }
+
+  def setGridOccupied(entity: Entity, x: Int, y: Int, w: Int, h: Int): Unit = {
+    entity.setFlag(Flag_GridOccupier)
+    entityToGridArea(entity) = (x, y, w, h)
+    for (xx <- x until x + w; yy <- y until y + h) {
+      gridOccupied((xx, yy)) = entity
+    }
+  }
+
+  def clearGridOccupied(x: Int, y: Int, w: Int, h: Int): Unit = {
+    for (xx <- x until x + w; yy <- y until y + h) {
+      gridOccupied.remove((xx, yy))
+    }
+  }
+
   override def update(dt: Double, invViewProj: Matrix4, inputs: InputSet): Unit = {
     val mouseDown = AppWindow.mouseButtonDown(0)
     val clicked = mouseDown && !prevMouseDown && inputs.focusedLayer < -1000
 
     if (AppWindow.mouseButtonDown(1)) {
       activeSlot = None
+      activeHudSlot = None
     }
 
     buildBlockerEntities.clear()
@@ -245,9 +275,12 @@ final class BuildSystemImpl extends BuildSystem {
         }
         val offX = 0.5 * (w - 1)
         val offY = 0.5 * (h - 1)
-        val roundX = (math.round(point.x / GridSize - offX) + offX) * GridSize
-        val roundZ = (math.round(point.z / GridSize - offY) + offY) * GridSize
-        Vector3(roundX, 0.0, roundZ)
+        val gridX = math.round(point.x / GridSize - offX).toInt
+        val gridZ = math.round(point.z / GridSize - offY).toInt
+        val roundX = (gridX + offX) * GridSize
+        val roundZ = (gridZ + offY) * GridSize
+
+        ((gridX, gridZ, w, h), Vector3(roundX, 0.0, roundZ))
       })
 
       if (inputs.focusedLayer >= -1000)
@@ -255,14 +288,15 @@ final class BuildSystemImpl extends BuildSystem {
 
       var validPlace = false
 
-      for (point <- groundPoint) {
-        val bounds = Aabb(point, Vector3(1.0, 5.0, 1.0))
-        cullingSystem.queryAabb(bounds, MaxBlockers, CullingSystem.MaskTower, buildBlockerEntities)
+      for (((gridX, gridZ, gridW, gridH), point) <- groundPoint) {
+        collectGridIntersecting(buildBlockerEntities, gridX, gridZ, gridW, gridH)
         validPlace = buildBlockerEntities.isEmpty
 
         if (clicked) {
           if (validPlace) {
-            entitySystem.create(buildE, point, buildRotation)
+            val entity = entitySystem.create(buildE, point, buildRotation)
+
+            setGridOccupied(entity, gridX, gridZ, gridW, gridH)
 
             for (buildC <- buildE.find(BuildableComponent)) {
               val sound = SoundAsset(buildC.placeSound)
@@ -278,7 +312,7 @@ final class BuildSystemImpl extends BuildSystem {
       }
 
       for (preview <- buildPreview) {
-        for (point <- groundPoint) {
+        for ((_, point) <- groundPoint) {
           preview.entity.position = point + Vector3(0.0, 0.01, 0.0)
           preview.entity.rotation = buildRotation
         }
@@ -292,6 +326,7 @@ final class BuildSystemImpl extends BuildSystem {
       selectedTower = None
 
     if (buildEntity.isEmpty && inputs.focusedLayer < -1000) {
+      prevHoveredTower = hoveredTower
       hoveredTower = None
 
       rayCastResult.clear()
@@ -304,9 +339,17 @@ final class BuildSystemImpl extends BuildSystem {
           selectedTower = Some(closest.entity)
         }
         hoveredTower = Some(closest.entity)
-        lastHoveredTower = hoveredTower
       }
+
+      if (prevHoveredTower != hoveredTower) {
+        towerHoverTime = 0.0
+      } else {
+        towerHoverTime += dt
+      }
+    } else {
+      towerHoverTime += dt
     }
+
 
     for (selected <- selectedTower) {
 
@@ -390,9 +433,11 @@ final class BuildSystemImpl extends BuildSystem {
     }
 
     // Selected tower's GUI is visible
-    for (selected <- selectedTower if selected.hasFlag(Flag_Slots)) {
-      if (!nextWireGui.contains(selected)) {
-        makeWireGui(selected)
+    if (false) {
+      for (selected <- selectedTower if selected.hasFlag(Flag_Slots)) {
+        if (!nextWireGui.contains(selected)) {
+          makeWireGui(selected)
+        }
       }
     }
 
@@ -523,6 +568,18 @@ final class BuildSystemImpl extends BuildSystem {
         lineBatch.drawHermite(WireSprite, nodes, width, width * 0.5, width * 10.0, 10.0)
       }
 
+      for (slot <- activeHudSlot) {
+        val projected = viewProjection.projectPoint(slot.worldPosition)
+        val x = (projected.x + 1.0) * 0.5 * globalRenderSystem.screenWidth
+        val y = (1.0 - (projected.y + 1.0) * 0.5) * globalRenderSystem.screenHeight
+        val pos = Vector2(x, y)
+
+        val width = globalRenderSystem.screenHeight * (8.0 / 720.0)
+        val nodes = Seq(pos, AppWindow.mousePosition)
+
+        lineBatch.draw(WireSprite, nodes, width)
+      }
+
       lineBatch.flush()
     })
 
@@ -545,8 +602,12 @@ final class BuildSystemImpl extends BuildSystem {
         }
       }
 
+      val hoverT = math.min(towerHoverTime / 0.05, 1.0)
+      val animT = (smoothStep(hoverT * 0.5 + 0.5) - 0.5) * 2.0
+
       for ((slot, index) <- slots.zipWithIndex) {
         val worldPos = slot.worldPosition
+
         val projected = viewProjection.projectPoint(worldPos)
         val x = (projected.x + 1.0) * 0.5 * globalRenderSystem.screenWidth
         val y = (1.0 - (projected.y + 1.0) * 0.5) * globalRenderSystem.screenHeight
@@ -557,7 +618,20 @@ final class BuildSystemImpl extends BuildSystem {
 
         val layout = new Layout(Vector2.One, x - size.x * 0.5, y - size.y * 0.5, x + size.x * 0.5, y + size.y * 0.5)
 
-        canvas.draw(3, SlotHudEmptySprite, pos, size, anchor, Color.White)
+        val baseAlpha = if (hudSlotInput.focusIndex == index) 0.9 else 0.5
+        val alpha = baseAlpha * animT
+
+        val isCompatbile = activeHudSlot.forall(_.isInput != slot.isInput)
+        val isFull = slot.connection.isDefined
+
+        val sprite = (isCompatbile, isFull) match {
+          case (false, false) => SlotHudIncompatibleEmptySprite
+          case (false, true ) => SlotHudIncompatibleFullSprite
+          case (true, false) => SlotHudEmptySprite
+          case (true, true ) => SlotHudFullSprite
+        }
+
+        canvas.draw(3, sprite, pos, size, anchor, Color.White.copy(a = alpha))
         inputs.add(3, hudSlotInput, layout, 0.0, index)
       }
 
@@ -622,6 +696,14 @@ final class BuildSystemImpl extends BuildSystem {
 
   override def unload(): Unit = {
     lineBatch.unload()
+  }
+
+  override def entitiesDeleted(entities: EntitySet): Unit = {
+    for (entity <- entities.flag(Flag_GridOccupier)) {
+      entity.clearFlag(Flag_GridOccupier)
+      val (x, y, w, h) = entityToGridArea.remove(entity).get
+      clearGridOccupied(x, y, w, h)
+    }
   }
 }
 

@@ -23,6 +23,7 @@ package object gameplay {
     bulletSystem = new BulletSystemImpl()
     pathfindSystem = new PathfindSystemImpl()
 
+    entitySystem.addDeleteListener(buildSystem)
     entitySystem.addDeleteListener(towerSystem)
     entitySystem.addDeleteListener(cableSystem)
     entitySystem.addDeleteListener(enemySystem)
@@ -31,6 +32,7 @@ package object gameplay {
   def unloadGame(): Unit = {
     buildSystem.unload()
 
+    entitySystem.removeDeleteListener(buildSystem)
     entitySystem.removeDeleteListener(towerSystem)
     entitySystem.removeDeleteListener(cableSystem)
     entitySystem.removeDeleteListener(enemySystem)
