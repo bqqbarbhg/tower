@@ -17,14 +17,9 @@ class SplitterComponent extends Component {
   override def propertySet: PropertySet = SplitterComponent.propertySet
   override def componentType = SplitterComponent
 
-  /** Prefix of input cable */
-  var cableNodeIn: StringProp.Type = ""
-
-  /** Prefix of first output cable */
-  var cableNodeOutA: StringProp.Type = ""
-
-  /** Prefix of second output cable */
-  var cableNodeOutB: StringProp.Type = ""
+  var input: SlotInfoProp.Type = new SlotInfo(true, "slot.splitter.input")
+  var outputA: SlotInfoProp.Type = new SlotInfo(false, "slot.splitter.outputA")
+  var outputB: SlotInfoProp.Type = new SlotInfo(false, "slot.splitter.outputB")
 
   override def create(entity: Entity): Unit = {
     towerSystem.addComponent(entity, this)

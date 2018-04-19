@@ -26,9 +26,15 @@ object TowerSystem {
   abstract class Message
 
   case object MessageNone extends Message
-  case class MessageTarget(position: Vector3, time: Double) extends Message
+  case class MessageTarget(position: Vector3, velocity: Vector3, time: Double) extends Message {
 
-  class Slot(val entity: Entity, val isInput: Boolean, val locale: String, val cablePrefix: String = "") {
+    def positionAt(currentTime: Double): Vector3 = position + velocity * (currentTime - time)
+
+  }
+
+  class Slot(val entity: Entity, val info: SlotInfo) {
+    def isInput: Boolean = info.isInput
+
     var connectedSlot: Option[Slot] = None
     var connection: Option[Connection] = None
     var prevMessage: Message = MessageNone
@@ -63,6 +69,8 @@ object TowerSystem {
         connection = None
       }
     }
+
+    def worldPosition: Vector3 = entity.transformPoint(info.offset)
   }
 
   val Assets = new AssetBundle("TowerSystem",
@@ -94,7 +102,7 @@ sealed trait TowerSystem extends EntityDeleteListener {
   def addTargetMessage(msg: MessageTarget): Unit
 
   /** Mark position as focused by a turret in the GUI */
-  def updateTurretTarget(pos: Vector3): Unit
+  def updateTurretTarget(turret: Entity, pos: Vector3): Unit
 
   /** Render GUI used by this system */
   def renderIngameGui(viewProjection: Matrix4): Unit
@@ -129,7 +137,7 @@ object TowerSystemImpl {
     var visualAngle: Double = 0.0
     var visualVel: Double = 0.0
 
-    val slotTargetIn = new Slot(entity, true, "slot.turret.targetIn")
+    val slotTargetIn = new Slot(entity, component.targetIn)
 
     var targetTime = -100.0
     var targetPos = Vector3.Zero
@@ -142,20 +150,25 @@ object TowerSystemImpl {
     )
 
     def update(dt: Double): Unit = {
+      val time = towerSystem.time
 
       slotTargetIn.peek match {
         case m: MessageTarget =>
-          val pos = entity.inverseTransformPoint(m.position)
+          val worldPos = m.positionAt(time)
+          val pos = entity.inverseTransformPoint(worldPos)
           targetTime = m.time
           targetAngle = math.atan2(-pos.x, -pos.z)
-          targetPos = m.position
+          targetPos = worldPos
 
         case _ =>
       }
 
       var deltaAngle = wrapAngle(targetAngle - aimAngle)
       val turnSpeed = component.turnSpeed * dt
-      aimAngle += wrapAngle(clamp(deltaAngle, -turnSpeed, turnSpeed))
+
+      if (targetTime + component.shootTime >= time) {
+        aimAngle += wrapAngle(clamp(deltaAngle, -turnSpeed, turnSpeed))
+      }
 
       var visualDeltaAngle = wrapAngle(aimAngle - visualAngle)
       val visualSpeed = component.visualTurnSpeed * dt
@@ -164,9 +177,8 @@ object TowerSystemImpl {
 
       visualAngle = wrapAngle(visualAngle + visualVel * dt)
 
-      val time = towerSystem.time
       if (math.abs(deltaAngle) < 0.1 && targetTime + component.shootTime >= time) {
-        towerSystem.updateTurretTarget(targetPos)
+        towerSystem.updateTurretTarget(entity, targetPos)
         spinVel += dt * component.visualSpinSpeed
         aimTime += dt
 
@@ -260,7 +272,7 @@ object TowerSystemImpl {
 
     var angle: Double = 0.0
 
-    val slotTargetOut = new Slot(entity, false, "slot.radar.targetOut")
+    val slotTargetOut = new Slot(entity, component.targetOut)
 
     override val slots: Array[Slot] = Array(
       slotTargetOut,
@@ -270,9 +282,9 @@ object TowerSystemImpl {
       angle += dt * 2.0
 
       def findTarget(): Unit = {
-        for ((enemy, worldPos) <- enemySystem.queryEnemiesAround(entity.position, component.radius)) {
+        for (target <- enemySystem.queryEnemiesAround(entity.position, component.radius)) {
 
-          val pos = entity.inverseTransformPoint(worldPos)
+          val pos = entity.inverseTransformPoint(target.position)
           val dx = pos.x
           val dz = pos.z
           val lenSq = dx*dx + dz*dz
@@ -283,7 +295,7 @@ object TowerSystemImpl {
 
             val delta = math.abs(wrapAngle(angle - enemyAngle))
             if (delta <= dt * 4.0 + 0.05) {
-              val msg = MessageTarget(worldPos, towerSystem.time)
+              val msg = MessageTarget(target.position, target.velocity, towerSystem.time)
               slotTargetOut.sendQueued(msg)
               towerSystem.addTargetMessage(msg)
               return
@@ -305,9 +317,9 @@ object TowerSystemImpl {
   }
 
   class Splitter(val entity: Entity, val component: SplitterComponent) extends Tower {
-    val slotInput = new Slot(entity, true, "slot.splitter.input", component.cableNodeIn)
-    val slotOutputA = new Slot(entity, false, "slot.splitter.outputA", component.cableNodeOutA)
-    val slotOutputB = new Slot(entity, false, "slot.splitter.outputB", component.cableNodeOutB)
+    val slotInput = new Slot(entity, component.input)
+    val slotOutputA = new Slot(entity, component.outputA)
+    val slotOutputB = new Slot(entity, component.outputB)
 
     override val slots: Array[Slot] = Array(
       slotInput,
@@ -341,9 +353,9 @@ object TowerSystemImpl {
   }
 
   class Merger(val entity: Entity, val component: MergerComponent) extends Tower {
-    val slotOutput = new Slot(entity, false, "slot.merger.output", component.cableNodeOut)
-    val slotInputA = new Slot(entity, true, "slot.merger.inputA", component.cableNodeInA)
-    val slotInputB = new Slot(entity, true, "slot.merger.inputB", component.cableNodeInB)
+    val slotOutput = new Slot(entity, component.output)
+    val slotInputA = new Slot(entity, component.inputA)
+    val slotInputB = new Slot(entity, component.inputB)
 
     override val slots: Array[Slot] = Array(
       slotOutput,
@@ -373,7 +385,7 @@ object TowerSystemImpl {
     val model = modelSystem.collectModels(entity).head
     var doorNode: Option[NodeInstance] = model.findNode(component.doorBone)
 
-    val slotOpen = new Slot(entity, true, "slot.wallDoor.open")
+    val slotOpen = new Slot(entity, component.open)
 
     var isOpen = false
     var openAmount: Double = 0.0
@@ -504,9 +516,10 @@ object TowerSystemImpl {
     def detachAll(): Unit = for (slot <- slots) slot.detach()
   }
 
-  class TargetVisual(val position: Vector3, val time: Double, val addTime: Double)
+  class TargetVisual(val msg: MessageTarget, val addTime: Double)
   class TurretVisual(val addTime: Double) {
     var time: Double = 0.0
+    var position: Vector3 = Vector3.Zero
   }
 
   val HudAtlas = AtlasAsset("atlas/hud.s2at")
@@ -525,8 +538,8 @@ final class TowerSystemImpl extends TowerSystem {
   var timeImpl: Double = 0.0
 
   val visibleTargetVisuals = new ArrayBuffer[TargetVisual]()
-  val visibleTurretVisuals = new mutable.HashMap[Vector3, TurretVisual]()
-  val turretVisualToDelete = new ArrayBuffer[Vector3]()
+  val visibleTurretVisuals = new mutable.HashMap[Entity, TurretVisual]()
+  val turretVisualToDelete = new ArrayBuffer[Entity]()
 
   def getSlotContainer(entity: Entity): SlotContainer = {
     entityToSlots.getOrElseUpdate(entity, {
@@ -568,6 +581,7 @@ final class TowerSystemImpl extends TowerSystem {
     for (e <- entities.flag(Flag_Slots)) {
       val slots = entityToSlots.remove(e).get
       slots.detachAll()
+      e.clearFlag(Flag_Slots)
     }
   }
 
@@ -621,12 +635,13 @@ final class TowerSystemImpl extends TowerSystem {
   override def time: Double = timeImpl
 
   override def addTargetMessage(msg: MessageTarget): Unit = {
-    val vis = new TargetVisual(msg.position, msg.time, timeImpl)
+    val vis = new TargetVisual(msg, timeImpl)
     visibleTargetVisuals += vis
   }
 
-  override def updateTurretTarget(pos: Vector3): Unit = {
-    val vis = visibleTurretVisuals.getOrElseUpdate(pos, new TurretVisual(timeImpl))
+  override def updateTurretTarget(turret: Entity, pos: Vector3): Unit = {
+    val vis = visibleTurretVisuals.getOrElseUpdate(turret, new TurretVisual(timeImpl))
+    vis.position = pos
     vis.time = timeImpl
   }
 
@@ -644,17 +659,18 @@ final class TowerSystemImpl extends TowerSystem {
     val cutoffTime = timeImpl - cutoffDuration
     while (ix < visibleTargetVisuals.length) {
       val vis = visibleTargetVisuals(ix)
-      if (vis.time <= cutoffTime) {
+      if (vis.msg.time <= cutoffTime) {
         visibleTargetVisuals(ix) = visibleTargetVisuals.last
         visibleTargetVisuals.trimEnd(1)
       } else {
 
-        val projected = viewProjection.projectPoint(vis.position)
+        val pos = vis.msg.positionAt(timeImpl)
+        val projected = viewProjection.projectPoint(pos)
         val x = (projected.x + 1.0) * 0.5 * globalRenderSystem.screenWidth
         val y = (1.0 - (projected.y + 1.0) * 0.5) * globalRenderSystem.screenHeight
 
         val addT = timeImpl - vis.addTime
-        val t = (timeImpl - vis.time) / cutoffDuration
+        val t = (timeImpl - vis.msg.time) / cutoffDuration
         val startT = math.min(addT * 10.0, 1.0)
         val start = smoothStep(startT * 0.5 + 0.5) * 2.0 - 1.0
 
@@ -677,12 +693,12 @@ final class TowerSystemImpl extends TowerSystem {
     }
 
     val turretCutoffDuration = 0.5
-    for ((pos, vis) <- visibleTurretVisuals) {
+    for ((entity, vis) <- visibleTurretVisuals) {
       val delta = timeImpl - vis.time
       if (delta >= turretCutoffDuration) {
-        turretVisualToDelete += pos
+        turretVisualToDelete += entity
       } else {
-        val projected = viewProjection.projectPoint(pos)
+        val projected = viewProjection.projectPoint(vis.position)
         val x = (projected.x + 1.0) * 0.5 * globalRenderSystem.screenWidth
         val y = (1.0 - (projected.y + 1.0) * 0.5) * globalRenderSystem.screenHeight
 
@@ -705,8 +721,8 @@ final class TowerSystemImpl extends TowerSystem {
       }
     }
 
-    for (pos <- turretVisualToDelete) {
-      visibleTurretVisuals.remove(pos)
+    for (entity <- turretVisualToDelete) {
+      visibleTurretVisuals.remove(entity)
     }
 
     turretVisualToDelete.clear()

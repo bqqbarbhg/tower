@@ -65,6 +65,9 @@ class TurretTowerComponent extends Component {
   /** Random offset the shot bullets */
   var spread: Vector3Prop.Type = Vector3.Zero
 
+  /** Slot */
+  var targetIn: SlotInfoProp.Type = new SlotInfo(true, "slot.turret.targetIn")
+
   override def dependencies: Iterable[ComponentType] = Some(ModelComponent)
 
   override def create(entity: Entity): Unit = {

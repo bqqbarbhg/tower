@@ -452,8 +452,8 @@ final class CableSystemImpl extends CableSystem {
     val srcPos = src.entity.position
     val dstPos = dst.entity.position
 
-    val srcModelPaths = findCablePathsForEntity(src.entity).filter(_.name.startsWith(src.cablePrefix))
-    val dstModelPaths = findCablePathsForEntity(dst.entity).filter(_.name.startsWith(dst.cablePrefix))
+    val srcModelPaths = findCablePathsForEntity(src.entity).filter(_.name.startsWith(src.info.cableNode))
+    val dstModelPaths = findCablePathsForEntity(dst.entity).filter(_.name.startsWith(dst.info.cableNode))
 
     val srcPaths = if (srcModelPaths.nonEmpty) srcModelPaths.map(_.nodes) else DummyPaths
     val dstPaths = if (dstModelPaths.nonEmpty) dstModelPaths.map(_.nodes) else DummyPaths

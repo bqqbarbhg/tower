@@ -37,7 +37,7 @@ object AStar {
     val firstOpen = initial.toSeq.map(s => OpenState(s._1, s._2, s._2, 1, s._1 :: Nil))
 
     val openSet = mutable.PriorityQueue(firstOpen : _*)(new StateOrdering[S])
-    val closedSet = mutable.HashSet[S](initialSeq : _*)
+    val closedSet = mutable.HashSet[S]()
     var iter = 0
 
     while (openSet.nonEmpty && iter < maxIterations) {
@@ -46,20 +46,20 @@ object AStar {
       val cur = openSet.dequeue()
       val state = cur.state
 
-      if (state.goal) {
-        val res = new Array[S](cur.depth)
-        var ix = cur.depth
-        var pathNode = cur.path
-        while (ix > 0) {
-          ix -= 1
-          res(ix) = pathNode.head
-          pathNode = pathNode.tail
+      if (closedSet.add(state)) {
+        if (state.goal) {
+          val res = new Array[S](cur.depth)
+          var ix = cur.depth
+          var pathNode = cur.path
+          while (ix > 0) {
+            ix -= 1
+            res(ix) = pathNode.head
+            pathNode = pathNode.tail
+          }
+          return res
         }
-        return res
-      }
 
-      for ((next, dist) <- state.neighbors) {
-        if (closedSet.add(next)) {
+        for ((next, dist) <- state.neighbors) {
           val nextDist = cur.distance + dist
           val nextScore = nextDist + next.heuristic
           val os = OpenState(next, nextScore, nextDist, cur.depth + 1, next :: cur.path)

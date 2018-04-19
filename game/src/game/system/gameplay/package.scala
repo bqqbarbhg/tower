@@ -11,6 +11,7 @@ package object gameplay {
   var connectionSystem: ConnectionSystem = null
   var enemySystem: EnemySystem = null
   var bulletSystem: BulletSystem = null
+  var pathfindSystem: PathfindSystem = null
 
   def loadGame(): Unit = {
     tutorialSystem = new TutorialSystemImpl()
@@ -20,6 +21,7 @@ package object gameplay {
     connectionSystem = new ConnectionSystemImpl()
     enemySystem = new EnemySystemImpl()
     bulletSystem = new BulletSystemImpl()
+    pathfindSystem = new PathfindSystemImpl()
 
     entitySystem.addDeleteListener(towerSystem)
     entitySystem.addDeleteListener(cableSystem)

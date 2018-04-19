@@ -106,6 +106,9 @@ object BuildSystemImpl {
   val SlotEmptySprite = Identifier("gui/menu/slot_empty.png")
   val SlotFullSprite = Identifier("gui/menu/slot_full.png")
 
+  val SlotHudEmptySprite = Identifier("gui/hud/cable_slot_empty.png")
+  val SlotHudFullSprite = Identifier("gui/hud/cable_slot_full.png")
+
   val WireSprite = Identifier("gui/wire/plain.png")
 
   val TowerSelectSprite = Identifier("gui/ingame/tower_select.png")
@@ -136,6 +139,7 @@ object BuildSystemImpl {
   }
 
   case class SlotRef(gui: WireGui, slot: Int)
+  case class HudSlotRef(position: Vector3, slot: Slot)
 
   val BuildRotations = Array(
     Quaternion.fromAxisAngle(Vector3.Up, math.Pi * -0.0),
@@ -161,6 +165,11 @@ final class BuildSystemImpl extends BuildSystem {
   var prevWireGui = mutable.HashMap[Entity, WireGui]()
   var wireGuiEnabled = false
   var selectedTower: Option[Entity] = None
+  var hoveredTower: Option[Entity] = None
+  var lastHoveredTower: Option[Entity] = None
+
+  var hudSlotEntity: Entity = null
+  var hudSlotInput = new InputArea()
 
   val deleteBind = KeyEvent.NameToKey.get(Options.current.binds.delete).getOrElse(KeyEvent.Delete)
   val rotateBind = KeyEvent.NameToKey.get(Options.current.binds.rotate).getOrElse('R'.toInt)
@@ -168,6 +177,7 @@ final class BuildSystemImpl extends BuildSystem {
   val ingameGuiWorld = Matrix43.world(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, 1.0), Vector3(0.0, 1.0, 0.0), Vector3(0.0, 2.0, 0.0))
 
   var activeSlot: Option[SlotRef] = None
+  var activeHudSlot: Option[Slot] = None
 
   val lineBatch = new LineBatch()
 
@@ -281,7 +291,9 @@ final class BuildSystemImpl extends BuildSystem {
     if (clicked)
       selectedTower = None
 
-    if (buildEntity.isEmpty) {
+    if (buildEntity.isEmpty && inputs.focusedLayer < -1000) {
+      hoveredTower = None
+
       rayCastResult.clear()
       cullingSystem.queryRay(ray, Double.PositiveInfinity, MaxRayCast, CullingSystem.MaskTower, rayCastResult)
       val towers = rayCastResult.iterator.filter(_.entity.hasFlag(Flag_Tower))
@@ -291,6 +303,8 @@ final class BuildSystemImpl extends BuildSystem {
         if (clicked) {
           selectedTower = Some(closest.entity)
         }
+        hoveredTower = Some(closest.entity)
+        lastHoveredTower = hoveredTower
       }
     }
 
@@ -424,7 +438,7 @@ final class BuildSystemImpl extends BuildSystem {
         val area = parent.pushTop(20.0)
         val mutArea = area.copy
 
-        val text = lc"${slot.locale}.name"
+        val text = lc"${slot.info.locale}.name"
 
         val iconArea = if (slot.isInput) {
           val icon = mutArea.pushLeft(20.0)
@@ -513,6 +527,42 @@ final class BuildSystemImpl extends BuildSystem {
     })
 
     prevWireGui = nextWireGui
+
+    for (entity <- hoveredTower if entity.hasFlag(Flag_Slots)) {
+      val slots = towerSystem.getSlots(entity)
+
+      val clickIndex = hudSlotInput.clickIndex
+      if (clickIndex >= 0 && hudSlotEntity == entity) {
+        val clickedSlot = slots(clickIndex)
+
+        activeHudSlot match {
+          case Some(prevSlot) =>
+            towerSystem.connectSlots(prevSlot, clickedSlot)
+            activeHudSlot = None
+
+          case None =>
+            activeHudSlot = Some(clickedSlot)
+        }
+      }
+
+      for ((slot, index) <- slots.zipWithIndex) {
+        val worldPos = slot.worldPosition
+        val projected = viewProjection.projectPoint(worldPos)
+        val x = (projected.x + 1.0) * 0.5 * globalRenderSystem.screenWidth
+        val y = (1.0 - (projected.y + 1.0) * 0.5) * globalRenderSystem.screenHeight
+        val pos = Vector2(x, y)
+        val extent = math.min(globalRenderSystem.screenWidth, globalRenderSystem.screenHeight) * 0.05
+        val size = Vector2(extent, extent)
+        val anchor = Vector2(0.5, 0.5)
+
+        val layout = new Layout(Vector2.One, x - size.x * 0.5, y - size.y * 0.5, x + size.x * 0.5, y + size.y * 0.5)
+
+        canvas.draw(3, SlotHudEmptySprite, pos, size, anchor, Color.White)
+        inputs.add(3, hudSlotInput, layout, 0.0, index)
+      }
+
+      hudSlotEntity = entity
+    }
   }
 
   override def renderBuildGui(canvas: Canvas, viewProjection: Matrix4): Unit = {

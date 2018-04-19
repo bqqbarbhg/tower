@@ -9,6 +9,8 @@ object ComponentType {
     BuildableComponent,
     GroundBlockerComponent,
     EnemyComponent,
+    EnemyTargetComponent,
+    EnemyBlockerComponent,
 
     TurretTowerComponent,
     RotatingRadarComponent,

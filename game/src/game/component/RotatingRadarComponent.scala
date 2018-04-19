@@ -23,6 +23,11 @@ class RotatingRadarComponent extends Component {
   /** Detection radius for the radar */
   var radius: DoubleProp.Type = 0.0
 
+  /** Offset for slot targetOut */
+  var targetOutOffset: Vector3Prop.Type = Vector3.Zero
+
+  var targetOut: SlotInfoProp.Type = new SlotInfo(false, "slot.radar.targetOut")
+
   override def dependencies: Iterable[ComponentType] = Some(ModelComponent)
 
   override def create(entity: Entity): Unit = {

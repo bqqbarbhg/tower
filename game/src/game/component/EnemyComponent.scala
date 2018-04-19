@@ -23,6 +23,8 @@ class EnemyComponent extends Component {
   /** How much health (hitpoints) does the enemy have* */
   var health: DoubleProp.Type = 100.0
 
+  override def dependencies = Some(ModelComponent)
+
   override def create(entity: Entity): Unit = {
     enemySystem.addEnemy(entity, this)
   }

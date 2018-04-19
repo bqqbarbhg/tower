@@ -41,7 +41,7 @@ class UnstructuredBinaryReader(val buffer: ByteBuffer) extends AnyVal {
                 case DataString => prop.setGenericWithConversion(obj, buffer.getString())
                 case DataObject =>
                   val product = prop.asInstanceOf[ProductProp]
-                  val productObj = product.makeProductInstance
+                  val productObj = product.getProductInstance(obj)
                   read(productObj)
                   product.setProductInstance(obj, productObj)
               }

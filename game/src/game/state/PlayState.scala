@@ -80,6 +80,9 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   var prevTime = 0.0
   var finished: Boolean = false
 
+  var spawnTime: Double = 0.0
+  var enemiesPaused: Boolean = true
+
   var music: SoundRef = null
 
   override def load(): Unit = {
@@ -102,21 +105,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     if (loadExisting)
       loadGame()
 
-    entitySystem.create(DrillEntity.get, Vector3(0.0, 0.0, -16.0))
-
-    {
-      val entity = entitySystem.create(EntityTypeAsset("entity/enemy/test.es.toml").get, Vector3(20.0, 0.0, -5.0))
-      val model = modelSystem.collectModels(entity).head
-      val anim = animationSystem.addAnimator(entity, model)
-      anim.playLoop(0, Identifier("Move"))
-    }
-
-    {
-      val entity = entitySystem.create(EntityTypeAsset("entity/enemy/test.es.toml").get, Vector3(20.0, 0.0, -16.0))
-      val model = modelSystem.collectModels(entity).head
-      val anim = animationSystem.addAnimator(entity, model)
-      anim.playLoop(0, Identifier("Move"))
-    }
+    entitySystem.create(DrillEntity.get, Vector3(0.0, 0.0, 0.0))
   }
 
   override def stop(): Unit = {
@@ -402,6 +391,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     var cableParts: BoolProp.Type = false
     var cullRender: BoolProp.Type = false
     var cullGameplay: BoolProp.Type = false
+    var pathfindFine: BoolProp.Type = false
+    var pathfindCoarse: BoolProp.Type = false
   }
 
   var cameraPos = Vector3.Zero
@@ -521,6 +512,9 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     if (DebugView.cullGameplay) {
       cullingSystem.debugDrawCulling(frustum, CullingSystem.MaskAnyGameplay)
     }
+    if (DebugView.pathfindCoarse || DebugView.pathfindFine) {
+      pathfindSystem.debugDraw(DebugView.pathfindFine, DebugView.pathfindCoarse)
+    }
 
     val renderer = Renderer.get
 
@@ -616,6 +610,16 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     inputs.update()
 
+    spawnTime -= dt
+    if (spawnTime < 0.0) {
+      entitySystem.create(EntityTypeAsset("entity/enemy/test.es.toml").get, Vector3(0.0, 0.0, -80.0))
+      spawnTime = 4.0
+    }
+
+    for (e <- AppWindow.keyDownEvents if e.key == KeyEvent.Space) {
+      enemiesPaused = !enemiesPaused
+    }
+
     updatePauseMenu(dt)
     updateDebugMenu()
 
@@ -629,7 +633,12 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     tutorialSystem.render(canvas)
 
     hotbarMenu.update(dt)
-    towerSystem.update(dt)
+
+    if (!enemiesPaused) {
+      enemySystem.update(dt)
+      towerSystem.update(dt)
+    }
+
     connectionSystem.update(dt)
 
     if (CableSystem.CableTweak.regenerateCables) {
@@ -660,7 +669,6 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     bulletSystem.updateBullets(dt)
 
-    enemySystem.update(dt)
 
     cableSystem.generateCables()
     entitySystem.processDeletions()

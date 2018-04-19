@@ -17,6 +17,8 @@ object Vector2 {
 
 case class Vector2(x: Double, y: Double) {
 
+  def toXz(newY: Double): Vector3 = Vector3(x, newY, y)
+
   def distanceSquaredTo(a: Vector2): Double = {
     val dx = x - a.x
     val dy = y - a.y
