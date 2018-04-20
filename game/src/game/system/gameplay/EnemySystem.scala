@@ -72,8 +72,10 @@ object EnemySystemImpl {
     var didAttack: Boolean = false
     var attackTarget: Entity = null
 
-    var aiState: Int = AiMove
+    var rotationAngle: Double = 0.0
+    var targetRotation: Double = 0.0
 
+    var aiState: Int = AiMove
   }
 
   class Blocker(val entity: Entity, val component: EnemyBlockerComponent, val min: Vector2, val max: Vector2, val minPos: CellPos, val maxPos: CellPos, val next: Blocker) {
@@ -236,14 +238,21 @@ final class EnemySystemImpl extends EnemySystem {
 
                 enemy.velocity = vel
                 enemy.entity.position += vel * dt
+
+                enemy.targetRotation = math.atan2(vel.x, vel.z)
               }
             } else {
               enemy.velocity = Vector3.Zero
             }
         }
+
       } else if (enemy.aiState == AiAttack) {
 
         enemy.attackTime += dt
+
+        val dx = enemy.attackTarget.position.x - enemy.entity.position.x
+        val dz = enemy.attackTarget.position.z - enemy.entity.position.z
+        enemy.targetRotation = math.atan2(dx, dz)
 
         if (enemy.attackTime >= enemy.component.meleeHitTime && !enemy.didAttack) {
           enemy.didAttack = true
@@ -256,6 +265,11 @@ final class EnemySystemImpl extends EnemySystem {
 
       }
 
+      val maxSpeed = enemy.component.rotateSpeedLinear * dt
+      enemy.rotationAngle += (enemy.targetRotation - enemy.rotationAngle) * powDt(enemy.component.rotateSpeedExponential, dt)
+      enemy.rotationAngle += clamp(enemy.targetRotation - enemy.rotationAngle, -maxSpeed, maxSpeed)
+
+      enemy.entity.rotation = Quaternion.fromAxisAngle(Vector3.Up, enemy.rotationAngle)
     }
   }
 

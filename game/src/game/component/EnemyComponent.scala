@@ -41,6 +41,12 @@ class EnemyComponent extends Component {
   /** Animation to play when attacking */
   var attackAnim: IdentifierProp.Type = Identifier.Empty
 
+  /** Amount to rotate towards target exponentially */
+  var rotateSpeedExponential: DoubleProp.Type = 0.1
+
+  /** Amount to rotate towards target linearly */
+  var rotateSpeedLinear: DoubleProp.Type = 0.1
+
   override def dependencies = Some(ModelComponent)
 
   override def create(entity: Entity): Unit = {
