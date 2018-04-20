@@ -28,6 +28,7 @@ class MeshPart(val mesh: Mesh) {
   var numVertices: Int = 0
   var numIndices: Int = 0
   var numBones: Int = 0
+  var maxBonesPerVertex: Int = 0
 
   var skinnedPartIndex: Int = -1
 
@@ -66,6 +67,8 @@ class MeshPart(val mesh: Mesh) {
 
     val uvMin = buffer.getVector2()
     val uvMax = buffer.getVector2()
+
+    maxBonesPerVertex = buffer.getInt()
 
     uvOffsetX = uvMin.x.toFloat
     uvOffsetY = (1.0 - uvMin.y).toFloat

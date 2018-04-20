@@ -26,6 +26,7 @@ object MeshFile {
     buffer.putInt(mesh.vertexSpec.attribs.length)
     buffer.putVector2(mesh.uvMin)
     buffer.putVector2(mesh.uvMax)
+    buffer.putInt(mesh.maxBonesPerVertex)
 
     for (bone <- mesh.bones) {
       buffer.putIdentifier(bone.name)

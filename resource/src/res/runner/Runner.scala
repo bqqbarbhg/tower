@@ -189,7 +189,13 @@ class Runner(val opts: RunOptions) {
       StackAllocator.createCurrentThreadIfNecessary(16*1024*1024)
       val startTime = System.nanoTime()
 
-      task()
+      try {
+        task()
+      } catch {
+        case ex: Exception =>
+          println(s"Failed to process task $name: ${ex.getMessage}")
+          ex.printStackTrace()
+      }
 
       val endTime = System.nanoTime()
       val duration = (endTime - startTime).toDouble * 1e-9
@@ -470,7 +476,7 @@ class Runner(val opts: RunOptions) {
       for (asset <- dirtyModels) addAssetTask(asset) {
         val relPath = assetRelative(asset.file)
         val resources = asset.importAsset()
-        val meshes = resources.collect({ case a: Mesh => a }).toSeq
+        var meshes = resources.collect({ case a: Mesh => a }).toSeq
         val animations = resources.collect({ case a: Animation => a }).toSeq
         val models = resources.collect({ case a: Model => a }).toSeq
 
@@ -494,6 +500,8 @@ class Runner(val opts: RunOptions) {
         for (mesh <- meshes) {
           mesh.material = ResolveMaterial.resolveMaterialFromTexture(mesh.textureName, siblingTextures, resolveTextureFile)
         }
+
+        meshes = JoinMesh.joinMeshes(models.head, meshes, asset.config.res.model)
 
         val meshMapping = (for (mesh <- meshes) yield {
           val parts = ProcessMesh.processMesh(mesh, asset.config.res.mesh)

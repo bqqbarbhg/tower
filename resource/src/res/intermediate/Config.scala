@@ -276,6 +276,9 @@ object Config {
         /** Texture name to use for the mesh (overrides material) */
         var texture: String = ""
 
+        /** Join matching meshes into one */
+        var joinMeshName: String = ""
+
         private var cachedNameRegexSrc = ""
         private var cachedNameRegex: Option[Regex] = None
         def nameRegex: Option[Regex] = {
@@ -289,6 +292,7 @@ object Config {
         override def visit(v: SimpleVisitor): Unit = {
           name = v.field("name", name)
           texture = v.field("texture", texture)
+          joinMeshName = v.field("joinMeshName", joinMeshName)
         }
 
       }

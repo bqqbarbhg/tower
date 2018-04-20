@@ -76,6 +76,9 @@ object ModelSystem {
     /** Transform applied to the node relative to its entity. */
     var localTransform: Matrix43 = Matrix43.Identity
 
+    /** Index of the node in the model */
+    def index: Int
+
   }
 
 }
@@ -171,7 +174,8 @@ object ModelSystemImpl {
     override def delete(): Unit = ???
   }
 
-  class NodeInstanceImpl(override val model: ModelInstanceImpl, name: Identifier, var index: Int) extends NodeInstance(name) {
+  class NodeInstanceImpl(override val model: ModelInstanceImpl, name: Identifier, var _index: Int) extends NodeInstance(name) {
+    def index: Int = _index
   }
 
 }
@@ -195,7 +199,7 @@ final class ModelSystemImpl extends ModelSystem {
     }
 
     for (node <- modelInst.nodes) {
-      state.nodeLocalMatrix(node.index) = node.localTransform
+      state.nodeLocalMatrix(node._index) = node.localTransform
     }
 
     state.updateMatrices()
@@ -208,7 +212,7 @@ final class ModelSystemImpl extends ModelSystem {
         model.state = new ModelState(model.model)
         model.lastFrameUpdated = -1L
         for (ref <- model.nodes) {
-          ref.index = model.model.findNodeByName(ref.name)
+          ref._index = model.model.findNodeByName(ref.name)
         }
       }
     }

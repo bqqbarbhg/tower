@@ -18,8 +18,18 @@ object SkinnedMeshShader extends ShaderAsset("shader/mesh/skinned_mesh") {
     val Albedo = sampler2D("Albedo", Sampler.RepeatAnisotropic)
   }
 
+
+  override object Permutations extends Shader.Permutations {
+    val BonesPerVertex = vert("BonesPerVertex", Seq(1, 4))
+  }
+
   override object Defines extends Shader.Defines {
     vert("MaxBones", SkinnedModelUniform.MaxBones)
+  }
+
+  def getBonePermutation(maxBones: Int): Int = {
+    if (maxBones == 1) 1
+    else 4
   }
 
 }

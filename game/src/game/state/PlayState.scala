@@ -21,7 +21,7 @@ import game.options.Options
 import game.system.{Entity, EntitySet, EntityType}
 import game.system.audio.AudioSystem.SoundRef
 import game.system.rendering.AmbientSystem.Probe
-import game.system.rendering.ModelSystem.ModelInstance
+import game.system.rendering.ModelSystem.{ModelInstance, NodeInstance}
 import gfx.{AnimationState, Material}
 import io.property._
 import io.serialization.{BinaryReader, BinaryWriter}
@@ -454,6 +454,14 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       towerSystem.updateVisible(visibleEntities)
     }
 
+    s.add("All debris")(debrisSystem)() {
+      debrisSystem.update(dt)
+    }
+
+    s.add("Visible debris")(debrisSystem)(DepEntities) {
+      debrisSystem.updateVisible(dt, visibleEntities)
+    }
+
     s.add("Visible animations")(modelSystem, animationSystem)(DepEntities) {
       animationSystem.updateVisibleAnimations(dt, visibleEntities)
     }
@@ -462,7 +470,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       buildSystem.renderWireGui(canvas, inputs, visibleEntities, viewProjection)
     }
 
-    s.add("Model update")(modelSystem, DepMeshes)(DepEntities) {
+    s.add("Model update")(modelSystem, DepMeshes)(DepEntities, debrisSystem) {
       val models = modelSystem.collectVisibleModels(visibleEntities)
       modelSystem.updateModels(models)
       visibleMeshes = modelSystem.collectMeshInstances(models)
@@ -550,10 +558,13 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       renderer.drawElementsInstanced(draw.num, mesh.numIndices, mesh.indexBuffer, mesh.vertexBuffer)
     }
 
-    SkinnedMeshShader.get.use()
-
     for (draw <- forwardDraws.skinned) {
       val mesh = draw.mesh
+
+      SkinnedMeshShader.get.use(p => {
+        import SkinnedMeshShader.Permutations._
+        p(BonesPerVertex) = SkinnedMeshShader.getBonePermutation(mesh.maxBonesPerVertex)
+      })
 
       renderer.setTexture(InstancedMeshShader.Textures.Albedo, Material.shared.get.missingAlbedo.texture)
 

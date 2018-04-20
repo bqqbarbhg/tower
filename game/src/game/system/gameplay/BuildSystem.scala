@@ -354,6 +354,14 @@ final class BuildSystemImpl extends BuildSystem {
     for (selected <- selectedTower) {
 
       if (AppWindow.keyDownEvents.exists(_.key == deleteBind)) {
+
+        for (breakComp <- selected.prototype.find(BreakableComponent)) {
+          if (breakComp.softBreakEffect.nonEmpty) {
+            val prototype = EntityTypeAsset(breakComp.softBreakEffect).get
+            entitySystem.createEffect(prototype, selected.position, selected.rotation)
+          }
+        }
+
         audioSystem.play(BreakSound, AudioSystem.Sfx)
         selected.delete()
         selectedTower = None

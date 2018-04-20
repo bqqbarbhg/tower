@@ -18,6 +18,9 @@ object ComponentType {
     MergerComponent,
     WallDoorComponent,
     DrillTowerComponent,
+    BreakableComponent,
+
+    DebrisComponent,
   )
 
 }

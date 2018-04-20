@@ -43,6 +43,7 @@ class GpuMesh(val name: String) extends Resource {
   var bones: Array[Mesh.MeshBone] = Array[Mesh.MeshBone]()
   var numVertices: Int = 0
   var numIndices: Int = 0
+  var maxBonesPerVertex: Int = 0
 
   var uvMin: Vector2 = Vector2.Zero
   var uvMax: Vector2 = Vector2.Zero

@@ -57,6 +57,14 @@ case class Quaternion(x: Double, y: Double, z: Double, w: Double) {
     assert(math.abs(len) > 0.00001)
     this * (1.0 / length)
   }
+  def normalizeOrIdentity: Quaternion = {
+    val len = this.length
+    if (len > 0.00001) {
+      this * (1.0 / length)
+    } else {
+      Quaternion.Identity
+    }
+  }
 
   def *(f: Double): Quaternion = Quaternion(x * f, y * f, z * f, w * f)
   def /(f: Double): Quaternion = this * (1.0 / f)

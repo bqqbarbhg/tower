@@ -19,6 +19,8 @@ object CreateGpuMesh {
     gpuMesh.uvMax = uv.reduce((a, b) => Vector2(max(a.x, b.x), max(a.y, b.y)))
     gpuMesh.bones = mesh.bones.toArray
 
+    gpuMesh.maxBonesPerVertex = mesh.vertices.map(_.bones.length).max
+
     gpuMesh.numIndices = mesh.indices.length
     gpuMesh.numVertices = mesh.vertices.length
 
@@ -31,11 +33,12 @@ object CreateGpuMesh {
       Attrib(3, DataFmt.PAD,  Semantic.Padding),
     )
 
-    if (gpuMesh.hasBones) {
-      attribs ++= Vector(
-        Attrib(4, DataFmt.UI8, Semantic.BoneIndex),
-        Attrib(4, DataFmt.UN8, Semantic.BoneWeight),
-      )
+    if (gpuMesh.maxBonesPerVertex > 0) {
+      attribs :+= Attrib(4, DataFmt.UI8, Semantic.BoneIndex)
+    }
+
+    if (gpuMesh.maxBonesPerVertex > 1) {
+      attribs :+= Attrib(4, DataFmt.UN8, Semantic.BoneWeight)
     }
 
     val spec = VertexSpec(attribs)
@@ -79,12 +82,14 @@ object CreateGpuMesh {
       ts(2) = 0
       vertexBuffer.put(ts)
 
-      if (gpuMesh.hasBones) {
+      if (gpuMesh.maxBonesPerVertex > 0) {
         for (boneI <- 0 until 4) {
           val bone = vert.bones.lift(boneI).getOrElse(BoneWeight(0, 0))
           vertexBuffer.put(bone.index.toByte)
         }
+      }
 
+      if (gpuMesh.maxBonesPerVertex > 1) {
         for (boneI <- 0 until 4) {
           val bone = vert.bones.lift(boneI).getOrElse(BoneWeight(0, 0))
           vertexBuffer.put(clamp((bone.weight * 255.0).toInt, 0, 255).toByte)

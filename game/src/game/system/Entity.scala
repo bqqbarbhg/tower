@@ -24,6 +24,7 @@ object Entity {
   val Flag_GroundBlocker = 133
   val Flag_Enemy = 134
   val Flag_GridOccupier = 135
+  val Flag_Debris = 136
 
   val EmptyEntity = new EntityType(false, "BasicEntity", None)
 
@@ -51,6 +52,11 @@ class Entity(val static: Boolean, var name: String, val prototype: EntityType = 
     * Orientation of the entity in the world.
     */
   var rotation: Quaternion = Quaternion.Identity
+
+  /**
+    * Transform matrix in the world.
+    */
+  def worldTransform: Matrix43 = Matrix43.world(position, rotation)
 
   /**
     * Transform a point from the entity's local space to world space.
