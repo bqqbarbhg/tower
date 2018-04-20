@@ -10,6 +10,10 @@ object CableShader extends ShaderAsset("shader/mesh/cable") {
   uniform(GlobalSceneUniform)
   uniform(LightProbeUniform)
 
+  override object Textures extends SamplerBlock {
+    val ShadowMap = sampler2D("ShadowMap", Sampler.ClampBilinearNoMip)
+  }
+
   override object Defines extends Shader.Defines {
     val MaxLightProbes = both("MaxLightProbes", LightProbeUniform.MaxProbes)
   }

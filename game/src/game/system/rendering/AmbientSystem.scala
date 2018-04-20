@@ -230,8 +230,8 @@ final class AmbientSystemImpl extends AmbientSystem {
     var ix = 0
     val numProbes = probes.length
 
-    val falloff = 0.2
-    val baseFactor = 0.3
+    val falloff = 0.15
+    val baseFactor = 0.15
 
     while (ix < numProbes) {
       val probe = probes(ix).asInstanceOf[ProbeImpl]

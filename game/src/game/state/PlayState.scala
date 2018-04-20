@@ -15,6 +15,7 @@ import game.system.audio._
 import game.shader._
 import menu.{DebugMenu, PauseMenu}
 import PlayState._
+import com.sun.xml.internal.fastinfoset.DecoderStateTables
 import game.component._
 import game.menu.HotbarMenu
 import game.options.Options
@@ -31,6 +32,7 @@ import util.geometry.Frustum
 import util.BufferUtils._
 import render.Renderer._
 
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 object PlayState {
@@ -406,26 +408,39 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   var viewProjection = Matrix4.Identity
   var invViewProjection = Matrix4.Identity
 
+  val activeEntitySet = new mutable.HashSet[Entity]()
   val visibleEntities = new EntitySet()
+  val shadowEntities = new EntitySet()
+  val activeEntities = new EntitySet()
 
-  object DepEntities
+  object DepVisEntities
+  object DepShadowEntities
+  object DepActiveEntities
   object DepProbes
-  object DepMeshes
+  object DepVisMeshes
+  object DepShadowMeshes
   object DepCables
   object DepGround
 
   def renderScene(dt: Double): Unit = {
 
+    val shadowViewProjection = directionalLightSystem.shadowViewProjection
     val frustum = Frustum.fromViewProjection(viewProjection)
+    val shadowFrustum = Frustum.fromViewProjection(shadowViewProjection)
 
     var visibleProbes: ArrayBuffer[Probe] = null
     var visibleTotalProbes: ArrayBuffer[Probe] = null
     var visibleMeshes: ModelSystem.MeshInstanceCollection = null
+    var shadowMeshes: ModelSystem.MeshInstanceCollection = null
     var visibleCables: ArrayBuffer[CableRenderSystem.CableMeshPart] = null
     var visibleGround: ArrayBuffer[GroundSystem.GroundPlate] = null
     var forwardDraws: ForwardRenderingSystem.Draws = null
+    var shadowDraws: ShadowRenderingSystem.Draws = null
 
+    activeEntitySet.clear()
     visibleEntities.clear()
+    shadowEntities.clear()
+    activeEntities.clear()
 
     val s = new Scheduler()
 
@@ -433,11 +448,27 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       cullingSystem.updateDynamicCullables()
     }
 
-    s.add("Viewport cull")(cullingSystem, DepEntities)() {
+    s.add("Viewport cull")(cullingSystem, DepVisEntities)() {
       cullingSystem.cullEntities(visibleEntities, frustum, CullingSystem.MaskRender)
     }
 
-    s.add("Probe collect")(ambientSystem, DepProbes)(DepEntities) {
+    s.add("Shadow cull")(cullingSystem, DepShadowEntities)() {
+      cullingSystem.cullEntities(shadowEntities, shadowFrustum, CullingSystem.MaskShadow)
+    }
+
+    s.add("Active merge")(DepActiveEntities)(DepVisEntities, DepShadowEntities) {
+      for (e <- visibleEntities.all) {
+        if (activeEntitySet.add(e))
+          activeEntities.add(e)
+      }
+
+      for (e <- shadowEntities.all) {
+        if (activeEntitySet.add(e))
+          activeEntities.add(e)
+      }
+    }
+
+    s.add("Probe collect")(ambientSystem, DepProbes)(DepVisEntities) {
       visibleProbes = ambientSystem.updateVisibleProbes(visibleEntities)
     }
 
@@ -461,42 +492,52 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       ambientSystem.updateIndirectLight(visibleProbes)
     }
 
-    s.add("Visible towers")(towerSystem, modelSystem)(DepEntities) {
-      towerSystem.updateVisible(visibleEntities)
+    s.add("Visible towers")(towerSystem, modelSystem)(DepActiveEntities) {
+      towerSystem.updateVisible(activeEntities)
     }
 
     s.add("All debris")(debrisSystem)() {
       debrisSystem.update(dt)
     }
 
-    s.add("Visible debris")(debrisSystem)(DepEntities) {
-      debrisSystem.updateVisible(dt, visibleEntities)
+    s.add("Visible debris")(debrisSystem)(DepActiveEntities) {
+      debrisSystem.updateVisible(dt, activeEntities)
     }
 
-    s.add("Visible animations")(modelSystem, animationSystem)(DepEntities) {
-      animationSystem.updateVisibleAnimations(dt, visibleEntities)
+    s.add("Visible animations")(modelSystem, animationSystem)(DepActiveEntities) {
+      animationSystem.updateVisibleAnimations(dt, activeEntities)
     }
 
-    s.addTo("Wire GUI")(Task.Main)(towerSystem, buildSystem)(DepEntities) {
-      buildSystem.renderWireGui(canvas, inputs, visibleEntities, viewProjection)
+    s.addTo("Wire GUI")(Task.Main)(towerSystem, buildSystem)(DepActiveEntities) {
+      buildSystem.renderWireGui(canvas, inputs, activeEntities, viewProjection)
     }
 
-    s.add("Model update")(modelSystem, DepMeshes)(DepEntities, debrisSystem) {
+    s.add("Visible models")(modelSystem, DepVisMeshes)(DepVisEntities, debrisSystem) {
       val models = modelSystem.collectVisibleModels(visibleEntities)
       modelSystem.updateModels(models)
       visibleMeshes = modelSystem.collectMeshInstances(models)
     }
 
-    s.add("Collect cables")(cableRenderSystem, DepCables)(DepEntities) {
+    s.add("Shadow models")(modelSystem, DepShadowMeshes)(DepShadowEntities, debrisSystem) {
+      val models = modelSystem.collectVisibleModels(shadowEntities)
+      modelSystem.updateModels(models)
+      shadowMeshes = modelSystem.collectMeshInstances(models)
+    }
+
+    s.add("Collect cables")(cableRenderSystem, DepCables)(DepVisEntities) {
       visibleCables = cableRenderSystem.collectCableMeshes(visibleEntities)
     }
 
-    s.add("Collect ground")(groundSystem, DepGround)(DepEntities) {
+    s.add("Collect ground")(groundSystem, DepGround)(DepVisEntities) {
       visibleGround = groundSystem.collectGroundPlates(visibleEntities)
     }
 
-    s.addTo("Forward draws")(Task.Main)(forwardRenderingSystem)(DepMeshes, DepProbes) {
+    s.addTo("Forward draws")(Task.Main)(forwardRenderingSystem)(DepVisMeshes, DepProbes) {
       forwardDraws = forwardRenderingSystem.createMeshDraws(visibleMeshes)
+    }
+
+    s.addTo("Shadow draws")(Task.Main)(shadowRenderingSystem)(DepShadowMeshes) {
+      shadowDraws = shadowRenderingSystem.createMeshDraws(shadowMeshes)
     }
 
     s.add("Ambient point cleanup")(ambientPointLightSystem)() {
@@ -537,6 +578,36 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     val renderer = Renderer.get
 
+    renderer.setMode(DepthWrite, BlendNone, CullNormal)
+    renderer.setRenderTarget(directionalLightSystem.shadowTarget)
+    renderer.clear(None, Some(1.0))
+
+    renderer.pushUniform(GlobalSceneUniform, u => {
+      GlobalSceneUniform.ViewProjection.set(u, shadowViewProjection)
+      GlobalSceneUniform.ViewPosition.set(u, 0.0f, 0.0f, 0.0f, 0.0f)
+    })
+
+    InstancedShadowShader.get.use()
+
+    for (draw <- shadowDraws.instanced) {
+      val mesh = draw.mesh
+
+      renderer.bindUniform(ShadowInstanceUniform, draw.instanceUbo)
+      renderer.drawElementsInstanced(draw.num, mesh.numIndices, mesh.indexBuffer, mesh.vertexBuffer)
+    }
+
+    for (draw <- forwardDraws.skinned) {
+      val mesh = draw.mesh
+
+      SkinnedShadowShader.get.use(p => {
+        import SkinnedShadowShader.Permutations._
+        p(BonesPerVertex) = SkinnedShadowShader.getBonePermutation(mesh.maxBonesPerVertex)
+      })
+
+      renderer.bindUniform(SkinnedShadowUniform, draw.uniform)
+      renderer.drawElements(mesh.numIndices, mesh.indexBuffer, mesh.vertexBuffer)
+    }
+
     renderer.setWriteSrgb(false)
     renderer.setMode(DepthWrite, BlendNone, CullNormal)
     renderer.setRenderTarget(globalRenderSystem.mainTargetMsaa)
@@ -544,16 +615,20 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     renderer.pushUniform(GlobalSceneUniform, u => {
       GlobalSceneUniform.ViewProjection.set(u, viewProjection)
+      GlobalSceneUniform.ShadowViewProjection.set(u, shadowViewProjection)
       GlobalSceneUniform.ViewPosition.set(u, cameraPos, 0.0f)
     })
 
     CableShader.get.use()
+    renderer.setTextureTargetDepth(CableShader.Textures.ShadowMap, directionalLightSystem.shadowTarget)
 
     for (cable <- visibleCables) {
       cable.draw()
     }
 
     InstancedMeshShader.get.use()
+
+    renderer.setTextureTargetDepth(InstancedMeshShader.Textures.ShadowMap, directionalLightSystem.shadowTarget)
 
     for (draw <- forwardDraws.instanced) {
       val mesh = draw.mesh
@@ -591,6 +666,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       renderer.setTexture(Tex.MatRoughness, mat.roughnessTex.texture)
       renderer.setTexture(Tex.MatMetallic, mat.metallicTex.texture)
       renderer.setTexture(Tex.MatAo, mat.aoTex.texture)
+      renderer.setTextureTargetDepth(Tex.ShadowMap, directionalLightSystem.shadowTarget)
 
       renderer.bindUniform(SkinnedModelUniform, draw.uniform)
       renderer.pushUniform(SkinnedMeshShader.VertexUniform, u => {
@@ -602,6 +678,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     }
 
     renderer.setTexture(GroundShader.Textures.Albedo, GroundTexture.get.texture)
+    renderer.setTextureTargetDepth(GroundShader.Textures.ShadowMap, directionalLightSystem.shadowTarget)
 
     GroundShader.get.use()
 
@@ -693,17 +770,19 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     val relHeight = (Camera.interpolatedZoom - CameraTweak.minZoom) / (CameraTweak.maxZoom - CameraTweak.minZoom)
     val pitch = lerp(CameraTweak.pitchLow, CameraTweak.pitchHigh, relHeight)
+    val cameraDir = Vector3(0.0, -1.0, -pitch)
 
-    view = Matrix43.look(cameraPos, Vector3(0.0, -1.0, -pitch))
+    view = Matrix43.look(cameraPos, cameraDir)
     projection = Matrix4.perspective(aspectRatio, fov, 1.0, 200.0)
     viewProjection = projection * view
     invViewProjection = viewProjection.inverse
+
+    directionalLightSystem.setupShadowProjection(cameraPos, cameraDir)
 
     buildSystem.update(dt, invViewProjection, inputs)
     buildSystem.renderBuildGui(canvas, viewProjection)
 
     bulletSystem.updateBullets(dt)
-
 
     cableSystem.generateCables()
     entitySystem.processDeletions()

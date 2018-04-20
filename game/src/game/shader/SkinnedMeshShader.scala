@@ -21,6 +21,7 @@ object SkinnedMeshShader extends ShaderAsset("shader/mesh/skinned_mesh") {
     val MatRoughness = sampler2D("MatRoughness", Sampler.RepeatTrilinear)
     val MatMetallic = sampler2D("MatMetallic", Sampler.RepeatTrilinear)
     val MatAo = sampler2D("MatAo", Sampler.RepeatTrilinear)
+    val ShadowMap = sampler2D("ShadowMap", Sampler.ClampBilinearNoMip)
   }
 
 

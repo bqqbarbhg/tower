@@ -1,9 +1,11 @@
 package game.system.rendering
 
 import scala.collection.mutable.ArrayBuffer
-
 import core._
 import AmbientSystem.Probe
+import game.options.Options
+import render._
+import util.geometry._
 
 sealed trait DirectionalLightSystem {
 
@@ -17,15 +19,39 @@ sealed trait DirectionalLightSystem {
     */
   def updateVisibleProbes(probes: ArrayBuffer[Probe]): Unit
 
+  /**
+    * Create shadow view-projection from directional light.
+    */
+  def setupShadowProjection(eyePosition: Vector3, lookDirection: Vector3): Unit
+
+  /**
+    * Current view-projection matrix for the shadow.
+    */
+  def shadowViewProjection: Matrix4
+
+  /**
+    * Render target to use for shadow mapping
+    */
+  def shadowTarget: RenderTarget
+
 }
 
 final class DirectionalLightSystemImpl extends DirectionalLightSystem {
 
   var lightDirection: Vector3 = Vector3.Zero
   var lightIntensity: Vector3 = Vector3.Zero
+  var viewProj: Matrix4 = Matrix4.Identity
+
+  val shadowTargetSize = if (Options.current.graphics.quality.shaderQuality >= 3) 2048
+  else if (Options.current.graphics.quality.shaderQuality >= 2) 1024
+  else 512
+
+  override val shadowTarget = RenderTarget.create(shadowTargetSize, shadowTargetSize, None, Some(TexFormat.D24S8), true)
+
+  val groundPlane = Plane(Vector3.Up, 0.0)
 
   override def setLight(direction: Vector3, intensity: Vector3): Unit = {
-    lightDirection = direction
+    lightDirection = direction.normalizeOrZero
     lightIntensity = intensity
   }
 
@@ -41,5 +67,38 @@ final class DirectionalLightSystemImpl extends DirectionalLightSystem {
       ix += 1
     }
   }
+
+  override def setupShadowProjection(eyePosition: Vector3, lookDirection: Vector3): Unit = {
+    val eyeRay = Ray(eyePosition, lookDirection)
+    val groundPoint = eyeRay.point(eyeRay.intersect(groundPlane).getOrElse(0.0))
+
+    val size = 80.0
+    val texelPerUnit = shadowTargetSize.toDouble / size
+
+    val forward = lightDirection
+    val right = (forward cross Vector3.Up).normalize
+    val up = (forward cross right).normalize
+
+    val targetPos = groundPoint + lightDirection * 40.0
+
+    val targetFwd = (targetPos dot forward)
+    val targetUp = (targetPos dot up)
+    val targetRight = (targetPos dot right)
+
+    val fixedUp = math.round(targetUp * texelPerUnit) / texelPerUnit
+    val fixedRight = math.round(targetRight * texelPerUnit) / texelPerUnit
+
+    val fixedPos = forward * targetFwd + up * fixedUp + right * fixedRight
+
+    val view = Matrix43.look(fixedPos, -lightDirection, Vector3.Up)
+    val proj = Matrix4.orthographic(size, size, 1.0, 80.0)
+
+    viewProj = proj * view
+  }
+
+  /**
+    * Current view-projection matrix for the shadow.
+    */
+  override def shadowViewProjection = viewProj
 }
 
