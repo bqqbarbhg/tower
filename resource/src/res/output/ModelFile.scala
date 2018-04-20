@@ -56,6 +56,9 @@ object ModelFile {
     for (mat <- model.materials) {
       buffer.putIdentifier(mat.albedo)
       buffer.putIdentifier(mat.normal)
+      buffer.putIdentifier(mat.roughness)
+      buffer.putIdentifier(mat.metallic)
+      buffer.putIdentifier(mat.ao)
     }
 
     buffer.putMagic("E.md")

@@ -2,6 +2,7 @@ package game.shader
 
 import render._
 import asset._
+import game.lighting.LightProbe
 import gfx.Shader
 
 object SkinnedMeshShader extends ShaderAsset("shader/mesh/skinned_mesh") {
@@ -15,7 +16,11 @@ object SkinnedMeshShader extends ShaderAsset("shader/mesh/skinned_mesh") {
   }
 
   override object Textures extends SamplerBlock {
-    val Albedo = sampler2D("Albedo", Sampler.RepeatAnisotropic)
+    val MatAlbedo = sampler2D("MatAlbedo", Sampler.RepeatAnisotropic)
+    val MatNormal = sampler2D("MatNormal", Sampler.RepeatAnisotropic)
+    val MatRoughness = sampler2D("MatRoughness", Sampler.RepeatTrilinear)
+    val MatMetallic = sampler2D("MatMetallic", Sampler.RepeatTrilinear)
+    val MatAo = sampler2D("MatAo", Sampler.RepeatTrilinear)
   }
 
 
@@ -24,7 +29,7 @@ object SkinnedMeshShader extends ShaderAsset("shader/mesh/skinned_mesh") {
   }
 
   override object Defines extends Shader.Defines {
-    vert("MaxBones", SkinnedModelUniform.MaxBones)
+    both("MaxBones", SkinnedModelUniform.MaxBones)
   }
 
   def getBonePermutation(maxBones: Int): Int = {

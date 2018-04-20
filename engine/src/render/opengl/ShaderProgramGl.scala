@@ -110,7 +110,7 @@ object ShaderProgramGl {
 
     // -- List active uniform blocks
     val numUniformBlocks = glGetProgrami(program, GL_ACTIVE_UNIFORM_BLOCKS)
-    val uboMapping = (0 until numUniformBlocks).flatMap(index => {
+    val uboMapping = (0 until numUniformBlocks).map(index => {
       val name = glGetActiveUniformBlockName(program, index)
       glUniformBlockBinding(program, index, index)
 
@@ -121,7 +121,9 @@ object ShaderProgramGl {
         }
 
         UniformBind(ub.serial, index)
-      })
+      }).getOrElse {
+        throw new RuntimeException(s"Uniform block '$name' not bound in shader specification!")
+      }
     }).toArray
 
     def findUniformInBlock(name: String): Option[(UniformBlock, UniformBlock.Uniform)] = {

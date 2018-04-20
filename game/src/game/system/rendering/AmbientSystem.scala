@@ -17,11 +17,17 @@ object AmbientSystem {
     *
     * @param entity Entity attached to, may be `null` if global.
     */
-  sealed abstract class Probe(val entity: Entity) {
+  sealed abstract class Probe(val entity: Entity, val gatherTotal: Boolean) {
 
     /** LightProbe containing environment irradiance, ie. incoming light to a
       * hemisphere per direction. */
     val irradianceProbe: LightProbe = LightProbe.make()
+
+    /**
+      * LightProbe containing _all_ irradiance, not only ambient. Defined only if
+      * `gatherTotal == true`.
+      */
+    val totalIrradianceProbe: LightProbe = if (gatherTotal) LightProbe.make() else null
 
     /** Position relative to `entity` or world origin if `entity == null` */
     var localPosition: Vector3 = Vector3.Zero
@@ -32,7 +38,7 @@ object AmbientSystem {
 
   /** Empty light probe that can be used as a placeholder. */
   val NullProbe: Probe = {
-    val p = new ProbeImpl(null)
+    val p = new ProbeImpl(null, true)
     // If `visibleMark` is always set it will never be updated
     p.visibleMark = true
     p
@@ -76,6 +82,13 @@ sealed trait AmbientSystem extends EntityDeleteListener {
   def updateVisibleProbes(visible: EntitySet): ArrayBuffer[Probe]
 
   /**
+    * Collect probes which gather non-ambient irradiance and set them up
+    * for adding light to `totalIrradianceProbe`. Returns list of currently
+    * visible total light probes.
+    */
+  def updateTotalProbes(probes: ArrayBuffer[Probe]): ArrayBuffer[Probe]
+
+  /**
     * Add indirect lighting to visible probes.
     */
   def updateIndirectLight(probes: ArrayBuffer[Probe]): Unit
@@ -92,7 +105,8 @@ sealed trait AmbientSystem extends EntityDeleteListener {
 
 object AmbientSystemImpl {
 
-  final class ProbeImpl(entity: Entity) extends Probe(entity) {
+  final class ProbeImpl(entity: Entity, gatherTotal: Boolean) extends Probe(entity, gatherTotal) {
+
     val static: Boolean = entity == null || entity.static
     var indirectProbes = Array[Probe]()
     var indirectWeights = Array[Double]()
@@ -117,7 +131,7 @@ final class AmbientSystemImpl extends AmbientSystem {
   }
 
   override def createGlobalProbe(position: Vector3): Probe = {
-    val probe = new ProbeImpl(null)
+    val probe = new ProbeImpl(null, false)
     probe.localPosition = position
     probe.worldPosition = position
     probe.indirectProbes = new Array[Probe](4)
@@ -127,7 +141,7 @@ final class AmbientSystemImpl extends AmbientSystem {
   }
 
   override def createGlobalProbeForIndirect(position: Vector3): Probe = {
-    val probe = new ProbeImpl(null)
+    val probe = new ProbeImpl(null, true)
     probe.localPosition = position
     probe.worldPosition = position
     probe.isIndirectEmitter = true
@@ -135,13 +149,13 @@ final class AmbientSystemImpl extends AmbientSystem {
   }
 
   override def addProbe(entity: Entity, localPosition: Vector3): Probe = {
-    val probe = new ProbeImpl(entity)
+    val probe = new ProbeImpl(entity, false)
     probe.localPosition = localPosition
     probe.indirectProbes = new Array[Probe](4)
     probe.indirectWeights = new Array[Double](4)
 
     if (entity.static) {
-      probe.worldPosition = entity.position + localPosition
+      probe.worldPosition = entity.transformPoint(localPosition)
       linkIndirectProbes(probe)
     }
 
@@ -170,7 +184,7 @@ final class AmbientSystemImpl extends AmbientSystem {
 
     // Update probe position and indirect probes if it's dynamic
     if (!probe.static) {
-      probe.worldPosition = probe.entity.position + probe.localPosition
+      probe.worldPosition = probe.entity.transformPoint(probe.localPosition)
       linkIndirectProbes(probe)
     }
 
@@ -190,6 +204,25 @@ final class AmbientSystemImpl extends AmbientSystem {
     result
   }
 
+  override def updateTotalProbes(probes: ArrayBuffer[Probe]): ArrayBuffer[Probe] = {
+    val result = new ArrayBuffer[Probe]()
+
+    var ix = 0
+    val len = probes.length
+    while (ix < len) {
+      val probe = probes(ix)
+      if (probe.gatherTotal) {
+
+        probe.totalIrradianceProbe.copyFrom(probe.irradianceProbe)
+        result += probe
+
+      }
+      ix += 1
+    }
+
+    result
+  }
+
   override def updateIndirectLight(probes: ArrayBuffer[Probe]): Unit = {
     val up = Vector3.Up
     val down = Vector3.Down
@@ -203,7 +236,7 @@ final class AmbientSystemImpl extends AmbientSystem {
     while (ix < numProbes) {
       val probe = probes(ix).asInstanceOf[ProbeImpl]
       if (probe.isIndirectEmitter) {
-        val lightProbe = probe.irradianceProbe
+        val lightProbe = probe.totalIrradianceProbe
         probe.cachedIndirectLight = lightProbe.evaluate(up)
         lightProbe.addDirectionalScaled(down, probe.cachedIndirectLight, baseFactor)
       }

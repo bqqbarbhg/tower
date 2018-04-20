@@ -51,6 +51,9 @@ class DebrisComponent extends Component {
   /** Radius for the culling area */
   var cullRadius: DoubleProp.Type = 10.0
 
+  /** Offset of the light probe used by the debris */
+  var probeOffset: Vector3Prop.Type = Vector3.Zero
+
   override def assets = Some(ModelAsset(model))
 
   override def create(entity: Entity): Unit = {

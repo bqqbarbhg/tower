@@ -64,6 +64,9 @@ object DebrisSystemImpl {
       }
     })
 
+    val probe = ambientSystem.addProbe(entity, component.probeOffset)
+    model.lightProbe = probe.irradianceProbe
+
     val center = entity.transformPoint(component.center)
 
     val parts = nodes.map(node => {

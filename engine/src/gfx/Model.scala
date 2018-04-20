@@ -121,6 +121,9 @@ class Model {
       val mat = new Material()
       mat.albedoTexRes = buffer.getIdentifier()
       mat.normalTexRes = buffer.getIdentifier()
+      mat.roughnessTexRes = buffer.getIdentifier()
+      mat.metallicTexRes = buffer.getIdentifier()
+      mat.aoTexRes = buffer.getIdentifier()
       this.materials(i) = mat
     }
 

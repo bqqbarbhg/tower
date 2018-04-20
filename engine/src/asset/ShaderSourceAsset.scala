@@ -26,7 +26,9 @@ class ShaderSourceAsset(val name: Identifier) extends LoadableAsset {
   }
 
   override def preloadAsset(): Iterable[LoadableAsset] = {
-    sourceImpl = ShaderSource.load(name).get
+    sourceImpl = ShaderSource.load(name).getOrElse {
+      throw new RuntimeException(s"Failed to load shader source: ${name.toString}")
+    }
     sourceImpl.imports
   }
 

@@ -105,6 +105,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     if (loadExisting)
       loadGame()
 
+    directionalLightSystem.setLight(Vector3(0.25, 0.75, -0.25).normalize, Vector3.One * 2.0)
+
     entitySystem.create(DrillEntity.get, Vector3(0.0, 0.0, 0.0))
   }
 
@@ -417,6 +419,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     val frustum = Frustum.fromViewProjection(viewProjection)
 
     var visibleProbes: ArrayBuffer[Probe] = null
+    var visibleTotalProbes: ArrayBuffer[Probe] = null
     var visibleMeshes: ModelSystem.MeshInstanceCollection = null
     var visibleCables: ArrayBuffer[CableRenderSystem.CableMeshPart] = null
     var visibleGround: ArrayBuffer[GroundSystem.GroundPlate] = null
@@ -444,6 +447,14 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     s.add("Ambient probe points")(DepProbes)(ambientPointLightSystem) {
       ambientPointLightSystem.updateVisibleProbes(visibleProbes)
+    }
+
+    s.add("Probe total collect")(ambientSystem, DepProbes)() {
+      visibleTotalProbes = ambientSystem.updateTotalProbes(visibleProbes)
+    }
+
+    s.add("Directional total probes")(ambientSystem, DepProbes)() {
+      directionalLightSystem.updateVisibleProbes(visibleTotalProbes)
     }
 
     s.add("Ambient probe indirect")(ambientSystem, DepProbes)() {
@@ -533,6 +544,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     renderer.pushUniform(GlobalSceneUniform, u => {
       GlobalSceneUniform.ViewProjection.set(u, viewProjection)
+      GlobalSceneUniform.ViewPosition.set(u, cameraPos, 0.0f)
     })
 
     CableShader.get.use()
@@ -545,8 +557,14 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     for (draw <- forwardDraws.instanced) {
       val mesh = draw.mesh
+      val mat = mesh.mesh.material
 
-      renderer.setTexture(InstancedMeshShader.Textures.Albedo, Material.shared.get.missingAlbedo.texture)
+      val Tex = InstancedMeshShader.Textures
+      renderer.setTexture(Tex.MatAlbedo, mat.albedoTex.texture)
+      renderer.setTexture(Tex.MatNormal, mat.normalTex.texture)
+      renderer.setTexture(Tex.MatRoughness, mat.roughnessTex.texture)
+      renderer.setTexture(Tex.MatMetallic, mat.metallicTex.texture)
+      renderer.setTexture(Tex.MatAo, mat.aoTex.texture)
 
       renderer.bindUniform(ModelInstanceUniform, draw.instanceUbo)
       renderer.bindUniform(LightProbeUniform, draw.lightProbeUbo)
@@ -560,13 +578,19 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     for (draw <- forwardDraws.skinned) {
       val mesh = draw.mesh
+      val mat = mesh.mesh.material
 
       SkinnedMeshShader.get.use(p => {
         import SkinnedMeshShader.Permutations._
         p(BonesPerVertex) = SkinnedMeshShader.getBonePermutation(mesh.maxBonesPerVertex)
       })
 
-      renderer.setTexture(InstancedMeshShader.Textures.Albedo, Material.shared.get.missingAlbedo.texture)
+      val Tex = SkinnedMeshShader.Textures
+      renderer.setTexture(Tex.MatAlbedo, mat.albedoTex.texture)
+      renderer.setTexture(Tex.MatNormal, mat.normalTex.texture)
+      renderer.setTexture(Tex.MatRoughness, mat.roughnessTex.texture)
+      renderer.setTexture(Tex.MatMetallic, mat.metallicTex.texture)
+      renderer.setTexture(Tex.MatAo, mat.aoTex.texture)
 
       renderer.bindUniform(SkinnedModelUniform, draw.uniform)
       renderer.pushUniform(SkinnedMeshShader.VertexUniform, u => {

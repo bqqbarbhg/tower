@@ -11,6 +11,7 @@ object ComponentType {
     EnemyComponent,
     EnemyTargetComponent,
     EnemyBlockerComponent,
+    LightProbeComponent,
 
     TurretTowerComponent,
     RotatingRadarComponent,

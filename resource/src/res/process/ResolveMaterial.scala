@@ -31,10 +31,14 @@ object ResolveMaterial {
       data ++ ".s2tx"
     }
 
-    val albedo = siblingFiles.find(n => baseName(n) == baseTex).map(resolve).getOrElse("")
+    val albedo = siblingFiles.find(n => baseName(n) == baseTex + "_albedo")
+        .orElse(siblingFiles.find(n => baseName(n) == baseTex)).map(resolve).getOrElse("")
     val normal = siblingFiles.find(n => baseName(n) == baseTex + "_normal").map(resolve).getOrElse("")
+    val roughness = siblingFiles.find(n => baseName(n) == baseTex + "_roughness").map(resolve).getOrElse("")
+    val metallic = siblingFiles.find(n => baseName(n) == baseTex + "_metallic").map(resolve).getOrElse("")
+    val ao = siblingFiles.find(n => baseName(n) == baseTex + "_ao").map(resolve).getOrElse("")
 
-    Material(albedo, normal)
+    Material(albedo, normal, roughness, metallic, ao)
   }
 
 }

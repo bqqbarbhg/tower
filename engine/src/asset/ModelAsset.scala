@@ -5,7 +5,7 @@ import gfx._
 import ModelAsset._
 
 object ModelAsset {
-  val TexturesPerMaterial = 2
+  val TexturesPerMaterial = 5
 
   def apply(name: String): ModelAsset = apply(Identifier(name))
   def apply(name: Identifier): ModelAsset = AssetLoader.getOrAdd(name, new ModelAsset(name))
@@ -39,7 +39,7 @@ class ModelAsset(val name: Identifier) extends LoadableAsset {
     meshes = modelImpl.meshResource.map(m => new MeshAsset(new Identifier(m))).toArray
 
     val materialIds = modelImpl.materials.flatMap(mat => {
-      Vector(mat.albedoTexRes, mat.normalTexRes)
+      Vector(mat.albedoTexRes, mat.normalTexRes, mat.roughnessTexRes, mat.metallicTexRes, mat.aoTexRes)
     })
     assert(materialIds.length == modelImpl.numMaterials * TexturesPerMaterial)
     materialTextures = materialIds.map(id => {
@@ -65,6 +65,9 @@ class ModelAsset(val name: Identifier) extends LoadableAsset {
       val materialShared = Material.shared.get
       mat.albedoTex = Option(materialTextures(base + 0)).map(_.get).getOrElse(materialShared.missingAlbedo)
       mat.normalTex = Option(materialTextures(base + 1)).map(_.get).getOrElse(materialShared.missingNormal)
+      mat.roughnessTex = Option(materialTextures(base + 2)).map(_.get).getOrElse(materialShared.missingRoughness)
+      mat.metallicTex = Option(materialTextures(base + 3)).map(_.get).getOrElse(materialShared.missingMetallic)
+      mat.aoTex = Option(materialTextures(base + 4)).map(_.get).getOrElse(materialShared.missingAo)
     }
 
     for (i <- 0 until modelImpl.numAnims) {

@@ -14,6 +14,7 @@ package object rendering {
   var globalRenderSystem: GlobalRenderSystem = null
   var animationSystem: AnimationSystem = null
   var debrisSystem: DebrisSystem = null
+  var directionalLightSystem: DirectionalLightSystem = null
 
   def loadGlobal(): Unit = {
     globalRenderSystem = new GlobalRenderSystemImpl()
@@ -29,6 +30,7 @@ package object rendering {
     ambientPointLightSystem = new AmbientPointLightSystemImpl()
     animationSystem = new AnimationSystemImpl()
     debrisSystem = new DebrisSystemImpl()
+    directionalLightSystem = new DirectionalLightSystemImpl()
 
     base.entitySystem.addDeleteListener(cullingSystem)
     base.entitySystem.addDeleteListener(pointLightSystem)
