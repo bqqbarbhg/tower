@@ -4,6 +4,9 @@ import core._
 import asset._
 import BulletSystem._
 import BulletSystemImpl._
+import game.system._
+import game.system.rendering._
+import game.system.rendering.AmbientPointLightSystem.AmbientPointLight
 import ui.{BillboardBatch, Canvas}
 import render._
 import render.Renderer._
@@ -22,6 +25,9 @@ object BulletSystem {
 }
 
 sealed trait BulletSystem {
+
+  /** Add a light flash effect */
+  def addLightFlash(position: Vector3, intensity: Vector3, radius: Double, duration: Double): Unit
 
   /** Add a bullet that flies starting from `start` to `distance` in `duration` seconds */
   def addBullet(start: Vector3, distance: Vector3, duration: Double): Unit
@@ -48,15 +54,26 @@ object BulletSystemImpl {
 
   val SmokeSprites = Array.tabulate(16)(ix => Identifier(s"effect/bullet/smoke_puff.png.$ix"))
 
+  class LightFlash(val entity: Entity, val light: AmbientPointLight, var time: Double, val duration: Double, val intensity: Vector3)
   class Bullet(var position: Vector3, var lifetime: Double, val velocity: Vector3, val direction: Vector3)
   class Smoke(val position: Vector3, val direction: Vector3, var time: Double, val duration: Double, val size: Vector2, val beginColor: Color, val endColor: Color)
   class Hit(val position: Vector3, val direction: Vector3, var time: Double, val duration: Double)
 }
 
 final class BulletSystemImpl extends BulletSystem {
+  val lightFlashes = new ArrayBuffer[LightFlash]()
   val bullets = new ArrayBuffer[Bullet]()
   val smokes = new ArrayBuffer[Smoke]()
   val hits = new ArrayBuffer[Hit]()
+
+  override def addLightFlash(position: Vector3, intensity: Vector3, radius: Double, duration: Double): Unit = {
+    val entity = new Entity(true, "Light flash")
+    entity.position = position
+
+    val light = ambientPointLightSystem.addLight(entity, Vector3.Zero, intensity, radius)
+
+    lightFlashes += new LightFlash(entity, light, 0.0, duration, intensity)
+  }
 
   override def addBullet(start: Vector3, distance: Vector3, duration: Double): Unit = {
     val vel = distance / duration
@@ -72,6 +89,27 @@ final class BulletSystemImpl extends BulletSystem {
   }
 
   override def updateBullets(dt: Double): Unit = {
+
+    // Update light flashes
+    {
+      var ix = 0
+      while (ix < lightFlashes.length) {
+        val flash = lightFlashes(ix)
+
+        flash.time += dt
+
+        if (flash.time >= flash.duration) {
+          flash.entity.delete()
+          lightFlashes(ix) = lightFlashes.last
+          lightFlashes.trimEnd(1)
+        } else {
+          val fade = 1.0 - flash.time / flash.duration
+          flash.light.intensity = flash.intensity * fade
+          ix += 1
+        }
+
+      }
+    }
 
     // Update bullets
     {

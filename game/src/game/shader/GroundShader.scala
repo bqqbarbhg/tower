@@ -14,5 +14,9 @@ object GroundShader extends ShaderAsset("shader/mesh/ground") {
     val Albedo = sampler2D("Albedo", Sampler.RepeatTrilinear)
   }
 
+  override object Defines extends Shader.Defines {
+    val MaxLightProbes = both("MaxLightProbes", LightProbeUniform.MaxProbes)
+  }
+
 }
 

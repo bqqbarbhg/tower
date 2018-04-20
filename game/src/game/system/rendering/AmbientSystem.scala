@@ -236,9 +236,8 @@ final class AmbientSystemImpl extends AmbientSystem {
     while (ix < numProbes) {
       val probe = probes(ix).asInstanceOf[ProbeImpl]
       if (probe.isIndirectEmitter) {
-        val lightProbe = probe.totalIrradianceProbe
-        probe.cachedIndirectLight = lightProbe.evaluate(up)
-        lightProbe.addDirectionalScaled(down, probe.cachedIndirectLight, baseFactor)
+        probe.cachedIndirectLight = probe.totalIrradianceProbe.evaluate(up)
+        probe.irradianceProbe.addDirectionalScaled(down, probe.cachedIndirectLight, baseFactor)
       }
 
       ix += 1

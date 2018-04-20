@@ -23,6 +23,9 @@ class RotatingRadarComponent extends Component {
   /** Detection radius for the radar */
   var radius: DoubleProp.Type = 0.0
 
+  /** Speed at which the radar rotates in radians per second */
+  var rotateSpeed: DoubleProp.Type = 4.0
+
   /** Offset for slot targetOut */
   var targetOutOffset: Vector3Prop.Type = Vector3.Zero
 

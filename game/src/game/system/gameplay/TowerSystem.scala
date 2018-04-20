@@ -10,6 +10,7 @@ import TowerSystem._
 import TowerSystemImpl._
 import asset.{AssetBundle, AtlasAsset}
 import game.system.gameplay.ConnectionSystem.Connection
+import game.system.rendering.AmbientPointLightSystem.AmbientPointLight
 import game.system.rendering.CullingSystem.RayHit
 import ui.{Canvas, DebugDraw}
 import ui.SpriteBatch.SpriteDraw
@@ -145,6 +146,8 @@ object TowerSystemImpl {
     val shootPos = entity.transformPoint(component.shootOrigin)
     var aimTime: Double = 0.0
 
+    var ambientLight: Option[AmbientPointLight] = None
+
     override val slots: Array[Slot] = Array(
       slotTargetIn,
     )
@@ -225,6 +228,7 @@ object TowerSystemImpl {
         component.shootDistance
       }
 
+
       val realT = minT - component.bulletExitDistance
       val bulletDuration = realT * 0.005
 
@@ -240,6 +244,7 @@ object TowerSystemImpl {
         val endColor = Color(0.1, 0.1, 0.1)
         bulletSystem.addBullet(pos, dir * realT, bulletDuration)
         bulletSystem.addSmoke(smokePos, dir, 0.5, size, beginColor, endColor)
+        bulletSystem.addLightFlash(pos, Vector3.One * 0.1, 35.0, 0.3)
 
         if (hit) {
           val random = Vector3(sharedRandom.nextDouble - 0.5, sharedRandom.nextDouble - 0.5, sharedRandom.nextDouble - 0.5).normalizeOrZero
@@ -279,7 +284,7 @@ object TowerSystemImpl {
     )
 
     def update(dt: Double): Unit = {
-      angle += dt * 2.0
+      angle += dt * component.rotateSpeed
 
       def findTarget(): Unit = {
         for (target <- enemySystem.queryEnemiesAround(entity.position, component.radius)) {
