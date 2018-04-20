@@ -65,6 +65,12 @@ class TurretTowerComponent extends Component {
   /** Random offset the shot bullets */
   var spread: Vector3Prop.Type = Vector3.Zero
 
+  /** Exponential interpolation towards visual yaw */
+  var visualYawExponential: DoubleProp.Type = 0.15
+
+  /** Linear interpolation towards visual yaw */
+  var visualYawLinear: DoubleProp.Type = 0.1
+
   /** Slot */
   var targetIn: SlotInfoProp.Type = new SlotInfo(true, "slot.turret.targetIn")
 

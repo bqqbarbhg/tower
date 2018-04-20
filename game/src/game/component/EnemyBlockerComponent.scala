@@ -17,12 +17,13 @@ class EnemyBlockerComponent extends Component {
   override def componentType: ComponentType = EnemyBlockerComponent
 
   /** Minimum corner */
-  var min: Vector2Prop.Type = Vector2.Zero
+  var min: Vector3Prop.Type = Vector3.Zero
 
   /** Maximum corner */
-  var max: Vector2Prop.Type = Vector2.Zero
+  var max: Vector3Prop.Type = Vector3.Zero
 
   override def create(entity: Entity): Unit = {
+    enemySystem.addBlocker(entity, this)
   }
 }
 

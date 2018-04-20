@@ -25,6 +25,8 @@ object Entity {
   val Flag_Enemy = 134
   val Flag_GridOccupier = 135
   val Flag_Debris = 136
+  val Flag_EnemyBlocker = 137
+  val Flag_DestroyableTower = 138
 
   val EmptyEntity = new EntityType(false, "BasicEntity", None)
 

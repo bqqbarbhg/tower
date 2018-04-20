@@ -4,11 +4,12 @@ import core._
 import game.component._
 import game.system._
 import game.system.Entity._
+import game.system.base._
 import game.system.rendering._
 import game.system.rendering.ModelSystem._
 import TowerSystem._
 import TowerSystemImpl._
-import asset.{AssetBundle, AtlasAsset}
+import asset.{AssetBundle, AtlasAsset, EntityTypeAsset}
 import game.system.gameplay.ConnectionSystem.Connection
 import game.system.rendering.AmbientPointLightSystem.AmbientPointLight
 import game.system.rendering.CullingSystem.RayHit
@@ -108,6 +109,12 @@ sealed trait TowerSystem extends EntityDeleteListener {
   /** Render GUI used by this system */
   def renderIngameGui(viewProjection: Matrix4): Unit
 
+  /** Register an entity as destroyable */
+  def addDestroyableTower(entity: Entity, component: DestroyableTowerComponent): Unit
+
+  /** Deal damage to a tower */
+  def doDamage(entity: Entity, amount: Double): Unit
+
 }
 
 object TowerSystemImpl {
@@ -146,6 +153,9 @@ object TowerSystemImpl {
     val shootPos = entity.transformPoint(component.shootOrigin)
     var aimTime: Double = 0.0
 
+    var yawTarget: Double = 0.0
+    var visualYaw: Double = 0.0
+
     var ambientLight: Option[AmbientPointLight] = None
 
     override val slots: Array[Slot] = Array(
@@ -164,6 +174,17 @@ object TowerSystemImpl {
           targetPos = worldPos
 
         case _ =>
+      }
+
+      {
+        val dx = targetPos.distanceTo(shootPos.copy(y = targetPos.y))
+        val dy = targetPos.y - shootPos.y
+
+        val maxYawLinear = component.visualYawExponential * dt
+
+        yawTarget = math.atan2(dy, dx)
+        visualYaw += (yawTarget - visualYaw) * powDt(component.visualYawExponential, dt)
+        visualYaw += clamp(yawTarget - visualYaw, -maxYawLinear, maxYawLinear)
       }
 
       var deltaAngle = wrapAngle(targetAngle - aimAngle)
@@ -261,7 +282,7 @@ object TowerSystemImpl {
 
     override def updateVisible(): Unit = {
       for (node <- aimNode) {
-        node.localTransform = Matrix43.rotateZ(visualAngle)
+        node.localTransform = Matrix43.rotateZ(visualAngle) * Matrix43.rotateX(visualYaw)
       }
       for (node <- spinNode) {
         node.localTransform = Matrix43.rotateY(spin)
@@ -532,6 +553,10 @@ object TowerSystemImpl {
   val TargetMarkSprite = Identifier("gui/hud/target_mark.png")
   val TurretMarkSprite = Identifier("gui/hud/turret_mark.png")
 
+  class DestroyableTower(val entity: Entity, val component: DestroyableTowerComponent) {
+    var health: Double = component.health
+  }
+
 }
 
 final class TowerSystemImpl extends TowerSystem {
@@ -540,6 +565,8 @@ final class TowerSystemImpl extends TowerSystem {
 
   val entityToTower = new mutable.HashMap[Entity, Tower]()
   val entityToSlots = new mutable.HashMap[Entity, SlotContainer]()
+  val entityToDestroyable = new mutable.HashMap[Entity, DestroyableTower]()
+
   var timeImpl: Double = 0.0
 
   val visibleTargetVisuals = new ArrayBuffer[TargetVisual]()
@@ -575,6 +602,7 @@ final class TowerSystemImpl extends TowerSystem {
   }
 
   override def entitiesDeleted(entities: EntitySet): Unit = {
+
     for (e <- entities.flag(Flag_Tower)) {
       var tower = entityToTower(e)
       do {
@@ -583,11 +611,18 @@ final class TowerSystemImpl extends TowerSystem {
       } while (tower != null)
       e.clearFlag(Flag_Tower)
     }
+
     for (e <- entities.flag(Flag_Slots)) {
       val slots = entityToSlots.remove(e).get
       slots.detachAll()
       e.clearFlag(Flag_Slots)
     }
+
+    for (e <- entities.flag(Flag_DestroyableTower)) {
+      entityToDestroyable.remove(e)
+      e.clearFlag(Flag_DestroyableTower)
+    }
+
   }
 
   override def update(dt: Double): Unit = {
@@ -734,5 +769,29 @@ final class TowerSystemImpl extends TowerSystem {
 
     sb.flush()
   }
+
+  override def addDestroyableTower(entity: Entity, component: DestroyableTowerComponent): Unit = {
+    val destroyable = new DestroyableTower(entity, component)
+    entityToDestroyable(entity) = destroyable
+
+    entity.setFlag(Flag_DestroyableTower)
+  }
+
+  override def doDamage(entity: Entity, amount: Double): Unit = {
+    if (!entity.hasFlag(Flag_DestroyableTower)) return
+
+    val destroyable = entityToDestroyable(entity)
+    destroyable.health -= amount
+
+    if (destroyable.health <= 0.0) {
+      for (breakable <- entity.prototype.find(BreakableComponent)) {
+        val et = EntityTypeAsset(breakable.hardBreakEffect)
+        entitySystem.createEffect(et.get, entity.position, entity.rotation)
+      }
+
+      entity.delete()
+    }
+  }
+
 }
 

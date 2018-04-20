@@ -26,7 +26,7 @@ object SparseGrid {
     private var res: Option[A] = None
 
     private def advance(): Unit = {
-      if (x < max.x || y < max.y) {
+      if (x <= max.x && y <= max.y) {
         res = Some(grid.createCell(x, y))
         if (x == max.x) {
           y += 1
@@ -56,7 +56,8 @@ object SparseGrid {
     private var res: Option[A] = None
 
     private def advance(): Unit = {
-      while ((x < max.x || y < max.y) && res.isEmpty) {
+      res = None
+      while ((x <= max.x && y <= max.y) && res.isEmpty) {
         res = grid.getCell(x, y)
         if (x == max.x) {
           y += 1
@@ -119,11 +120,21 @@ class SparseGrid[A](val cellSize: Vector2, val cellOffset: Vector2, val construc
   }
   def getCellPosition(position: Vector2): CellPos = getCellPosition(position.x, position.y)
 
+  def createRange(minX: Int, minY: Int, maxX: Int, maxY: Int): Iterator[A] = createRange(CellPos(minX, minY), CellPos(maxX, maxY))
+  def createRange(minPos: CellPos, maxPos: CellPos): Iterator[A] = {
+    new RectCreateIterator[A](this, minPos, maxPos)
+  }
+
   def createIntersecting(min: Vector2, max: Vector2): Iterator[A] = createIntersecting(min.x, min.y, max.x, max.y)
   def createIntersecting(minX: Double, minY: Double, maxX: Double, maxY: Double): Iterator[A] = {
     val minPos = getCellPosition(minX, minY)
     val maxPos = getCellPosition(maxX, maxY)
     new RectCreateIterator[A](this, minPos, maxPos)
+  }
+
+  def getRange(minX: Int, minY: Int, maxX: Int, maxY: Int): Iterator[A] = createRange(CellPos(minX, minY), CellPos(maxX, maxY))
+  def getRange(minPos: CellPos, maxPos: CellPos): Iterator[A] = {
+    new RectGetIterator[A](this, minPos, maxPos)
   }
 
   def getIntersecting(min: Vector2, max: Vector2): Iterator[A] = getIntersecting(min.x, min.y, max.x, max.y)

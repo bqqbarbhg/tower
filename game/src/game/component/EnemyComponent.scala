@@ -23,6 +23,24 @@ class EnemyComponent extends Component {
   /** How much health (hitpoints) does the enemy have* */
   var health: DoubleProp.Type = 100.0
 
+  /** Area in which the enemy collides to structures and attacks */
+  var hitRadius: DoubleProp.Type = 4.0
+
+  /** How many seconds it takes the enemy to melee attack */
+  var meleeDuration: DoubleProp.Type = 0.5
+
+  /** Time into the hit to do the damage */
+  var meleeHitTime: DoubleProp.Type = 0.4
+
+  /** How much damage the enemy does to towers */
+  var meleeDamage: DoubleProp.Type = 10.0
+
+  /** Animation to play when moving forwards */
+  var moveAnim: IdentifierProp.Type = Identifier.Empty
+
+  /** Animation to play when attacking */
+  var attackAnim: IdentifierProp.Type = Identifier.Empty
+
   override def dependencies = Some(ModelComponent)
 
   override def create(entity: Entity): Unit = {
