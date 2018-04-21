@@ -107,7 +107,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     if (loadExisting)
       loadGame()
 
-    directionalLightSystem.setLight(Vector3(0.25, 0.75, -0.25).normalize, Vector3.One * 2.0)
+    directionalLightSystem.setLight(Vector3(0.25, 0.75, -0.25).normalize, Vector3.One)
 
     entitySystem.create(DrillEntity.get, Vector3(0.0, 0.0, 0.0))
   }
@@ -424,6 +424,10 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
   def renderScene(dt: Double): Unit = {
 
+    ambientSystem.globalProbe.clear()
+    ambientSystem.globalProbe.addGlobal(Vector3(0.08, 0.08, 0.1))
+    ambientSystem.globalProbe.addDirectional(Vector3.Up, Vector3(0.08, 0.08, 0.1))
+
     val shadowViewProjection = directionalLightSystem.shadowViewProjection
     val frustum = Frustum.fromViewProjection(viewProjection)
     val shadowFrustum = Frustum.fromViewProjection(shadowViewProjection)
@@ -614,9 +618,17 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     renderer.clear(Some(Color.Black), Some(1.0))
 
     renderer.pushUniform(GlobalSceneUniform, u => {
+      val sw = directionalLightSystem.shadowTarget.width.toDouble
+      val sh = directionalLightSystem.shadowTarget.height.toDouble
+      val isw = 1.0 / sw
+      val ish = 1.0 / sh
+
       GlobalSceneUniform.ViewProjection.set(u, viewProjection)
       GlobalSceneUniform.ShadowViewProjection.set(u, shadowViewProjection)
       GlobalSceneUniform.ViewPosition.set(u, cameraPos, 0.0f)
+      GlobalSceneUniform.ShadowSize.set(u, sw.toFloat, sh.toFloat, isw.toFloat, ish.toFloat)
+      GlobalSceneUniform.LightDirection.set(u, directionalLightSystem.lightDirection, 0.0f)
+      GlobalSceneUniform.LightIntensity.set(u, directionalLightSystem.lightIntensity, 0.0f)
     })
 
     CableShader.get.use()
@@ -724,7 +736,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     spawnTime -= dt
     if (spawnTime < 0.0) {
-      entitySystem.create(EntityTypeAsset("entity/enemy/test.es.toml").get, Vector3(0.0, 0.0, -80.0))
+      // entitySystem.create(EntityTypeAsset("entity/enemy/test.es.toml").get, Vector3(0.0, 0.0, -80.0))
       spawnTime = 4.0
     }
 

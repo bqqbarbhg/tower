@@ -1,6 +1,7 @@
 package gfx
 
 import java.nio.ByteBuffer
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import org.lwjgl.system.MemoryUtil
 
@@ -31,6 +32,8 @@ object ShaderSource {
       shaderSource
     })
   }
+
+  val NoChunks = Array[SourceChunk]()
 }
 
 class ShaderSource(val filename: Identifier) {
@@ -40,9 +43,16 @@ class ShaderSource(val filename: Identifier) {
   var sourceBaseLines = Array[Int]()
   private var chunkRefs = Array[ChunkRef]()
 
-  def chunks: Seq[SourceChunk] = chunkRefs.flatMap(ref => ref match {
+  def chunks: Seq[SourceChunk] = chunks(new mutable.HashSet[Identifier]())
+
+  def chunks(importStatus: mutable.HashSet[Identifier]): Seq[SourceChunk] = chunkRefs.flatMap(ref => ref match {
     case ChunkRefSource(index) => Vector(SourceChunk(filename, sourceBaseLines(index), sources(index)))
-    case ChunkRefImport(index) => imports(index).get.chunks
+    case ChunkRefImport(index) =>
+      if (importStatus.add(imports(index).name)) {
+        imports(index).get.chunks(importStatus)
+      } else {
+        NoChunks
+      }
   })
 
   def load(buffer: ByteBuffer): Unit = {

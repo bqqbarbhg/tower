@@ -2,6 +2,7 @@ package game.shader
 
 import render._
 import asset._
+import game.options.Options
 import gfx.Shader
 
 object GroundShader extends ShaderAsset("shader/mesh/ground") {
@@ -16,7 +17,8 @@ object GroundShader extends ShaderAsset("shader/mesh/ground") {
   }
 
   override object Defines extends Shader.Defines {
-    val MaxLightProbes = both("MaxLightProbes", LightProbeUniform.MaxProbes)
+    both("MaxLightProbes", LightProbeUniform.MaxProbes)
+    both("ShaderQuality", Options.current.graphics.quality.shaderQuality)
   }
 
 }

@@ -50,13 +50,15 @@ object GraphicsOptions {
         antialias = 2
         shaderQuality = 1
         resolutionFactor = 0.75
+        highBitdepth = false
         preset = "Low"
       }),
 
       "Medium" -> Some(() => new QualityOptions() {
         maxTextureSize = 1024
         antialias = 4
-        shaderQuality = 3
+        shaderQuality = 2
+        highBitdepth = false
         preset = "Medium"
       }),
 

@@ -34,13 +34,31 @@ sealed trait DirectionalLightSystem {
     */
   def shadowTarget: RenderTarget
 
+  /**
+    * Current light direction (towards the light)
+    */
+  def lightDirection: Vector3
+
+  /**
+    * Current light intensity
+    */
+  def lightIntensity: Vector3
+
+  /**
+    * Release resources used by this system.
+    */
+  def unload(): Unit
+
 }
 
 final class DirectionalLightSystemImpl extends DirectionalLightSystem {
 
-  var lightDirection: Vector3 = Vector3.Zero
-  var lightIntensity: Vector3 = Vector3.Zero
+  var _lightDirection: Vector3 = Vector3.Zero
+  var _lightIntensity: Vector3 = Vector3.Zero
   var viewProj: Matrix4 = Matrix4.Identity
+
+  override def lightDirection = _lightDirection
+  override def lightIntensity = _lightIntensity
 
   val shadowTargetSize = if (Options.current.graphics.quality.shaderQuality >= 3) 2048
   else if (Options.current.graphics.quality.shaderQuality >= 2) 1024
@@ -51,8 +69,8 @@ final class DirectionalLightSystemImpl extends DirectionalLightSystem {
   val groundPlane = Plane(Vector3.Up, 0.0)
 
   override def setLight(direction: Vector3, intensity: Vector3): Unit = {
-    lightDirection = direction.normalizeOrZero
-    lightIntensity = intensity
+    _lightDirection = direction.normalizeOrZero
+    _lightIntensity = intensity
   }
 
   override def updateVisibleProbes(probes: ArrayBuffer[Probe]): Unit = {
@@ -62,7 +80,7 @@ final class DirectionalLightSystemImpl extends DirectionalLightSystem {
       val probe = probes(ix)
       assert(probe.gatherTotal, "Directional probes must gather all light")
 
-      probe.totalIrradianceProbe.addDirectional(lightDirection, lightIntensity)
+      probe.totalIrradianceProbe.addDirectional(_lightDirection, _lightIntensity)
 
       ix += 1
     }
@@ -72,14 +90,14 @@ final class DirectionalLightSystemImpl extends DirectionalLightSystem {
     val eyeRay = Ray(eyePosition, lookDirection)
     val groundPoint = eyeRay.point(eyeRay.intersect(groundPlane).getOrElse(0.0))
 
-    val size = 80.0
+    val size = 140.0
     val texelPerUnit = shadowTargetSize.toDouble / size
 
-    val forward = lightDirection
+    val forward = _lightDirection
     val right = (forward cross Vector3.Up).normalize
     val up = (forward cross right).normalize
 
-    val targetPos = groundPoint + lightDirection * 40.0
+    val targetPos = groundPoint + _lightDirection * 80.0
 
     val targetFwd = (targetPos dot forward)
     val targetUp = (targetPos dot up)
@@ -90,8 +108,8 @@ final class DirectionalLightSystemImpl extends DirectionalLightSystem {
 
     val fixedPos = forward * targetFwd + up * fixedUp + right * fixedRight
 
-    val view = Matrix43.look(fixedPos, -lightDirection, Vector3.Up)
-    val proj = Matrix4.orthographic(size, size, 1.0, 80.0)
+    val view = Matrix43.look(fixedPos, -_lightDirection, Vector3.Up)
+    val proj = Matrix4.orthographic(size, size, 1.0, 160.0)
 
     viewProj = proj * view
   }
@@ -100,5 +118,9 @@ final class DirectionalLightSystemImpl extends DirectionalLightSystem {
     * Current view-projection matrix for the shadow.
     */
   override def shadowViewProjection = viewProj
+
+  override def unload(): Unit = {
+    shadowTarget.unload()
+  }
 }
 

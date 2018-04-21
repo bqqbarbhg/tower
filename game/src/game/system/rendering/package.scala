@@ -58,6 +58,8 @@ package object rendering {
   }
 
   def unloadState(): Unit = {
+    directionalLightSystem.unload()
+
     base.entitySystem.removeDeleteListener(cullingSystem)
     base.entitySystem.removeDeleteListener(pointLightSystem)
     base.entitySystem.removeDeleteListener(ambientSystem)

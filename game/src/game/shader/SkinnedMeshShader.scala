@@ -3,6 +3,7 @@ package game.shader
 import render._
 import asset._
 import game.lighting.LightProbe
+import game.options.Options
 import gfx.Shader
 
 object SkinnedMeshShader extends ShaderAsset("shader/mesh/skinned_mesh") {
@@ -31,6 +32,7 @@ object SkinnedMeshShader extends ShaderAsset("shader/mesh/skinned_mesh") {
 
   override object Defines extends Shader.Defines {
     both("MaxBones", SkinnedModelUniform.MaxBones)
+    both("ShaderQuality", Options.current.graphics.quality.shaderQuality)
   }
 
   def getBonePermutation(maxBones: Int): Int = {

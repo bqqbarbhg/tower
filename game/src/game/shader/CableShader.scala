@@ -15,7 +15,8 @@ object CableShader extends ShaderAsset("shader/mesh/cable") {
   }
 
   override object Defines extends Shader.Defines {
-    val MaxLightProbes = both("MaxLightProbes", LightProbeUniform.MaxProbes)
+    both("MaxLightProbes", LightProbeUniform.MaxProbes)
+    both("ShaderQuality", Options.current.graphics.quality.shaderQuality)
   }
 
 }
