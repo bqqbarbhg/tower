@@ -37,7 +37,6 @@ import scala.collection.mutable.ArrayBuffer
 
 object PlayState {
 
-  val GroundTexture = TextureAsset("game/ground/ground_albedo.png.s2tx")
   val Colorgrade = TextureAsset("colorgrade/ingame.png.s2tx")
 
   val IdleMusic = SoundAsset("audio/music/ingame.ogg.s2au")
@@ -49,7 +48,13 @@ object PlayState {
   val CablePulseMask = TextureAsset("effect/pulse/mask/basic.png.s2tx")
   val CablePulseTex = TextureAsset("effect/pulse/tex/hexagon.png.s2tx")
 
-  val DrillEntity = EntityTypeAsset("entity/tower/drill.es.toml")
+  val CrystalEntity = EntityTypeAsset("entity/tower/crystal.es.toml")
+
+  val GroundAlbedo = TextureAsset("game/ground/ground_albedo.png.s2tx")
+  val GroundNormal = TextureAsset("game/ground/ground_normal.png.s2tx")
+  val GroundRoughness = TextureAsset("game/ground/ground_roughness.png.s2tx")
+  val GroundMetallic = TextureAsset("game/ground/ground_metallic.png.s2tx")
+  val GroundAo = TextureAsset("game/ground/ground_ao.png.s2tx")
 
   val Assets = new AssetBundle("PlayState",
     PauseMenu.Assets,
@@ -58,8 +63,10 @@ object PlayState {
     BuildSystem.Assets,
     BulletSystem.Assets,
 
-    DrillEntity,
-    GroundTexture,
+    CrystalEntity,
+    GroundAlbedo,
+    GroundNormal,
+    GroundAo,
     Colorgrade,
     GroundShader,
     InstancedMeshShader,
@@ -107,9 +114,10 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     if (loadExisting)
       loadGame()
 
-    directionalLightSystem.setLight(Vector3(0.25, 0.75, -0.25).normalize, Vector3.One)
+    directionalLightSystem.setLight(Vector3(0.25, 0.75, -0.25).normalize, Vector3.One * 1.0)
 
-    entitySystem.create(DrillEntity.get, Vector3(0.0, 0.0, 0.0))
+    val crystal = entitySystem.create(CrystalEntity.get, Vector3(0.0, 0.0, 0.0))
+    ambientPointLightSystem.addLight(crystal, Vector3(0.0, 10.0, 0.0), Vector3(0.5, 0.7, 0.5) * 2.0, 60.0)
   }
 
   override def stop(): Unit = {
@@ -425,8 +433,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   def renderScene(dt: Double): Unit = {
 
     ambientSystem.globalProbe.clear()
-    ambientSystem.globalProbe.addGlobal(Vector3(0.08, 0.08, 0.1))
-    ambientSystem.globalProbe.addDirectional(Vector3.Up, Vector3(0.08, 0.08, 0.1))
+    ambientSystem.globalProbe.addGlobal(Vector3(0.08, 0.08, 0.1) * 0.5)
+    ambientSystem.globalProbe.addDirectional(Vector3.Up, Vector3(0.08, 0.08, 0.1) * 0.5)
 
     val shadowViewProjection = directionalLightSystem.shadowViewProjection
     val frustum = Frustum.fromViewProjection(viewProjection)
@@ -689,7 +697,11 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       renderer.drawElements(mesh.numIndices, mesh.indexBuffer, mesh.vertexBuffer)
     }
 
-    renderer.setTexture(GroundShader.Textures.Albedo, GroundTexture.get.texture)
+    renderer.setTexture(GroundShader.Textures.MatAlbedo, GroundAlbedo.get.texture)
+    renderer.setTexture(GroundShader.Textures.MatNormal, GroundNormal.get.texture)
+    renderer.setTexture(GroundShader.Textures.MatRoughness, GroundRoughness.get.texture)
+    renderer.setTexture(GroundShader.Textures.MatMetallic, GroundMetallic.get.texture)
+    renderer.setTexture(GroundShader.Textures.MatAo, GroundAo.get.texture)
     renderer.setTextureTargetDepth(GroundShader.Textures.ShadowMap, directionalLightSystem.shadowTarget)
 
     GroundShader.get.use()

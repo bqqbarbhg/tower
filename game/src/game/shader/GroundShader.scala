@@ -12,7 +12,11 @@ object GroundShader extends ShaderAsset("shader/mesh/ground") {
   uniform(LightProbeUniform)
 
   override object Textures extends SamplerBlock {
-    val Albedo = sampler2D("Albedo", Sampler.RepeatTrilinear)
+    val MatAlbedo = sampler2D("MatAlbedo", Sampler.RepeatTrilinear)
+    val MatNormal = sampler2D("MatNormal", Sampler.RepeatTrilinear)
+    val MatRoughness = sampler2D("MatRoughness", Sampler.RepeatTrilinear)
+    val MatMetallic = sampler2D("MatMetallic", Sampler.RepeatTrilinear)
+    val MatAo = sampler2D("MatAo", Sampler.RepeatTrilinear)
     val ShadowMap = sampler2D("ShadowMap", Sampler.ClampBilinearNoMip)
   }
 

@@ -5,9 +5,9 @@ import java.nio.ByteBuffer
 import core._
 
 object LightProbe {
-  def make(): LightProbe = new SphericalHarmonic2()
-  val SizeInVec4 = 9
-  val Empty = new SphericalHarmonic2()
+  def make(): LightProbe = new AmbientCube()
+  val SizeInVec4 = 6
+  val Empty = new AmbientCube()
 }
 
 trait LightProbe {
