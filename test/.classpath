@@ -6,16 +6,16 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/tower-game"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/tower-resource"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/tower-shared"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/scalatest/hamcrest-core-1.3.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/scalatest/junit-4.12.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/scalatest/scalactic_2.12-3.0.4.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/scalatest/scalamock_2.12-4.0.0.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/scalatest/scalatest_2.12-3.0.4.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/scalatest/scala-xml_2.12-1.0.6.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl-natives-linux.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl-natives-macos.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl-natives-windows.jar"/>
+	<classpathentry kind="lib" path="../external/scalatest/hamcrest-core-1.3.jar"/>
+	<classpathentry kind="lib" path="../external/scalatest/junit-4.12.jar"/>
+	<classpathentry kind="lib" path="../external/scalatest/scalactic_2.12-3.0.4.jar"/>
+	<classpathentry kind="lib" path="../external/scalatest/scalamock_2.12-4.0.0.jar"/>
+	<classpathentry kind="lib" path="../external/scalatest/scalatest_2.12-3.0.4.jar"/>
+	<classpathentry kind="lib" path="../external/scalatest/scala-xml_2.12-1.0.6.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl/lwjgl.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl/lwjgl-natives-linux.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl/lwjgl-natives-macos.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl/lwjgl-natives-windows.jar"/>
 	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

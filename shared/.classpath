@@ -3,9 +3,9 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl-natives-linux.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl-natives-macos.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl-natives-windows.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl/lwjgl.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl/lwjgl-natives-linux.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl/lwjgl-natives-macos.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl/lwjgl-natives-windows.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

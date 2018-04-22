@@ -3,30 +3,30 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/tower-shared"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-stb/lwjgl-stb.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-stb/lwjgl-stb-natives-linux.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-stb/lwjgl-stb-natives-macos.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-stb/lwjgl-stb-natives-windows.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-sse/lwjgl-sse.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-sse/lwjgl-sse-natives-linux.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-sse/lwjgl-sse-natives-macos.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-sse/lwjgl-sse-natives-windows.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl-natives-linux.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl-natives-macos.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl-natives-windows.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-glfw/lwjgl-glfw.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-glfw/lwjgl-glfw-natives-linux.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-glfw/lwjgl-glfw-natives-macos.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-glfw/lwjgl-glfw-natives-windows.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-openal/lwjgl-openal.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-openal/lwjgl-openal-natives-linux.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-openal/lwjgl-openal-natives-macos.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-openal/lwjgl-openal-natives-windows.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-opengl/lwjgl-opengl.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-opengl/lwjgl-opengl-natives-linux.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-opengl/lwjgl-opengl-natives-macos.jar"/>
-	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-opengl/lwjgl-opengl-natives-windows.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-stb/lwjgl-stb.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-stb/lwjgl-stb-natives-linux.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-stb/lwjgl-stb-natives-macos.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-stb/lwjgl-stb-natives-windows.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-sse/lwjgl-sse.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-sse/lwjgl-sse-natives-linux.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-sse/lwjgl-sse-natives-macos.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-sse/lwjgl-sse-natives-windows.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl/lwjgl.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl/lwjgl-natives-linux.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl/lwjgl-natives-macos.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl/lwjgl-natives-windows.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-glfw/lwjgl-glfw.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-glfw/lwjgl-glfw-natives-linux.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-glfw/lwjgl-glfw-natives-macos.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-glfw/lwjgl-glfw-natives-windows.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-openal/lwjgl-openal.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-openal/lwjgl-openal-natives-linux.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-openal/lwjgl-openal-natives-macos.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-openal/lwjgl-openal-natives-windows.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-opengl/lwjgl-opengl.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-opengl/lwjgl-opengl-natives-linux.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-opengl/lwjgl-opengl-natives-macos.jar"/>
+	<classpathentry kind="lib" path="../external/lwjgl/lwjgl-opengl/lwjgl-opengl-natives-windows.jar"/>
 	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
