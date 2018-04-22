@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry excluding="res/" kind="src" path="src"/>
+	<classpathentry kind="src" path="src/res"/>
+	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl-natives-linux.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl-natives-macos.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl/lwjgl-natives-windows.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-assimp/lwjgl-assimp.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-assimp/lwjgl-assimp-natives-linux.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-assimp/lwjgl-assimp-natives-macos.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-assimp/lwjgl-assimp-natives-windows.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-xxhash/lwjgl-xxhash.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-xxhash/lwjgl-xxhash-natives-linux.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-xxhash/lwjgl-xxhash-natives-macos.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-xxhash/lwjgl-xxhash-natives-windows.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-stb/lwjgl-stb.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-stb/lwjgl-stb-natives-linux.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-stb/lwjgl-stb-natives-macos.jar"/>
+	<classpathentry kind="lib" path="D:/Dev/tower/external/lwjgl/lwjgl-stb/lwjgl-stb-natives-windows.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/tower-shared"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

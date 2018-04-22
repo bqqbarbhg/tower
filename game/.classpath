@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry excluding="game/" kind="src" path="src"/>
+	<classpathentry kind="src" path="src/game"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/tower-engine"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/tower-shared"/>
+	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

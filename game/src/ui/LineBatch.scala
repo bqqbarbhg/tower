@@ -2,7 +2,6 @@ package ui
 
 import java.nio.ByteBuffer
 
-import org.lwjgl.system.MemoryUtil
 import core._
 import gfx._
 import render._

@@ -13,7 +13,6 @@ import ui._
 import ui.Canvas._
 import ui.InputSet.InputArea
 import io.property._
-import org.lwjgl.system.MemoryUtil
 import game.system._
 import game.system.audio.AudioSystem.SoundRef
 import game.system.rendering.ModelSystem.ModelInstance

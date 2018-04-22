@@ -13,6 +13,7 @@ object LocaleInfo {
     val pack = Package.get
     val localeFiles = pack.list("locale").filter(_.name.endsWith(".s2lc"))
     val buffer = alloca(128)
+    
     locales = for (localeFile <- localeFiles) yield {
       val stream = pack.get(localeFile.name).get.read()
       val info = new LocaleInfo(Identifier(localeFile.name))

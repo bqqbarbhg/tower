@@ -64,9 +64,13 @@ object PlayState {
     BulletSystem.Assets,
 
     CrystalEntity,
+    
     GroundAlbedo,
     GroundNormal,
+    GroundMetallic,
+    GroundRoughness,
     GroundAo,
+
     Colorgrade,
     GroundShader,
     InstancedMeshShader,

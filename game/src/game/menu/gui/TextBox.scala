@@ -92,7 +92,7 @@ abstract class TextBox(val style: TextBoxStyle) extends Element {
           var posX = 0.0
           while (ix < tl) {
             val ch = ec.text(ix)
-            val next = if (ix + 1 < tl) ec.text(ix + 1) else '\0'
+            val next = if (ix + 1 < tl) ec.text(ix + 1) else '\u0000'
             val advance = font.getAdvance(ch, ts.height, next)
             val mid = posX + advance * 0.5
             if (mid > x) return ix
@@ -242,8 +242,8 @@ abstract class TextBox(val style: TextBoxStyle) extends Element {
           val Span(sb, se, sp) = ec.selection
 
           val x0 = pos.x
-          val x1 = x0 + ts.measureWidth(ec.text, 0, sb, ec.text.lift(sb).getOrElse('\0'))
-          val x2 = x1 + selTs.measureWidth(ec.text, sb, se - sb, ec.text.lift(se).getOrElse('\0'))
+          val x1 = x0 + ts.measureWidth(ec.text, 0, sb, ec.text.lift(sb).getOrElse('\u0000'))
+          val x2 = x1 + selTs.measureWidth(ec.text, sb, se - sb, ec.text.lift(se).getOrElse('\u0000'))
           val y = pos.y
 
           if (x2 > x1) {

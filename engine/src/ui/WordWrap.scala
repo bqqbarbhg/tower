@@ -31,7 +31,7 @@ object WordWrap {
 
     val lines = ArrayBuffer[String]()
 
-    var prevCh = '\0'
+    var prevCh = '\u0000'
     var width = 0.0
 
     /** Flush the current line broken at `indexOfLinebreak` */

@@ -598,6 +598,12 @@ class Runner(val opts: RunOptions) {
       }
     }
 
+    // Game data root
+    {
+      val filename = Paths.get(opts.dataRoot, s"data_root.s2dr").toFile
+      DataRootFile.save(writer, filename)
+    }
+
     // Wait for the processing to end
     finishTasks()
 

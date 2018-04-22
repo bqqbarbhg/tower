@@ -1,5 +1,9 @@
 package main
 
+import java.io.FileNotFoundException
+
+import core._
+import util.BufferUtils._
 import asset.AssetLoader
 import debug.ResourceTracker
 import locale.LocaleInfo
@@ -7,6 +11,7 @@ import platform.AppWindow
 import render._
 import render.opengl.{MapMode, OptsGl}
 import task.Task
+import util.BufferIntegrityException
 
 object EngineStartup {
 
@@ -52,6 +57,34 @@ object EngineStartup {
   }
 
   var launchOptions: Options = null
+
+  def verifyDataRoot(): Option[Exception] = withStack {
+    val pack = io.content.Package.get
+    val file = pack.get("data_root.s2dr")
+
+    try {
+      file match {
+        case Some(f) =>
+          val stream = f.read()
+          val buffer = alloca(1024)
+          buffer.readFrom(stream)
+          stream.close()
+          buffer.finish()
+
+          val MaxVersion = 1
+          buffer.verifyMagic("s2dr")
+          buffer.getVersion(MaxVersion)
+
+          buffer.verifyMagic("E.dr")
+
+          None
+
+        case None => Some(new FileNotFoundException("Data root file 'data_root.s2dr' not found"))
+      }
+    } catch {
+      case ex: BufferIntegrityException => Some(ex)
+    }
+  }
 
   def start(opts: Options): Unit = {
     AppWindow.initialize()

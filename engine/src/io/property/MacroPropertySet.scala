@@ -1,7 +1,7 @@
 package io.property
 
 import scala.collection.mutable.ArrayBuffer
-import scala.reflect.macros.Context
+import scala.reflect.macros.blackbox.Context
 import scala.language.experimental.macros
 import scala.reflect.ClassTag
 
@@ -47,5 +47,5 @@ object MacroPropertySet {
     c.Expr[Array[Property]](q"Array[Property](..$exprs)")
   }
 
-  def make[T]() = macro MacroPropertySet.fieldImpl[T]
+  def make[T](): Array[io.property.Property] = macro MacroPropertySet.fieldImpl[T]
 }

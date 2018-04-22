@@ -32,7 +32,7 @@ object ContentFile {
       buffer
     }
 
-    val fileTask = Task.Io.addWithManualDependencies(lockingTask.size, loadFileBuffer)
+    val fileTask = Task.Io.addWithManualDependencies(lockingTask.size, () => loadFileBuffer())
     for (task <- lockingTask) task.linkDependent(fileTask)
     val userTask = executor.add(fileTask, userLoadFunc)
     lockingTask = Some(userTask)

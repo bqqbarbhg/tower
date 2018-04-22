@@ -37,9 +37,9 @@ object Canvas {
 
     def scaled(amount: Double): TextStyle = this.copy(height = height * amount)
 
-    def measureWidth(text: String): Double = measureWidth(text, 0, text.length, '\0')
+    def measureWidth(text: String): Double = measureWidth(text, 0, text.length, '\u0000')
     def measureWidth(text: String, nextChar: Char): Double = measureWidth(text, 0, text.length, nextChar)
-    def measureWidth(text: String, offset: Int, length: Int): Double = measureWidth(text, offset, length, '\0')
+    def measureWidth(text: String, offset: Int, length: Int): Double = measureWidth(text, offset, length, '\u0000')
     def measureWidth(text: String, offset: Int, length: Int, nextChar: Char): Double = {
       if (length == 0) return 0.0
 

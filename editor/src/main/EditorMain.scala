@@ -1,5 +1,8 @@
 package main
 
+import java.io.FileNotFoundException
+import javax.swing.JOptionPane
+
 import render._
 import core._
 import asset.AssetLoader
@@ -9,6 +12,7 @@ import io.content._
 import ui.Layout
 import util.BufferUtils._
 import game.system.rendering._
+import util.BufferIntegrityException
 
 object EditorMain extends App {
 
@@ -42,6 +46,44 @@ object EditorMain extends App {
   pack.add(new DirectoryPackage("data"), 0)
 
   Package.set(pack)
+
+  for (error <- EngineStartup.verifyDataRoot()) {
+    val builder = new StringBuilder()
+
+    def write(line: String): Unit = {
+      builder.append(line)
+      builder.append('\n')
+    }
+
+    write("Failed to load game data")
+    write(s"Error: ${error.getMessage}")
+
+    error match {
+
+      case ex: FileNotFoundException =>
+        write("The game data was not found or is not processed. Make sure your working directory\n" +
+              "is pointed at /tower-data/ and run the editor with the argument '-P config.toml'\n" +
+              "to process the resources. If this doesn't solve the problem remove the /temp/ and\n" +
+              "/data/ folders inside tower-data to re-process all the resources.")
+
+        write("")
+
+        val cwd = new java.io.File(".").getAbsolutePath.stripSuffix(".")
+
+        write(s"Current working directory: $cwd")
+
+      case ex: BufferIntegrityException =>
+        write("The root data file exists but is corrupted. Try re-processing the resources.")
+
+      case _ =>
+    }
+
+    val message = builder.result
+
+    println(message)
+    JOptionPane.showMessageDialog(null, message)
+    System.exit(1)
+  }
 
   AssetLoader.preloadAtlases()
 

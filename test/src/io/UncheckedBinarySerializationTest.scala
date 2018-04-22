@@ -80,7 +80,7 @@ class UncheckedBinarySerializationTest extends FlatSpec with Matchers {
     assert(buf.getChar() === 's')
     assert(buf.getChar() === 't')
     assert(buf.getChar() === '!')
-    assert(buf.getChar() === '\0')
+    assert(buf.getChar() === '\u0000')
     assert(buf.position === wbuf.position)
   }
 
