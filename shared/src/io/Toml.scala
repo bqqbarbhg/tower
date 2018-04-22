@@ -228,7 +228,7 @@ object Toml {
 
   def parseFile(filename: String): SMap = {
     val source = scala.io.Source.fromFile(filename, "UTF-8")
-    val str = source.mkString
+    val str = source.mkString.stripPrefix("\uFFFE").stripPrefix("\uFEFF")
     source.close()
     parse(str, filename)
   }

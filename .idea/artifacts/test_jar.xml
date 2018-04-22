@@ -38,10 +38,22 @@
         <element id="directory" name="data">
           <element id="dir-copy" path="$PROJECT_DIR$/../test/tower-data/data" />
         </element>
+        <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-xxhash/lwjgl-xxhash-natives-linux.jar" path-in-jar="/" />
+        <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-xxhash/lwjgl-xxhash-natives-macos.jar" path-in-jar="/" />
+        <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-xxhash/lwjgl-xxhash-natives-windows.jar" path-in-jar="/" />
+        <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-xxhash/lwjgl-xxhash.jar" path-in-jar="/" />
       </element>
       <element id="module-output" name="game" />
       <element id="module-output" name="resource" />
       <element id="module-output" name="editor" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-assimp/lwjgl-assimp-natives-linux.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-assimp/lwjgl-assimp-natives-macos.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-assimp/lwjgl-assimp-natives-windows.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-assimp/lwjgl-assimp.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-xxhash/lwjgl-xxhash-natives-linux.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-xxhash/lwjgl-xxhash-natives-macos.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-xxhash/lwjgl-xxhash-natives-windows.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/external/lwjgl/lwjgl-xxhash/lwjgl-xxhash.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>
