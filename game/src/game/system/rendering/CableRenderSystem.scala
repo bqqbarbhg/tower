@@ -585,7 +585,7 @@ class CableRenderSystemImpl extends CableRenderSystem {
       val p1 = points(pointIx)
       val p2 = points(pointIx + 1)
 
-      normal = (p1 - p0) + (p2 - p1)
+      normal = p2 - p0
       bitangent = (tangent cross normal).normalize
       tangent = (normal cross bitangent).normalize
       appendRing(p1)

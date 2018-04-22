@@ -324,13 +324,13 @@ if (hasUboSupport) {
 
 As explained above, the engine uses uniform buffer objects where available.
 This raises the question: How do you transfer the UBO data to the GPU?
-It turns out that as is with most of OpenGL there is no clear solution.
+As is with most of OpenGL there is no clear solution.
 Different styles are faster on different hardware and drivers, some things
-can be flat out broken, the usual. So to deal with this there are lots of
+can be flat out broken. So to deal with this there are lots of
 ways to map buffers in the engine. Not only for uniform buffers, but for
 example dynamic vertex data needs to be transferred somehow.
 
-The two cases (uniform buffer objects and dynamic vertex buffers) have different
+The two cases of mapping (uniform buffer objects and dynamic vertex buffers) have different
 write patterns which affects the type of mapping we want. Uniforms tend to be
 written out of order to the buffer and may even leave gaps. In contrast, vertex
 data tends to be streamed out in a very linear fashion. The reason this matters
@@ -347,7 +347,7 @@ Mapping vertex buffers with glMapBuffer and glUnmapBuffer().
 ](image/map-01-old.png)&shy;
 
 When working with older drivers the engine uses `glBufferSubData()` for uniform buffers.
-The `glBufferSubData()` call copies data to a GPU buffer in a pretty unspecified way,
+The `glBufferSubData()` call copies data to a GPU buffer in an unspecified way,
 which isn't ideal but it's better than doing tons of tiny mappings for every UBO.
 Vertex data uses the `glMapBuffer()` API with `GL_UNSYNCHRONIZED_BIT`, which
 should give the application a chunk of write combined GPU memory. The drawback is
@@ -373,12 +373,11 @@ When the buffers are created and mapped with explicit flushing enabled the
 application needs to call `glFlushMappedBufferRange()` after writing to guarantee
 that the data is visible to the GPU. If the buffer is coherent, this is not
 required and the data is automatically guaranteed to reach the GPU. There is
-no clear winner here: The two approaches need to be benchmarked and unfortunately,
-most likely different drivers and hardware will have wildly different results.
+no clear winner here: the performance is dependent on the platform.
 
 There is one exception to the mapping of buffers: If OpenGL compatability mode
-is requested, for example with `--gl-compat` __everything__ is mapped with
-`glBufferSubData()`. This is due to it being the most foolproof API.
+is requested, for example with `--gl-compat`, __everything__ is mapped with
+`glBufferSubData()`, since it's the most foolproof API.
 
 ## Case-study: Cable rendering
 
@@ -481,6 +480,133 @@ phases: First the spline is evaluated at points and then the points are converte
 into thicker rings which make up a cable mesh. The Hermite spline is parameterized
 by a single value that doesn't have any geometric meaning about the distance on the
 curve. This means the spline can't just be evaluated at even offsets to get good results.
+All the code for the cable mesh generation is located in `CableRenderSystem`.
+
+The algorithm to evaluate the spline works as follows: Define minimum and maximum
+increments in the spline parameter domain and an evaluation function whether an
+evaluated point is meaningfully different from the previous one. The evaluation
+function has minimum and maximum distance limits to the previous point and
+maximum angle differecne based on the numerical derivative of the spline.
+
+```scala
+/** Returns whether this advance is of an acceptable distance and/or curvature */
+def isConsiderableAdvance(t: Double): Boolean = {
+  val nextPos = evaluate(t)
+  val delta = nextPos - position
+  val sq = delta dot delta
+  if (sq <= minDistanceSq) return false
+  if (sq >= maxDistanceSq) return true
+
+  val derivPos = evaluate(t + MinTimestep)
+  val derivTangent = derivPos - nextPos
+  val length = derivTangent.length
+  if (derivTangent.length > 0.0001) {
+    val dot = derivTangent.normalize dot tangent
+    if (dot >= minAngleDot) return false
+  }
+  true
+}
+```
+
+After these definitions the rest of the spline evaluation algorithm is quite
+simple. Advance the spline by the maximum argument increment until the next
+point is acceptable.  In small enough intervals the evaluation function can
+be considered monotonic, so we can solve the optimal point to add by binary
+searching the interval between the previous unacceptable time and the next
+acceptable one. After finding the optimal point it is added to the result
+list and used as a reference previous point. The algorithm continues until
+the end has been reached.
+
+```scala
+val positions = ArrayBuffer[Vector3]()
+while (time < TimeEnd) {
+  positions += position
+
+  // Skip the cable one MaxTimestep at a time
+  while (time < TimeEnd && !isConsiderableAdvance(time + MaxTimestep)) {
+    time += MaxTimestep
+  }
+
+  // Find the optimal insert position
+  val baseTime = time + MinTimestep
+  val ix = BinarySearch.upperBound(0, BinarySeachGranularity, ix => {
+    isConsiderableAdvance(baseTime + ix * binarySearchStep)
+  })
+
+  time = baseTime + ix * binarySearchStep
+  val nextPos = evaluate(time)
+
+  val deltaPos = nextPos - position
+  val deltaLen = deltaPos.length
+  if (deltaLen >= 0.0001) {
+    tangent = deltaPos / deltaLen
+  }
+  position = nextPos
+}
+```
+
+![
+Hard case of S-shaped cable with 90 degree angles.
+](image/cable-06-orientation.png)&shy;
+
+To make the actual mesh, the list of points is iterated and converted into
+rings. Cross products are used to keep the rings in the same orientation so
+the cable doesn't twist when turning. In the picture above the green arrow
+represents the ring normal, which can be obtained from the normalized direction
+between the previous and next points. The red arrow is the tangent direction which
+should stay consistent between the vertices. It turns out that it's easier to
+first solve the bitangent for a ring and derive the tangent from that (by simple
+cross product between the normal and bitangent). The bitangent for a point can
+be formed by a cross product of the _previous_ tangent and _current_ normal
+vectors.
+
+```scala
+// Middle section
+var pointIx = 1
+while (pointIx < points.length - 1) {
+  val p0 = points(pointIx - 1)
+  val p1 = points(pointIx)
+  val p2 = points(pointIx + 1)
+
+  normal = p2 - p0
+  bitangent = (tangent cross normal).normalize
+  tangent = (normal cross bitangent).normalize
+  appendRing(p1)
+
+  pointIx += 1
+}
+```
+
+The rendering implementation adds some constraints to the cable meshes. The most
+limiting factor of cable mesh size is _light probes_. To receive ambient light
+the cable mesh re-uses the light probes of the ground. When adding a ring to the
+cable, `GroundSystem.getProbesAndWeights()` is called to determine the a weighted
+average of the ground light probes for the midpoint. Since there is a maximum amount
+of light probes that can be attached to a single draw-call, the mesh may have to
+be split at points.
+
+The resulting mesh parts are added to `CullingSystem` and tagged with `Flag_CablePart`.
+When rendering the engine gathers all visible entities and at some point `CableRenderSystem`
+goes through all visible objects with `Flag_CablePart` set and adds them into a list,
+which later gets rendered using `CableShader`.
+
+```scala
+object CableShader extends ShaderAsset("shader/mesh/cable") {
+
+  uniform(GlobalSceneUniform)
+  uniform(LightProbeUniform)
+
+  override object Textures extends SamplerBlock {
+    val ShadowMap = sampler2D("ShadowMap", Sampler.ClampBilinearNoMip)
+  }
+
+  override object Defines extends Shader.Defines {
+    both("MaxLightProbes", LightProbeUniform.MaxProbes)
+    both("ShaderQuality", Options.current.graphics.quality.shaderQuality)
+  }
+
+}
+```
 
 ## Post-mortem
 
