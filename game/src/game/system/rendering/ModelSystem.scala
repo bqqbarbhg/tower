@@ -52,6 +52,9 @@ object ModelSystem {
     /** Light probe the model uses. */
     var lightProbe: LightProbe = LightProbe.Empty
 
+    /** Scale of the model */
+    var scale: Vector3 = Vector3.One
+
     /** Find a node matching a name in the model. */
     def findNode(name: Identifier): Option[NodeInstance]
 
@@ -193,7 +196,7 @@ final class ModelSystemImpl extends ModelSystem {
     val state = modelInst.state
 
     if (!entity.static || modelInst.lastFrameUpdated < 0L) {
-      Matrix43.unsafeWorld(modelInst.entityTransform, entity.position, entity.rotation)
+      Matrix43.unsafeWorld(modelInst.entityTransform, entity.position, entity.rotation, modelInst.scale)
       modelInst.worldTransform.unsafeMul(modelInst.transform, modelInst.entityTransform)
       state.worldTransform = modelInst.worldTransform
     }

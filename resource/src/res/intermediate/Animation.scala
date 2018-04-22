@@ -12,7 +12,7 @@ object Animation {
   case class Timeline(val boneName: String, val isParent: Boolean, val rot: Array[FrameQuat], val pos: Array[FrameVec3], val size: Array[FrameVec3])
 }
 
-class Animation(val name: String, val duration: Double, val ticksPerSecond: Double) extends Resource {
+class Animation(val name: String, var duration: Double, var ticksPerSecond: Double) extends Resource {
   var timelines = new ArrayBuffer[Timeline]()
 
   override def unload(): Unit = {

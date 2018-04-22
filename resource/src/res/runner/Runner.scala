@@ -496,6 +496,7 @@ class Runner(val opts: RunOptions) {
         }
 
         PatchModelProperties.patchModelProperties(meshes, asset.config.res.model)
+        PatchAnimationProperties.patchAnimationProperties(animations, asset.config.res.model)
 
         for (mesh <- meshes) {
           mesh.material = ResolveMaterial.resolveMaterialFromTexture(mesh.textureName, siblingTextures, resolveTextureFile)

@@ -122,6 +122,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     val crystal = entitySystem.create(CrystalEntity.get, Vector3(0.0, 0.0, 0.0))
     ambientPointLightSystem.addLight(crystal, Vector3(0.0, 10.0, 0.0), Vector3(0.5, 0.7, 0.5) * 2.0, 60.0)
+
+    entitySystem.create(EntityTypeAsset("entity/enemy/crab.es.toml").get, Vector3(0.0, 0.0, -60.0))
   }
 
   override def stop(): Unit = {

@@ -20,10 +20,14 @@ class ModelComponent extends Component {
   /** Model asset to use */
   var asset: IdentifierProp.Type = Identifier.Empty
 
+  /** Relative scale of the model */
+  var scale: Vector3Prop.Type = Vector3.One
+
   override def assets: Iterable[LoadableAsset] = Some(ModelAsset(asset))
 
   override def create(entity: Entity): Unit = {
-    modelSystem.addModel(entity, asset)
+    val model = modelSystem.addModel(entity, asset)
+    model.scale = scale
   }
 }
 

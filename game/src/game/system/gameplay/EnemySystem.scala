@@ -46,6 +46,7 @@ object EnemySystemImpl {
 
   val StateUndefined = 0
   val StateActive = 1
+  val StateDefeated = 2
 
   val NoPath = Vector[Vector2]()
 
@@ -75,6 +76,8 @@ object EnemySystemImpl {
     var rotationAngle: Double = 0.0
     var targetRotation: Double = 0.0
 
+    var defeatTimer: Double = 0.0
+
     var aiState: Int = AiMove
   }
 
@@ -97,6 +100,7 @@ object EnemySystemImpl {
 final class EnemySystemImpl extends EnemySystem {
 
   val enemiesActive = new CompactArrayPool[Enemy]()
+  val enemiesDefeated = new CompactArrayPool[Enemy]()
 
   val entityToEnemy = new mutable.HashMap[Entity, Enemy]()
   val entityToBlocker = new mutable.HashMap[Entity, Blocker]()
@@ -159,6 +163,8 @@ final class EnemySystemImpl extends EnemySystem {
 
       if (enemy.enemyState == StateActive) {
         enemiesActive.remove(enemy)
+      } else if (enemy.enemyState == StateDefeated) {
+        enemiesDefeated.remove(enemy)
       }
 
       e.clearFlag(Flag_Enemy)
@@ -222,7 +228,7 @@ final class EnemySystemImpl extends EnemySystem {
             enemy.attackTime = 0.0
             enemy.attackTarget = blocker.entity
 
-            enemy.animator.playOnce(1, enemy.component.attackAnim, 0.2, 0.3)
+            enemy.animator.playOnce(1, enemy.component.attackAnim, 0.1, 0.1)
 
           case None =>
             if (enemy.pathIndex < enemy.path.length) {
@@ -271,6 +277,15 @@ final class EnemySystemImpl extends EnemySystem {
 
       enemy.entity.rotation = Quaternion.fromAxisAngle(Vector3.Up, enemy.rotationAngle)
     }
+
+    for (enemy <- enemiesDefeated) {
+      enemy.defeatTimer += dt
+
+      if (enemy.defeatTimer >= enemy.component.defeatDuration) {
+        enemy.entity.delete()
+      }
+    }
+
   }
 
   override def doDamageDelayed(entity: Entity, amount: Double, delay: Double): Unit = {
@@ -287,8 +302,11 @@ final class EnemySystemImpl extends EnemySystem {
       val max = pos + range
       pathfindSystem.increaseDynamicWeight(min, max, amount)
 
-      if (enemy.health <= 0.0) {
-        enemy.entity.delete()
+      if (enemy.health <= 0.0 && enemy.enemyState == StateActive) {
+        enemiesActive.remove(enemy)
+        enemiesDefeated.add(enemy)
+        enemy.enemyState = StateDefeated
+        enemy.animator.playOnce(10, enemy.component.defeatAnim, 0.1, 0.0)
       }
     }
   }

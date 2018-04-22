@@ -268,6 +268,30 @@ object Config {
         }
       }
 
+      class Animation extends SimpleSerializable {
+
+        /** Filter for animation name */
+        var name: String = ""
+
+        /** Override animation length in frames */
+        var lengthInFrames: Double = 0.0
+
+        private var cachedNameRegexSrc = ""
+        private var cachedNameRegex: Option[Regex] = None
+        def nameRegex: Option[Regex] = {
+          if (cachedNameRegexSrc != name) {
+            cachedNameRegexSrc = name
+            cachedNameRegex = Some(Filter.globToRegex(name))
+          }
+          cachedNameRegex
+        }
+
+        override def visit(v: SimpleVisitor): Unit = {
+          name = v.field("name", name)
+          lengthInFrames = v.field("lengthInFrames", lengthInFrames)
+        }
+      }
+
       class Mesh extends SimpleSerializable {
 
         /** Filter for node name */
@@ -308,12 +332,16 @@ object Config {
       /** Node-specific configuration */
       var nodes: ArrayBuffer[Model.Node] = new ArrayBuffer[Model.Node]()
 
+      /** Animation-specific configuration */
+      var animations: ArrayBuffer[Model.Animation] = new ArrayBuffer[Model.Animation]()
+
       /** Mesh-specific configuration */
       var meshes: ArrayBuffer[Model.Mesh] = new ArrayBuffer[Model.Mesh]()
 
       override def visit(v: SimpleVisitor): Unit = {
         scale = v.field("scale", scale)
         nodes = v.field("nodes", nodes, new Model.Node())
+        animations = v.field("animations", animations, new Model.Animation())
         meshes = v.field("meshes", meshes, new Model.Mesh())
       }
     }

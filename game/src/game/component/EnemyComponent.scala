@@ -35,11 +35,17 @@ class EnemyComponent extends Component {
   /** How much damage the enemy does to towers */
   var meleeDamage: DoubleProp.Type = 10.0
 
+  /** How long to wait until deleting the entity after defeat */
+  var defeatDuration: DoubleProp.Type = 0.0
+
   /** Animation to play when moving forwards */
   var moveAnim: IdentifierProp.Type = Identifier.Empty
 
   /** Animation to play when attacking */
   var attackAnim: IdentifierProp.Type = Identifier.Empty
+
+  /** Animation to play when defeated */
+  var defeatAnim: IdentifierProp.Type = Identifier.Empty
 
   /** Amount to rotate towards target exponentially */
   var rotateSpeedExponential: DoubleProp.Type = 0.1

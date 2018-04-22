@@ -244,6 +244,32 @@ object Matrix43 {
     r
   }
 
+  def unsafeWorld(r: Matrix43, translation: Vector3, rotation: Quaternion, scale: Vector3): Unit = {
+    val x = rotation.x
+    val y = rotation.y
+    val z = rotation.z
+    val w = rotation.w
+
+    r.m11 = (1.0 - 2.0*y*y - 2.0*z*z) * scale.x
+    r.m12 = (2.0*x*y - 2.0*z*w) * scale.y
+    r.m13 = (2.0*x*z + 2.0*y*w) * scale.z
+    r.m21 = (2.0*x*y + 2.0*z*w) * scale.x
+    r.m22 = (1.0 - 2.0*x*x - 2.0*z*z) * scale.y
+    r.m23 = (2.0*y*z - 2.0*x*w) * scale.z
+    r.m31 = (2.0*x*z - 2.0*y*w) * scale.x
+    r.m32 = (2.0*y*z + 2.0*x*w) * scale.y
+    r.m33 = (1.0 - 2.0*x*x - 2.0*y*y) * scale.z
+    r.m14 = translation.x
+    r.m24 = translation.y
+    r.m34 = translation.z
+  }
+
+  def world(translation: Vector3, rotation: Quaternion, scale: Vector3): Matrix43 = {
+    val r = new Matrix43.Unsafe()
+    unsafeWorld(r, translation, rotation, scale)
+    r
+  }
+
   def unsafeWorld(r: Matrix43, translation: Vector3, rotation: Quaternion): Unit = {
     val x = rotation.x
     val y = rotation.y
