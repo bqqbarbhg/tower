@@ -30,11 +30,14 @@ object MenuState {
   val MenuAtlas = AtlasAsset("atlas/menu.s2at")
   val StatueModel = ModelAsset("mainmenu/mainmenu_statue.fbx.s2md")
   val MainFont = FontAsset("font/catamaran/Catamaran-SemiBold.ttf.s2ft")
+  val CreditsFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
   val MainColorgrade = TextureAsset("colorgrade/mainmenu.png.s2tx")
+  val CreditsColorgrade = TextureAsset("colorgrade/credits.png.s2tx")
 
   val MenuMusic = SoundAsset("audio/music/mainmenu.ogg.s2au")
 
   private val tMenuItem = TextStyle(MainFont, 44.0)
+  private val tCredits = TextStyle(CreditsFont, 22.0)
 
   private val lMain = 0
 
@@ -47,6 +50,7 @@ object MenuState {
     MenuAtlas,
     Material.shared,
     MainColorgrade,
+    CreditsColorgrade,
     MenuMusic,
     OptionsMenu.Assets,
   )
@@ -79,9 +83,12 @@ class MenuState extends GameState {
   val ContinueButton = new Button("continue")
   val NewGameButton = new Button("newGame")
   val OptionsButton = new Button("options")
+  val CreditsButton = new Button("credits")
   val ExitButton = new Button("exit")
 
-  val buttons = Array(ContinueButton, NewGameButton, OptionsButton, ExitButton)
+  val CreditsBackButton = new Button("creditsBack")
+
+  val buttons = Array(ContinueButton, NewGameButton, OptionsButton, CreditsButton, ExitButton)
 
   var optionsMenu: Option[OptionsMenu] = None
 
@@ -89,6 +96,12 @@ class MenuState extends GameState {
   var modelEntity: Entity = null
 
   var finished: Boolean = false
+
+  var creditsOpen: Boolean = false
+  var creditsScroll: Double = 0.0
+  var creditsWindup: Double = 0.0
+
+  var prevTime: Double = 0.0
 
   override def load(): Unit = {
     Assets.acquire()
@@ -105,6 +118,8 @@ class MenuState extends GameState {
     startTime = AppWindow.currentTime
     music = audioSystem.play(MenuMusic, AudioSystem.Music)
     music.instance.setFullLoop()
+
+    prevTime = AppWindow.currentTime
   }
 
   override def stop(): Unit = {
@@ -124,6 +139,8 @@ class MenuState extends GameState {
     AppWindow.pollEvents()
 
     val time = AppWindow.currentTime
+    val dt = time - prevTime
+    prevTime = time
 
     val renderer = Renderer.get
     renderer.beginFrame()
@@ -150,8 +167,18 @@ class MenuState extends GameState {
       optionsMenu = Some(new OptionsMenu(inputSet, canvas))
     }
 
+    if (CreditsButton.input.clicked) {
+      creditsOpen = true
+      creditsScroll = 0.0
+      creditsWindup = -1.0
+    }
+
     if (ExitButton.input.clicked) {
       GameStartup.exitRequested = true
+    }
+
+    if (CreditsBackButton.input.clicked) {
+      creditsOpen = false
     }
 
     for (menu <- optionsMenu) {
@@ -173,7 +200,11 @@ class MenuState extends GameState {
     val xx = math.sin(angle)
     val yy = math.cos(angle)
 
-    val offset = Vector3(yy * 4.0, 0.0, xx * 4.0)
+    val offset = if (creditsOpen)
+      Vector3(-yy * 7.0, 0.0, -xx * 4.0)
+    else
+      Vector3(yy * 4.0, 0.0, xx * 4.0)
+
     val pos = Vector3(xx * 12.0, 7.5, yy * -12.0)
     val target = Vector3(dx, 3.0, dy)
     val view = Matrix43.look(pos + offset, target - pos)
@@ -187,7 +218,7 @@ class MenuState extends GameState {
       menu.update()
     // debugMenu.update(div.copy.padAround(100.0).pushLeft(200.0))
 
-    if (optionsMenu.isEmpty) {
+    if (optionsMenu.isEmpty && !creditsOpen) {
       div.pushLeft(1280.0 * 0.1)
       val options = div.pushLeft(200.0)
       options.pushTop(300.0)
@@ -205,6 +236,42 @@ class MenuState extends GameState {
         options.padTop(20.0)
       }
 
+    }
+
+    if (creditsOpen) {
+
+      val scroll = AppWindow.mouseScroll
+
+      if (math.abs(scroll) > 0.01) {
+        creditsWindup = -1.0
+      }
+
+      creditsScroll += scroll * -60.0
+      creditsScroll += dt * 30.0 * math.max(creditsWindup, 0.0)
+      creditsWindup = clamp(creditsWindup + dt * 0.5, 0.0, 1.0)
+
+      val text = lc"menu.credits.text"
+      val approxHeight = text.count(_ == '\n') * 22.0
+
+      creditsScroll = clamp(creditsScroll, 0.0, approxHeight - 700.0)
+
+      val mutLayout = Layout.screen720p.padLeft(50.0)
+      val layout = mutLayout.pushRight(600.0).extendTop(creditsScroll).extendBottom(40.0)
+      val backButton = mutLayout.padRight(20.0).pushRight(200.0).padTop(100.0)
+      val pos = backButton.pushTop(40.0)
+
+      {
+        val button = CreditsBackButton
+        inputSet.add(0, button.input, pos)
+
+        var style = tMenuItem.copy(height = pos.heightPx, color = Color.White.copy(a = 0.5))
+        if (button.input.focused) {
+          style = style.copy(color = style.color.copy(a = 0.75))
+        }
+        canvas.drawText(lMain, style, pos.x0, pos.y0, button.text)
+      }
+
+      canvas.drawTextWrapped(0, tCredits, layout, text)
     }
 
     renderer.pushUniform(SimpleMeshShader.GlobalUniform, u => {
@@ -233,7 +300,6 @@ class MenuState extends GameState {
       part.draw()
     }
 
-
     renderer.setMode(DepthNone, BlendNone, CullNone)
     renderer.setWriteSrgb(false)
     renderer.setRenderTarget(globalRenderSystem.msaaResolveTarget)
@@ -245,7 +311,8 @@ class MenuState extends GameState {
     else
       renderer.setTextureTargetColor(TonemapShader.Textures.Backbuffer, globalRenderSystem.mainTargetMsaa, 0)
 
-    renderer.setTexture(TonemapShader.Textures.ColorLookup, MainColorgrade.get.texture)
+    val colorgrade = if (creditsOpen) CreditsColorgrade else MainColorgrade
+    renderer.setTexture(TonemapShader.Textures.ColorLookup, colorgrade.get.texture)
 
     renderer.drawQuad()
 

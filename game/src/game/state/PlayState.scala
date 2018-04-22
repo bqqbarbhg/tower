@@ -64,7 +64,7 @@ object PlayState {
     BulletSystem.Assets,
 
     CrystalEntity,
-    
+
     GroundAlbedo,
     GroundNormal,
     GroundMetallic,
@@ -437,8 +437,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   def renderScene(dt: Double): Unit = {
 
     ambientSystem.globalProbe.clear()
-    ambientSystem.globalProbe.addGlobal(Vector3(0.08, 0.08, 0.1) * 0.5)
-    ambientSystem.globalProbe.addDirectional(Vector3.Up, Vector3(0.08, 0.08, 0.1) * 0.5)
+    ambientSystem.globalProbe.addGlobal(Vector3(0.08, 0.08, 0.1) * 1.0)
+    ambientSystem.globalProbe.addDirectional(Vector3.Up, Vector3(0.08, 0.08, 0.1) * 1.0)
 
     val shadowViewProjection = directionalLightSystem.shadowViewProjection
     val frustum = Frustum.fromViewProjection(viewProjection)

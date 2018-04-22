@@ -122,6 +122,7 @@ object WordWrap {
 
       if (ch == '\n') {
         flushAt(ix)
+        ix += 1
       } else {
         width += font.getAdvance(ch, height, prevCh)
         prevCh = ch
