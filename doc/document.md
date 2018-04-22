@@ -1,5 +1,27 @@
 # Project document
 
+## Building
+
+The source code for the project is located in repository [raivios1/tower][gl-tower]
+and the content in [raivios1/tower-data][gl-tower-data]. Make sure you have
+both checked out before starting to build the project.
+
+This project is separated into multiple sub-projects located in the root
+folder. The projects contain project files for IntelliJ IDEA and Eclipse.
+The main startup class for the game is `main.EditorMain` in the project
+`editor`, which supports building resources and starting the game simultaneously.
+
+When running set the working directory to the root of your checkout of `tower-data`
+and the program argument as: `-P config.toml`. If the program has issues with
+graphics you can try running with `--debug` for diagnosing problems or `--gl-compat`
+for using a more compatible OpenGL profile.
+
+![
+Eclipse "Run Configurations" window.
+Program arguments: "-P config.toml"
+Working directory selected as Other: D:\dev\test\tower-data
+](image/build-01-eclipse-config.png)&shy;
+
 ## Code quality disclaimer
 
 The engine has a ton of non-idiomatic and ugly Scala. This is all for one
@@ -358,6 +380,108 @@ There is one exception to the mapping of buffers: If OpenGL compatability mode
 is requested, for example with `--gl-compat` __everything__ is mapped with
 `glBufferSubData()`. This is due to it being the most foolproof API.
 
+## Case-study: Cable rendering
+
+To get a feeling of the code flow of the engine let's go through an overview
+of how the cables in the game get layouted and rendered.
+
+The cable paths are represented as [cubic Hermite splines][wiki-hermite-spline],
+which are defined as control points and tangents that the curve will pass through
+and interpolate between. They are implemented in the utility object `core.Hermite`:
+
+```scala
+def interpolate(p0: Vector3, m0: Vector3, p1: Vector3, m1: Vector3, t: Double): Vector3 = {
+  val t2 = t*t
+  val t3 = t2*t
+  val h00 = 2*t3 - 3*t2 + 1
+  val h10 = t3 - 2*t2 + t
+  val h01 = -2*t3 + 3*t2
+  val h11 = t3 - t2
+  p0*h00 + m0*h10 + p1*h01 + m1*h11
+}
+```
+
+The cable paths are authored by hand near the towers. Control points are represented
+as empty Blender objects parented under a main `Cables` object. The nodes are not
+in a hierarchy themselves since that makes it hard to operate on them in Blender,
+so they are hackishly organized by a complicated naming scheme.
+
+![
+Blender with turret model and cable control arrows pointing around.
+](image/cable-01-blender.png)&shy;
+
+Since the cable node objects are only used for static path generation, it would
+be wasteful to keep them as normal nodes in the engine. To fix this they are
+marked as **auxilary** in the `game/tower/models.ac.toml` asset configuration file:
+
+```toml
+# Cables: static cable control points
+[[res.model.nodes]]
+name = "Cables"
+auxilary = true
+```
+
+This configuration is parsed into a configuration class using the built-in
+TOML parser and `SimpleSerializable` traits:
+
+```scala
+class Node extends SimpleSerializable {
+
+  /** Filter for node name */
+  var name: String = ""
+
+  /** Disables automatic world transform calculation */
+  var auxilary: Boolean = false
+
+  override def visit(v: SimpleVisitor): Unit = {
+    name = v.field("name", name)
+    auxilary = v.field("auxilary", auxilary)
+  }
+}
+```
+
+The `FlattenModel` flattens the hierarchy of nodes into a flat order where children
+always follow their parents. The engine only supports top-level auxilary nodes and
+they are ordered to be the last nodes in the linearized list. In runtime the engine
+processes nodes only until the first auxilary node and the auxilary nodes in the end
+of the list can be forgotten for most purposes. The cable paths are extracted by
+`CableRenderSystemImpl.createCablePathsForModel()` which just matches the node names
+using regex.
+
+![
+Short cable connecting a radar and a turret.
+](image/cable-02-short.png)&shy;
+
+If two towers are right next to each other these are mostly all the cable control
+points that are needed. However, if there is a larger distance between the towers
+the cable needs to be somehow routed in a way that it can dodge other towers.
+There was some failed approaches to this, but the solution which worked takes
+advantage of the grid-based nature of the tower positions. The actual pathfinding
+work is implemented with the generic [A\*-search algorithm][wiki-astar] using `util.AStar`.
+
+![
+Long cable aligned in a grid.
+](image/cable-03-grid.png)&shy;
+
+Creating control points from the search path results in a cable that succesfully
+dodges obstacles but visually bound to a grid. To solve this cable nodes are
+iteratively removed if the resulting cable doesn't intersect with any obstacles.
+The cable routing code is contained in `CableSystem`.
+
+![
+Long diagonal cable.
+](image/cable-04-cleaned.png)&shy;
+
+![
+Long half diagonal cable with a grid part dodging obstacles.
+](image/cable-05-obstacle.png)&shy;
+
+Next, the control points need to be turned into a mesh. This is split into two
+phases: First the spline is evaluated at points and then the points are converted
+into thicker rings which make up a cable mesh. The Hermite spline is parameterized
+by a single value that doesn't have any geometric meaning about the distance on the
+curve. This means the spline can't just be evaluated at even offsets to get good results.
+
 ## Post-mortem
 
 In this section I evaluate the technical choices I have made during the project
@@ -575,6 +699,8 @@ which gives some context to the raw assets.
 [wiki-tiff]: https://en.wikipedia.org/wiki/TIFF
 [wiki-png]: https://en.wikipedia.org/wiki/Portable_Network_Graphics
 [wiki-openexr]: https://en.wikipedia.org/wiki/OpenEXR
+[wiki-hermite-spline]: https://en.wikipedia.org/wiki/Cubic_Hermite_spline
+[wiki-astar]: https://en.wikipedia.org/wiki/A*_search_algorithm
 [gh-toml]: https://github.com/toml-lang/toml
 [gh-stb-oversample]: https://github.com/nothings/stb/tree/master/tests/oversample
 [gh-finnish-hyphenator]: https://github.com/vepasto/finnish-hyphenator
@@ -591,3 +717,5 @@ which gives some context to the raw assets.
 [witness-colorgrade]: http://the-witness.net/news/2012/08/fun-with-in-engine-color-grading/
 [krita]: https://krita.org/en/
 [tiff-transferfunction]: https://www.awaresystems.be/imaging/tiff/tifftags/transferfunction.html
+[gl-tower]: https://version.aalto.fi/gitlab/raivios1/tower
+[gl-tower-data]: https://version.aalto.fi/gitlab/raivios1/tower-data
