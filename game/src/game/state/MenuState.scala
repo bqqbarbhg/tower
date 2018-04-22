@@ -5,7 +5,7 @@ import util.BufferUtils._
 import render._
 import asset._
 import game.shader._
-import platform.AppWindow
+import platform.{AppWindow, KeyEvent}
 import MenuState._
 import gfx.Material
 import menu.{DebugMenu, OptionsMenu}
@@ -184,6 +184,12 @@ class MenuState extends GameState {
     for (menu <- optionsMenu) {
       if (menu.wantsToClose)
         optionsMenu = None
+    }
+
+    if (AppWindow.keyDownEvents.exists(_.key == KeyEvent.Escape)) {
+      creditsOpen = false
+      for (opt <- optionsMenu)
+        opt.wantsToClose = true
     }
 
     val shader = SimpleMeshShader.get
