@@ -73,6 +73,7 @@ object PlayState {
     GroundAo,
 
     Colorgrade,
+    ColorgradeGameOver,
     IdleMusic,
 
     GroundShader,
