@@ -130,6 +130,7 @@ object TowerSystemImpl {
     def updateVisible(): Unit
 
     def reset(): Unit = { }
+    def updateVisual(dt: Double, paused: Boolean): Unit = { }
   }
 
   val MaxShootRes = 16
@@ -166,9 +167,7 @@ object TowerSystemImpl {
     override def reset(): Unit = {
       targetAngle = 0.0
       aimAngle = 0.0
-      visualVel = 0.0
-      visualAngle = 0.0
-      visualYaw = 0.0
+      yawTarget = 0.0
       targetTime = -100.0
     }
 
@@ -190,30 +189,17 @@ object TowerSystemImpl {
         case _ =>
       }
 
-      {
-        val dx = targetPos.distanceTo(shootPos.copy(y = targetPos.y))
-        val dy = targetPos.y - shootPos.y
-
-        val maxYawLinear = component.visualYawExponential * dt
-
-        yawTarget = math.atan2(dy, dx)
-        visualYaw += (yawTarget - visualYaw) * powDt(component.visualYawExponential, dt)
-        visualYaw += clamp(yawTarget - visualYaw, -maxYawLinear, maxYawLinear)
-      }
-
       var deltaAngle = wrapAngle(targetAngle - aimAngle)
       val turnSpeed = component.turnSpeed * dt
 
       if (targetTime + component.shootTime >= time) {
         aimAngle += wrapAngle(clamp(deltaAngle, -turnSpeed, turnSpeed))
+
+        val dx = targetPos.distanceTo(shootPos.copy(y = targetPos.y))
+        val dy = targetPos.y - shootPos.y
+
+        yawTarget = math.atan2(dy, dx)
       }
-
-      var visualDeltaAngle = wrapAngle(aimAngle - visualAngle)
-      val visualSpeed = component.visualTurnSpeed * dt
-      visualVel += wrapAngle(clamp(visualDeltaAngle, -visualSpeed, visualSpeed))
-      visualVel *= powDt(component.visualTurnFriction, dt)
-
-      visualAngle = wrapAngle(visualAngle + visualVel * dt)
 
       if (math.abs(deltaAngle) < 0.1 && targetTime + component.shootTime >= time) {
         towerSystem.updateTurretTarget(entity, targetPos)
@@ -235,9 +221,21 @@ object TowerSystemImpl {
       }
       aimTime = clamp(aimTime, 0.0, component.aimDuration)
 
-      spinVel *= powDt(component.visualSpinFriction, dt)
+    }
 
+    override def updateVisual(dt: Double, paused: Boolean): Unit = {
+      var visualDeltaAngle = wrapAngle(aimAngle - visualAngle)
+      val visualSpeed = component.visualTurnSpeed * dt
+      visualVel += wrapAngle(clamp(visualDeltaAngle, -visualSpeed, visualSpeed))
+      visualVel *= powDt(component.visualTurnFriction, dt)
+      visualAngle = wrapAngle(visualAngle + visualVel * dt)
+
+      spinVel *= powDt(component.visualSpinFriction, dt)
       spin += spinVel * dt
+
+      val maxYawLinear = component.visualYawExponential * dt
+      visualYaw += (yawTarget - visualYaw) * powDt(component.visualYawExponential, dt)
+      visualYaw += clamp(yawTarget - visualYaw, -maxYawLinear, maxYawLinear)
     }
 
     def shoot(): Unit = {
@@ -311,6 +309,7 @@ object TowerSystemImpl {
     var rotateNode: Option[NodeInstance] = model.findNode(component.rotateBone)
 
     var angle: Double = 0.0
+    var visualAngle: Double = 0.0
 
     val slotTargetOut = new Slot(entity, component.targetOut)
 
@@ -322,7 +321,7 @@ object TowerSystemImpl {
       slotTargetOut,
     )
 
-    def update(dt: Double): Unit = {
+    override def update(dt: Double): Unit = {
       angle += dt * component.rotateSpeed
 
       def findTarget(): Unit = {
@@ -353,9 +352,23 @@ object TowerSystemImpl {
         findTarget()
     }
 
+    override def updateVisual(dt: Double, paused: Boolean): Unit = {
+      if (paused) {
+        val delta = wrapAngle(angle - visualAngle)
+        if (math.abs(delta) <= 0.01) {
+          visualAngle = angle
+        } else {
+          val speed = if (delta > 0.0) clamp(delta, 0.0, 1.0) else 1.0
+          visualAngle += dt * component.rotateSpeed * speed
+        }
+      } else {
+        visualAngle = angle
+      }
+    }
+
     override def updateVisible(): Unit = {
       for (node <- rotateNode) {
-        node.localTransform = Matrix43.rotateZ(angle)
+        node.localTransform = Matrix43.rotateZ(visualAngle)
       }
     }
   }
@@ -646,10 +659,16 @@ final class TowerSystemImpl extends TowerSystem {
   override def update(dt: Double): Unit = {
     timeImpl += dt
 
-    if (!pauseSystem.paused) {
+    val paused = pauseSystem.paused
+
+    if (!paused) {
       for (tower <- towers) {
         tower.update(dt)
       }
+    }
+
+    for (tower <- towers) {
+      tower.updateVisual(dt, paused)
     }
   }
 
