@@ -40,7 +40,6 @@ object GraphicsOptions {
         antialias = 1
         shaderQuality = 0
         resolutionFactor = 0.5
-        halfFramerate = true
         highBitdepth = false
         preset = "Minimal"
       }),

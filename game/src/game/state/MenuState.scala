@@ -253,8 +253,8 @@ class MenuState extends GameState {
       }
 
       creditsScroll += scroll * -60.0
-      creditsScroll += dt * 30.0 * math.max(creditsWindup, 0.0)
-      creditsWindup = clamp(creditsWindup + dt * 0.5, 0.0, 1.0)
+      creditsScroll += dt * 20.0 * math.max(creditsWindup, 0.0)
+      creditsWindup = math.min(creditsWindup + dt * 0.5, 1.0)
 
       val text = lc"menu.credits.text"
       val approxHeight = text.count(_ == '\n') * 22.0

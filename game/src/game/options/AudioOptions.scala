@@ -8,7 +8,7 @@ class AudioOptions extends SimpleSerializable {
   var sampleRate: Int = 44100
 
   /** Latency of the audio in seconds */
-  var latency: Double = 0.1
+  var latency: Double = 0.05
 
   /** File to save debug output into */
   var debugFilename: String = ""

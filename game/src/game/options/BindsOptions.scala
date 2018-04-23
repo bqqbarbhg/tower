@@ -35,6 +35,7 @@ class BindsOptions extends SimpleSerializable {
     invertScroll = v.field("invertScroll", invertScroll)
     delete = v.field("delete", delete)
     rotate = v.field("rotate", rotate)
+    unpause = v.field("unpause", unpause)
   }
 
 }
