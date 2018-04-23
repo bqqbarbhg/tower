@@ -38,7 +38,7 @@ object CableSystem {
 
     var tangentScaleMid: DoubleProp.Type = 0.5
     var tangentScaleEndpoint: DoubleProp.Type = 0.5
-    var stepSize: DoubleProp.Type = 10.0
+    var stepSize: DoubleProp.Type = 1.0
     var tangentGainOnRemove: DoubleProp.Type = 1.5
     var surroundingBlockerWeight: DoubleProp.Type = 1.0
     var regenerateCables: BoolProp.Type = false
@@ -359,7 +359,7 @@ final class CableSystemImpl extends CableSystem {
     }).toBuffer
 
     def evaluateSpan(a: CableNode, b: CableNode): Boolean = {
-      val step = math.max(a.position.distanceTo(b.position) / CellSize.x / CableTweak.stepSize, 0.02)
+      val step = math.max(CableTweak.stepSize / a.position.distanceTo(b.position), 0.02)
       for (t <- 0.0 to 1.001 by step) {
         val pos = CableRenderSystem.evaluate(a, b, t)
         for (cell <- cells.getCellContaining(pos.x, pos.z)) {
@@ -374,10 +374,11 @@ final class CableSystemImpl extends CableSystem {
     var cellList = new ArrayBuffer[GroundCell]()
 
     def markSpan(a: CableNode, b: CableNode): Unit = {
-      val step = math.max(a.position.distanceTo(b.position) / CellSize.x / CableTweak.stepSize, 0.02)
+      val step = math.max(CableTweak.stepSize / a.position.distanceTo(b.position), 0.02)
       for (t <- 0.0 to 1.001 by step) {
         val pos = CableRenderSystem.evaluate(a, b, t)
         val cell = cells.createCellContaining(pos.x, pos.z)
+
         if (cell != prevCell) {
           prevCell = cell
           if (!cell.cables.contains(cable)) {
@@ -502,6 +503,8 @@ final class CableSystemImpl extends CableSystem {
         cable.needsToBeGenerated = false
 
         if (cable.entityImpl != null) {
+          removeCable(cable)
+          cable.entityImpl.clearFlag(Flag_Cable)
           cable.entityImpl.delete()
         }
         generateCable(cable)
@@ -525,7 +528,7 @@ final class CableSystemImpl extends CableSystem {
 
   def removeCable(cable: CableImpl): Unit = {
     for (cell <- cable.cells) {
-      cell.cables = cell.cables.filter(_ != cable)
+      cell.cables = cell.cables.filterNot(_ eq cable)
     }
   }
 
@@ -599,10 +602,15 @@ final class CableSystemImpl extends CableSystem {
       val min2D = cellToWorld(cell.x, cell.y)
       val min = Vector3(min2D.x, 0.0, min2D.y)
       val max = min + Vector3(CellSize.x - 0.05, 5.0, CellSize.y - 0.05)
+
       if (cell.blockCount > 0) {
         DebugDraw.drawAabb(min, max, Color.rgb(0xFF0000) * cell.moveWeight)
       } else {
         DebugDraw.drawAabb(min, max, Color.rgb(0x00FF00))
+      }
+
+      if (cell.cables.nonEmpty) {
+        DebugDraw.drawAabb(min + Vector3(0.05, 0.05, 0.05), max - Vector3(0.05, 0.05, 0.05), Color.rgb(0xFFFFFF))
       }
 
       for (blocker <- cell.blockers) {
