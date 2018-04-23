@@ -40,6 +40,9 @@ sealed trait EnemySystem extends EntityDeleteListener {
   /** Do damage to an enemy after some time */
   def doDamageDelayed(entity: Entity, amount: Double, delay: Double): Unit
 
+  /** How many enemies are active (alive) currently */
+  def numEnemiesActive: Int
+
 }
 
 object EnemySystemImpl {
@@ -312,9 +315,15 @@ final class EnemySystemImpl extends EnemySystem {
         enemiesDefeated.add(enemy)
         enemy.enemyState = StateDefeated
         enemy.animator.playOnce(10, enemy.component.defeatAnim, 0.1, 0.0)
+
+        for (shape <- cullingSystem.getShapes(entity, CullingSystem.MaskEnemy)) {
+          cullingSystem.removeShape(entity, shape.serial)
+        }
       }
     }
   }
+
+  override def numEnemiesActive = enemiesActive.length
 
 }
 

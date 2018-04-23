@@ -11,6 +11,7 @@ import locale.Locale
 import platform.{AppWindow, KeyEvent}
 import ui.Canvas.TextStyle
 import ui.InputSet.InputArea
+import game.system.gameplay._
 
 object HotbarMenu {
 
@@ -116,6 +117,7 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
   var selectedItem: Option[Item] = None
 
   def update(dt: Double): Unit = {
+
     val area = Layout.screen.containSnapped(CellSize * 10.0, CellSize * 2.0 + PartPadding + BottomPadding,
       snapScale = 1.0,
       magScale = 2.0,
@@ -124,37 +126,43 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
       relativeScale = 0.5,
     )
 
-    for (cat <- categories) {
-      if (cat.input.clicked) {
-        openCategory = Some(cat)
-        selectedItem = None
-      }
-    }
+    if (pauseSystem.paused) {
 
-    for (cat <- openCategory) {
-      for (item <- cat.items) {
-        if (item.input.clicked) {
-          selectedItem = Some(item)
+      for (cat <- categories) {
+        if (cat.input.clicked) {
+          openCategory = Some(cat)
+          selectedItem = None
         }
       }
-    }
 
-    for (e <- AppWindow.keyDownEvents) {
-      val ix = hotkeys.indexOf(e.key)
-      if (ix >= 0) {
-        openCategory match {
-          case Some(cat) =>
-            if (ix < cat.items.length) {
-              selectedItem = Some(cat.items(ix))
-            }
-
-          case None =>
-            if (ix < categories.length) {
-              openCategory = Some(categories(ix))
-              selectedItem = None
-            }
+      for (cat <- openCategory) {
+        for (item <- cat.items) {
+          if (item.input.clicked) {
+            selectedItem = Some(item)
+          }
         }
       }
+
+      for (e <- AppWindow.keyDownEvents) {
+        val ix = hotkeys.indexOf(e.key)
+        if (ix >= 0) {
+          openCategory match {
+            case Some(cat) =>
+              if (ix < cat.items.length) {
+                selectedItem = Some(cat.items(ix))
+              }
+
+            case None =>
+              if (ix < categories.length) {
+                openCategory = Some(categories(ix))
+                selectedItem = None
+              }
+          }
+        }
+      }
+    } else {
+      openCategory = None
+      selectedItem = None
     }
 
     assert(openCategory.isDefined || selectedItem.isEmpty)

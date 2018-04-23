@@ -97,7 +97,6 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   var finished: Boolean = false
 
   var spawnTime: Double = 0.0
-  var enemiesPaused: Boolean = true
 
   var music: SoundRef = null
 
@@ -125,8 +124,6 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     val crystal = entitySystem.create(CrystalEntity.get, Vector3(0.0, 0.0, 0.0))
     ambientPointLightSystem.addLight(crystal, Vector3(0.0, 10.0, 0.0), Vector3(0.5, 0.7, 0.5) * 2.0, 60.0)
-
-    entitySystem.create(EntityTypeAsset("entity/enemy/crab.es.toml").get, Vector3(0.0, 0.0, -60.0))
   }
 
   override def stop(): Unit = {
@@ -755,15 +752,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     inputs.update()
 
-    spawnTime -= dt
-    if (spawnTime < 0.0) {
-      // entitySystem.create(EntityTypeAsset("entity/enemy/test.es.toml").get, Vector3(0.0, 0.0, -80.0))
-      spawnTime = 4.0
-    }
-
-    for (e <- AppWindow.keyDownEvents if e.key == KeyEvent.Space) {
-      enemiesPaused = !enemiesPaused
-    }
+    pauseSystem.update(dt)
 
     updatePauseMenu(dt)
     updateDebugMenu()
@@ -779,10 +768,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     hotbarMenu.update(dt)
 
-    if (!enemiesPaused) {
-      enemySystem.update(dt)
-      towerSystem.update(dt)
-    }
+    enemySystem.update(dt)
+    towerSystem.update(dt)
 
     connectionSystem.update(dt)
 
@@ -793,6 +780,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     buildSystem.setWireGuiEnabled(hotbarMenu.openCategory.exists(_.wireCategory))
     buildSystem.setEntityTypeToBuild(hotbarMenu.selectedItem.map(_.entityType.get))
+
+    pauseSystem.renderGui(canvas, inputs)
 
     val screenWidth = globalRenderSystem.screenWidth
     val screenHeight = globalRenderSystem.screenHeight
@@ -860,6 +849,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     renderer.setWriteSrgb(true)
 
     towerSystem.renderIngameGui(viewProjection)
+
     canvas.render()
 
     LayoutDebugger.render()

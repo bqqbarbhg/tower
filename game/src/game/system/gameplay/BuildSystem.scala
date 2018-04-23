@@ -233,6 +233,16 @@ final class BuildSystemImpl extends BuildSystem {
   }
 
   override def update(dt: Double, invViewProj: Matrix4, inputs: InputSet): Unit = {
+
+    if (!pauseSystem.paused) {
+      activeSlot = None
+      activeHudSlot = None
+      selectedTower = None
+      hoveredTower = None
+      prevHoveredTower = None
+      return
+    }
+
     val mouseDown = AppWindow.mouseButtonDown(0)
     val clicked = mouseDown && !prevMouseDown && inputs.focusedLayer < -1000
 
@@ -417,6 +427,8 @@ final class BuildSystemImpl extends BuildSystem {
   }
 
   override def renderWireGui(canvas: Canvas, inputs: InputSet, visible: EntitySet, viewProjection: Matrix4): Unit = {
+    if (!pauseSystem.paused) return
+
     val nextWireGui = new mutable.HashMap[Entity, WireGui]()
 
     def makeWireGui(entity: Entity): Unit = {

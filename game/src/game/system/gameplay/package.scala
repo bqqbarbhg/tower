@@ -12,6 +12,8 @@ package object gameplay {
   var enemySystem: EnemySystem = null
   var bulletSystem: BulletSystem = null
   var pathfindSystem: PathfindSystem = null
+  var pauseSystem: PauseSystem = null
+  var enemySpawnSystem: EnemySpawnSystem = null
 
   def loadGame(): Unit = {
     tutorialSystem = new TutorialSystemImpl()
@@ -22,6 +24,8 @@ package object gameplay {
     enemySystem = new EnemySystemImpl()
     bulletSystem = new BulletSystemImpl()
     pathfindSystem = new PathfindSystemImpl()
+    pauseSystem = new PauseSystemImpl()
+    enemySpawnSystem = new EnemySpawnSystemImpl()
 
     entitySystem.addDeleteListener(buildSystem)
     entitySystem.addDeleteListener(towerSystem)

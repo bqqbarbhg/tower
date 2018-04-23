@@ -40,6 +40,8 @@ object CullingSystem {
     }
   }
 
+  case class CullShape(val serial: Int, val mask: Int)
+
 }
 
 sealed trait CullingSystem extends EntityDeleteListener {
@@ -63,6 +65,9 @@ sealed trait CullingSystem extends EntityDeleteListener {
 
   /** Remove a previously attached shape */
   def removeShape(entity: Entity, serial: Int): Unit
+
+  /** Query all shapes attached to an entity */
+  def getShapes(entity: Entity, mask: Int): Seq[CullShape]
 
   /** Add an entity that is always visible */
   def addAlwaysVisible(entity: Entity, mask: Int): Unit
@@ -178,6 +183,29 @@ object CullingSystemImpl {
       }
 
     }
+
+    def getShapes(res: ArrayBuffer[CullShape], mask: Int): Unit = {
+      // AABB
+      {
+        var shape = aabb
+        while (shape != null) {
+          if ((shape.mask & mask) != 0)
+            res += CullShape(shape.serial, shape.mask)
+          shape = shape.next
+        }
+      }
+
+      // Sphere
+      {
+        var shape = sphere
+        while (shape != null) {
+          if ((shape.mask & mask) != 0)
+            res += CullShape(shape.serial, shape.mask)
+          shape = shape.next
+        }
+      }
+    }
+
   }
 
   final class ShapeAabb(val cullable: Cullable, var localAabb: Aabb, var aabb: Aabb, var mask: Int, var next: ShapeAabb, val serial: Int) {
@@ -606,6 +634,15 @@ final class CullingSystemImpl extends CullingSystem {
     cullable.removeShape(serial)
   }
 
+  override def getShapes(entity: Entity, mask: Int): Seq[CullShape] = {
+    if (!entity.hasFlag(Flag_Cullables)) return Array[CullShape]()
+
+    val cullable = getOrAddCullable(entity)
+    val res = new ArrayBuffer[CullShape]()
+    cullable.getShapes(res, mask)
+    res
+  }
+
   override def removeCullables(entity: Entity): Unit = {
     val cullable = entityToCullable(entity)
 
@@ -769,5 +806,6 @@ final class CullingSystemImpl extends CullingSystem {
     if ((mask & MaskTreeGameplay) != 0)
       debugDrawQuadTree(quadTreeGameplay, frustum, mask)
   }
+
 }
 
