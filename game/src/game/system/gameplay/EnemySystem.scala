@@ -59,6 +59,7 @@ object EnemySystemImpl {
     val walkLoop = animator.playLoop(0, component.moveAnim)
 
     val hitArea = Vector2(component.hitRadius, component.hitRadius)
+    val hitRadiusSq = component.hitRadius * component.hitRadius
 
     var enemyState: Int = StateUndefined
     var health: Double = component.health
@@ -192,7 +193,11 @@ final class EnemySystemImpl extends EnemySystem {
       cell <- blockerGrid.getIntersecting(queryMin, queryMax)
       blocker <- cell.blockers
     } {
-      if (!(queryMax.x <= blocker.min.x || queryMax.y <= blocker.min.y || queryMin.x >= blocker.max.x || queryMin.y >= blocker.max.y)) {
+
+      val px = clamp(queryPos.x, blocker.min.x, blocker.max.x) - queryPos.x
+      val py = clamp(queryPos.y, blocker.min.y, blocker.max.y) - queryPos.y
+
+      if (px*px + py*py <= enemy.hitRadiusSq) {
         return Some(blocker)
       }
     }

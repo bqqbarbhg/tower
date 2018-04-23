@@ -72,12 +72,15 @@ object PlayState {
     GroundAo,
 
     Colorgrade,
+    IdleMusic,
+
     GroundShader,
     InstancedMeshShader,
     SkinnedMeshShader,
     CableShader,
     CablePulseShader,
-    IdleMusic,
+    InstancedShadowShader,
+    SkinnedShadowShader,
 
     CablePulseMask,
     CablePulseTex,
@@ -789,7 +792,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     }
 
     buildSystem.setWireGuiEnabled(hotbarMenu.openCategory.exists(_.wireCategory))
-    buildSystem.setEntityTypeToBuild(hotbarMenu.selectedItem.map(_.entityType))
+    buildSystem.setEntityTypeToBuild(hotbarMenu.selectedItem.map(_.entityType.get))
 
     val screenWidth = globalRenderSystem.screenWidth
     val screenHeight = globalRenderSystem.screenHeight

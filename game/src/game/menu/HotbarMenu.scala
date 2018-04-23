@@ -22,10 +22,22 @@ object HotbarMenu {
   val MenuAtlas = AtlasAsset("atlas/menu.s2at")
   val BarAtlas = AtlasAsset("atlas/bar.s2at")
 
+  val TurretBasic = EntityTypeAsset("entity/tower/turret_basic.es.toml")
+  val RadarBasic = EntityTypeAsset("entity/tower/radar_basic.es.toml")
+  val CableSplitter = EntityTypeAsset("entity/tower/splitter.es.toml")
+  val CableMerger = EntityTypeAsset("entity/tower/merger.es.toml")
+  val WallDoor = EntityTypeAsset("entity/tower/wall_door.es.toml")
+
   val Assets = new AssetBundle("HotbarMenu",
     BarAtlas,
     MenuAtlas,
     HotkeyFont,
+
+    TurretBasic,
+    RadarBasic,
+    CableSplitter,
+    CableMerger,
+    WallDoor,
   )
 
   val Quad = Identifier("gui/menu/background_white.png")
@@ -38,8 +50,8 @@ object HotbarMenu {
   val IconPad = 5.0
   val CellSize = IconSize + IconPad * 2.0
 
-  class Item(val entityType: EntityType) {
-    val buildable: BuildableComponent = entityType.find(BuildableComponent).get
+  class Item(val entityType: EntityTypeAsset) {
+    def buildable: BuildableComponent = entityType.get.find(BuildableComponent).get
     val input = new InputArea()
   }
 
@@ -84,20 +96,20 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
   )
 
   categories(0).items = Vector(
-    new Item(EntityTypeAsset("entity/tower/turret_basic.es.toml").get),
+    new Item(TurretBasic),
   )
 
   categories(1).items = Vector(
-    new Item(EntityTypeAsset("entity/tower/radar_basic.es.toml").get),
+    new Item(RadarBasic),
   )
 
   categories(2).items = Vector(
-    new Item(EntityTypeAsset("entity/tower/splitter.es.toml").get),
-    new Item(EntityTypeAsset("entity/tower/merger.es.toml").get),
+    new Item(CableSplitter),
+    new Item(CableMerger),
   )
 
   categories(3).items = Vector(
-    new Item(EntityTypeAsset("entity/tower/wall_door.es.toml").get),
+    new Item(WallDoor),
   )
 
   var openCategory: Option[Category] = None
