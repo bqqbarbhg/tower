@@ -23,7 +23,7 @@ class EntityTypeAsset(val name: Identifier) extends LoadableAsset {
 
   override protected def preloadAsset(): Iterable[LoadableAsset] = {
     entityType = ContentFile.load(name, buffer => {
-      EntityType.loadFromBuffer(name.toString, buffer)
+      EntityType.loadFromBuffer(name.toString, buffer, Some(this))
     }).get
 
     entityType.components.flatMap(_.assets)

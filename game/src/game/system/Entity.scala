@@ -27,8 +27,9 @@ object Entity {
   val Flag_Debris = 136
   val Flag_EnemyBlocker = 137
   val Flag_DestroyableTower = 138
+  val Flag_SaveState = 139
 
-  val EmptyEntity = new EntityType(false, "BasicEntity", None)
+  val EmptyEntity = new EntityType(false, "BasicEntity", None, None)
 
 }
 

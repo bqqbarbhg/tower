@@ -52,6 +52,9 @@ sealed trait BuildSystem extends EntityDeleteListener {
     * May be called multiple times with the same entity. */
   def setEntityTypeToBuild(entityType: Option[EntityType])
 
+  /** Mark area in space as used */
+  def addGridBlocker(entity: Entity, component: GridBlockComponent): Unit
+
   /** Tick the system */
   def update(dt: Double, invViewProj: Matrix4, inputs: InputSet): Unit
 
@@ -232,6 +235,25 @@ final class BuildSystemImpl extends BuildSystem {
     }
   }
 
+  /** Mark area in space as used */
+  override def addGridBlocker(entity: Entity, component: GridBlockComponent): Unit = {
+    val point = entity.position
+
+    val swapXY = math.abs(entity.rotation.rotate(Vector3(1.0, 0.0, 0.0)).x) < 0.5
+
+    val (w, h) = if (swapXY) {
+      (component.height, component.width)
+    } else {
+      (component.width, component.height)
+    }
+    val offX = 0.5 * (w - 1)
+    val offY = 0.5 * (h - 1)
+    val gridX = math.round(point.x / GridSize - offX).toInt
+    val gridZ = math.round(point.z / GridSize - offY).toInt
+
+    setGridOccupied(entity, gridX, gridZ, w, h)
+  }
+
   override def update(dt: Double, invViewProj: Matrix4, inputs: InputSet): Unit = {
 
     if (!pauseSystem.paused) {
@@ -269,6 +291,8 @@ final class BuildSystemImpl extends BuildSystem {
 
     for (buildE <- buildEntity) {
       val buildC = buildE.find(BuildableComponent).get
+      val gridC = buildE.find(GridBlockComponent).get
+
       selectedTower = None
 
       for (e <- AppWindow.keyDownEvents if e.key == rotateBind) {
@@ -279,9 +303,9 @@ final class BuildSystemImpl extends BuildSystem {
       val t = ray.intersect(GroundPlane)
       var groundPoint = t.map(ray.point).map(point => {
         val (w, h) = if (BuildRotationSwapXY(buildRotationIndex)) {
-          (buildC.gridHeight, buildC.gridWidth)
+          (gridC.height, gridC.width)
         } else {
-          (buildC.gridWidth, buildC.gridHeight)
+          (gridC.width, gridC.height)
         }
         val offX = 0.5 * (w - 1)
         val offY = 0.5 * (h - 1)
@@ -305,8 +329,7 @@ final class BuildSystemImpl extends BuildSystem {
         if (clicked) {
           if (validPlace) {
             val entity = entitySystem.create(buildE, point, buildRotation)
-
-            setGridOccupied(entity, gridX, gridZ, gridW, gridH)
+            saveStateSystem.registerSavedTower(entity)
 
             for (buildC <- buildE.find(BuildableComponent)) {
               val sound = SoundAsset(buildC.placeSound)

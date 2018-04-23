@@ -59,6 +59,7 @@ final class PauseSystemImpl extends PauseSystem {
   override def update(dt: Double): Unit = {
 
     if (enemySystem.numEnemiesActive <= 0) {
+      saveStateSystem.recreateMissingEntities()
       _paused = true
     }
 

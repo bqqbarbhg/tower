@@ -2,6 +2,8 @@ package game.system
 
 import java.nio.ByteBuffer
 
+import asset.EntityTypeAsset
+
 import scala.collection.mutable.ArrayBuffer
 import core._
 import game.component.{Component, ComponentType}
@@ -10,7 +12,7 @@ import util.BufferUtils._
 
 object EntityType {
 
-  def loadFromBuffer(name: String, buffer: ByteBuffer): EntityType = {
+  def loadFromBuffer(name: String, buffer: ByteBuffer, asset: Option[EntityTypeAsset]): EntityType = {
     val MaxVersion = 1
     buffer.verifyMagic("s2es")
     val version = buffer.getVersion(MaxVersion)
@@ -34,12 +36,12 @@ object EntityType {
 
     buffer.verifyMagic("E.es")
 
-    new EntityType(static, name, components)
+    new EntityType(static, name, asset, components)
   }
 
 }
 
-class EntityType(val static: Boolean, val name: String, componentSet: Iterable[Component]) {
+class EntityType(val static: Boolean, val name: String, val asset: Option[EntityTypeAsset], componentSet: Iterable[Component]) {
 
   /** Components defining this entity sorted in dependency order */
   val components: Array[Component] = {

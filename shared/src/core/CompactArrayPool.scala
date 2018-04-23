@@ -72,5 +72,15 @@ class CompactArrayPool[A >: Null <: ElementBase : ClassTag] extends Seq[A] {
     arr(num) = null
   }
 
+  def clear(): Unit = {
+    var ix = 0
+    while (ix < num) {
+      arr(ix).compactPoolRemoved()
+    }
+
+    num = 0
+    arr = new Array[A](0)
+  }
+
 }
 

@@ -14,6 +14,7 @@ package object gameplay {
   var pathfindSystem: PathfindSystem = null
   var pauseSystem: PauseSystem = null
   var enemySpawnSystem: EnemySpawnSystem = null
+  var saveStateSystem: SaveStateSystem = null
 
   def loadGame(): Unit = {
     tutorialSystem = new TutorialSystemImpl()
@@ -26,11 +27,13 @@ package object gameplay {
     pathfindSystem = new PathfindSystemImpl()
     pauseSystem = new PauseSystemImpl()
     enemySpawnSystem = new EnemySpawnSystemImpl()
+    saveStateSystem = new SaveStateSystemImpl()
 
     entitySystem.addDeleteListener(buildSystem)
     entitySystem.addDeleteListener(towerSystem)
     entitySystem.addDeleteListener(cableSystem)
     entitySystem.addDeleteListener(enemySystem)
+    entitySystem.addDeleteListener(saveStateSystem)
   }
 
   def unloadGame(): Unit = {
@@ -40,6 +43,7 @@ package object gameplay {
     entitySystem.removeDeleteListener(towerSystem)
     entitySystem.removeDeleteListener(cableSystem)
     entitySystem.removeDeleteListener(enemySystem)
+    entitySystem.removeDeleteListener(saveStateSystem)
   }
 
 }

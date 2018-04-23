@@ -13,6 +13,7 @@ object ComponentType {
     EnemyBlockerComponent,
     LightProbeComponent,
     EnemySpawnComponent,
+    GridBlockComponent,
 
     TurretTowerComponent,
     RotatingRadarComponent,

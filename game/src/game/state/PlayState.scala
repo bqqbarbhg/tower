@@ -153,6 +153,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     writer.writeHeader(header)
 
+    saveStateSystem.save(buffer)
+
     header.finish()
     buffer.finish()
 
@@ -176,7 +178,11 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
       reader.read(Camera)
 
+      saveStateSystem.load(buffer)
+
       Memory.free(buffer)
+
+      saveStateSystem.recreateMissingEntities()
     }
   }
 
