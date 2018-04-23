@@ -18,6 +18,7 @@ import core.Matrix4
 import game.options.Options
 import game.system.gameplay.TowerSystem.Slot
 import game.system.rendering.CullingSystem.RayHit
+import io.property._
 import locale.Locale
 import locale.LocaleString._
 import platform.{AppWindow, KeyEvent}
@@ -75,6 +76,9 @@ sealed trait BuildSystem extends EntityDeleteListener {
 
   /** Release resources used by the system */
   def unload(): Unit
+
+  /** Retrieve persistent state for save/load */
+  def persistentState: PropertyContainer
 }
 
 object BuildSystemImpl {
@@ -163,6 +167,20 @@ object BuildSystemImpl {
 
   val BuildRotationSwapXY = Array(false, true, false, true)
   val GridSize = 4.0
+
+  object PersistentState {
+    private val arr = MacroPropertySet.make[PersistentState]()
+    private val propertySet: PropertySet = new PropertySet("PersistentState", arr)
+  }
+
+  class PersistentState extends PropertyContainer {
+    override def propertySet: PropertySet = PersistentState.propertySet
+
+    /** Current money balance */
+    var currentMoney: IntProp.Type = 1000
+
+  }
+
 }
 
 final class BuildSystemImpl extends BuildSystem {
@@ -198,9 +216,11 @@ final class BuildSystemImpl extends BuildSystem {
 
   val lineBatch = new LineBatch()
 
-  var currentMoney: Int = 1000
+  val persistent = new PersistentState()
 
   val QuadSprite = Identifier("gui/menu/background_white.png")
+
+  override def persistentState: PropertyContainer = persistent
 
   def makePreview(entityType: EntityType): Option[BuildPreview] = {
     for (comp <- entityType.find(BuildPreviewComponent)) yield {
@@ -336,13 +356,13 @@ final class BuildSystemImpl extends BuildSystem {
         collectGridIntersecting(buildBlockerEntities, gridX, gridZ, gridW, gridH)
         validPlace = buildBlockerEntities.isEmpty
 
-        if (buildC.price > currentMoney) {
+        if (buildC.price > persistent.currentMoney) {
           validPlace = false
         }
 
         if (clicked) {
           if (validPlace) {
-            currentMoney -= buildC.price
+            persistent.currentMoney -= buildC.price
 
             val entity = entitySystem.create(buildE, point, buildRotation)
             saveStateSystem.registerSavedTower(entity)
@@ -405,7 +425,7 @@ final class BuildSystemImpl extends BuildSystem {
       if (AppWindow.keyDownEvents.exists(_.key == deleteBind)) {
 
         for (buildC <- selected.prototype.find(BuildableComponent)) {
-          currentMoney += buildC.price
+          persistent.currentMoney += buildC.price
         }
 
         for (breakComp <- selected.prototype.find(BreakableComponent)) {
@@ -723,7 +743,7 @@ final class BuildSystemImpl extends BuildSystem {
     leftPanel.padAround(10.0)
 
     val currentMoneyArea = leftPanel.pushTop(20.0)
-    canvas.drawText(1, CurrentMoneyText, currentMoneyArea, currentMoney.toString)
+    canvas.drawText(1, CurrentMoneyText, currentMoneyArea, persistent.currentMoney.toString)
 
     for {
       buildE <- buildEntity.orElse(selectedTower.map(_.prototype))

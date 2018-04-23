@@ -161,7 +161,9 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     header.putVersion(Version)
 
     val writer = new BinaryWriter(buffer)
+
     writer.write(Camera)
+    writer.write(buildSystem.persistentState)
 
     writer.writeHeader(header)
 
@@ -196,6 +198,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       val reader = new BinaryReader(buffer)
 
       reader.read(Camera)
+      reader.read(buildSystem.persistentState)
 
       saveStateSystem.load(buffer)
       pathfindSystem.loadSnapshot(buffer)
@@ -396,6 +399,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     }
 
     Camera.position += cameraVel * dt
+
+    Camera.position = Vector2.clamp(Camera.position, CameraTweak.boundsMin, CameraTweak.boundsMax)
   }
 
   // -- Scene render
@@ -404,7 +409,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     private val arr = MacroPropertySet.make[Camera.type]()
     override val propertySet: PropertySet = new PropertySet("Camera", arr)
 
-    var position: Vector2Prop.Type = Vector2.Zero
+    var position: Vector2Prop.Type = Vector2(0.0, 15.0)
     var zoom: DoubleProp.Type = 40.0
     var interpolatedZoom: DoubleProp.Type = 40.0
   }
@@ -433,6 +438,9 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     var pitchLow: DoubleProp.Type = 0.5
     var pitchHigh: DoubleProp.Type = 0.2
+
+    var boundsMin: Vector2Prop.Type = Vector2(-150.0, -150.0)
+    var boundsMax: Vector2Prop.Type = Vector2(+150.0, +150.0)
   }
 
   object DebugView extends PropertyContainer {
@@ -905,7 +913,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     renderer.setWriteSrgb(true)
 
-    towerSystem.renderIngameGui(viewProjection)
+    if (!pauseMenu.gameOver)
+      towerSystem.renderIngameGui(viewProjection)
 
     canvas.render()
 

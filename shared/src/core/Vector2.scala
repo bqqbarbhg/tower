@@ -13,6 +13,10 @@ object Vector2 {
   def max(a: Vector2, b: Vector2): Vector2 = Vector2(
     math.max(a.x, b.x),
     math.max(a.y, b.y))
+
+  def clamp(v: Vector2, min: Vector2, max: Vector2): Vector2 = Vector2(
+    core.clamp(v.x, min.x, max.x),
+    core.clamp(v.y, min.y, max.y))
 }
 
 case class Vector2(x: Double, y: Double) {

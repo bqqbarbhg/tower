@@ -84,7 +84,7 @@ final class PauseSystemImpl extends PauseSystem {
   }
 
   override def renderGui(canvas: Canvas, inputs: InputSet): Unit = {
-    val top = Layout.screen720p.padAround(50.0).pushTop(30.0)
+    val top = Layout.screen720p.padAround(20.0).pushTop(30.0)
 
     if (paused) {
 
