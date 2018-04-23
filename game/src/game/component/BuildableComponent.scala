@@ -25,6 +25,7 @@ class BuildableComponent extends Component {
   var cableMinY: IntProp.Type = -1
   var cableMaxX: IntProp.Type = 1
   var cableMaxY: IntProp.Type = 1
+  var price: IntProp.Type = 100
 
   override def assets: Iterable[LoadableAsset] = Some(SoundAsset(placeSound))
 }

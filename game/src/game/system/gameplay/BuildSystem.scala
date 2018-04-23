@@ -109,6 +109,9 @@ object BuildSystemImpl {
   val SlotEmptySprite = Identifier("gui/menu/slot_empty.png")
   val SlotFullSprite = Identifier("gui/menu/slot_full.png")
 
+  val MenuTitleFont = FontAsset("font/catamaran/Catamaran-SemiBold.ttf.s2ft")
+  val MenuTextFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
+
   val SlotHudEmptySprite = Identifier("gui/hud/cable_slot_empty.png")
   val SlotHudFullSprite = Identifier("gui/hud/cable_slot_full.png")
   val SlotHudIncompatibleEmptySprite = Identifier("gui/hud/cable_slot_incompatible_empty.png")
@@ -136,6 +139,11 @@ object BuildSystemImpl {
   val WireBaseText = TextStyle(SlotFont, 24.0)
   val WireInputText = WireBaseText.copy(align = Canvas.Align(0.0, 0.5))
   val WireOutputText = WireBaseText.copy(align = Canvas.Align(1.0, 0.5))
+
+  val CurrentMoneyText = TextStyle(MenuTitleFont, 24.0)
+  val ObjectNameText = TextStyle(MenuTitleFont, 24.0)
+  val ObjectPriceText = TextStyle(MenuTitleFont, 20.0)
+  val ObjectDescText = TextStyle(MenuTitleFont, 14.0)
 
   class WireGui(val entity: Entity) {
     var slots: Seq[Slot] = NoSlots
@@ -189,6 +197,8 @@ final class BuildSystemImpl extends BuildSystem {
   val entityToGridArea = new mutable.HashMap[Entity, (Int, Int, Int, Int)]()
 
   val lineBatch = new LineBatch()
+
+  var currentMoney: Int = 1000
 
   val QuadSprite = Identifier("gui/menu/background_white.png")
 
@@ -326,8 +336,14 @@ final class BuildSystemImpl extends BuildSystem {
         collectGridIntersecting(buildBlockerEntities, gridX, gridZ, gridW, gridH)
         validPlace = buildBlockerEntities.isEmpty
 
+        if (buildC.price > currentMoney) {
+          validPlace = false
+        }
+
         if (clicked) {
           if (validPlace) {
+            currentMoney -= buildC.price
+
             val entity = entitySystem.create(buildE, point, buildRotation)
             saveStateSystem.registerSavedTower(entity)
 
@@ -387,6 +403,10 @@ final class BuildSystemImpl extends BuildSystem {
     for (selected <- selectedTower) {
 
       if (AppWindow.keyDownEvents.exists(_.key == deleteBind)) {
+
+        for (buildC <- selected.prototype.find(BuildableComponent)) {
+          currentMoney += buildC.price
+        }
 
         for (breakComp <- selected.prototype.find(BreakableComponent)) {
           if (breakComp.softBreakEffect.nonEmpty) {
@@ -690,6 +710,40 @@ final class BuildSystemImpl extends BuildSystem {
   }
 
   override def renderBuildGui(canvas: Canvas, viewProjection: Matrix4): Unit = {
+    if (!pauseSystem.paused) return
+
+    val leftPanel = Layout.screen.containSnapped(200.0, 200.0,
+      snapScale = 1.0,
+      magScale = 2.0,
+      minScale = 4.0,
+      anchor = Vector2(0.0, 0.0),
+      relativeScale = 0.5,
+    )
+
+    leftPanel.padAround(10.0)
+
+    val currentMoneyArea = leftPanel.pushTop(20.0)
+    canvas.drawText(1, CurrentMoneyText, currentMoneyArea, currentMoney.toString)
+
+    for {
+      buildE <- buildEntity.orElse(selectedTower.map(_.prototype))
+      buildC <- buildE.find(BuildableComponent)
+    } {
+      leftPanel.padTop(10.0)
+      val titleArea = leftPanel.pushTop(24.0)
+      canvas.drawText(1, ObjectNameText, titleArea, lc"${buildC.locale}.name")
+
+      val priceArea = leftPanel.pushTop(20.0)
+      val priceText = Locale.getExpression("game.buildPrice", "price" -> buildC.price.toString)
+      canvas.drawText(1, ObjectPriceText, priceArea, priceText)
+
+      for (desc <- Locale.getSimpleOption(s"${buildC.locale}.desc")) {
+        leftPanel.padTop(5.0)
+        val descArea = leftPanel
+        canvas.drawTextWrapped(1, ObjectDescText, descArea, lc"${buildC.locale}.desc")
+      }
+    }
+
     for (blocker <- buildBlockerEntities) {
       val projected = viewProjection.projectPoint(blocker.position + Vector3(0.0, 3.0, 0.0))
 

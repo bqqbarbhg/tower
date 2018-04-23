@@ -811,7 +811,10 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     tutorialSystem.render(canvas)
 
     if (!pauseMenu.gameOver) {
-      hotbarMenu.update(dt)
+
+      if (pauseSystem.paused)
+        hotbarMenu.update(dt)
+
       pauseSystem.renderGui(canvas, inputs)
     }
 
