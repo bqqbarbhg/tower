@@ -38,6 +38,7 @@ import scala.collection.mutable.ArrayBuffer
 object PlayState {
 
   val Colorgrade = TextureAsset("colorgrade/ingame.png.s2tx")
+  val ColorgradeGameOver = TextureAsset("colorgrade/game_over.png.s2tx")
 
   val IdleMusic = SoundAsset("audio/music/ingame.ogg.s2au")
 
@@ -808,7 +809,10 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     tutorialSystem.render(canvas)
 
-    hotbarMenu.update(dt)
+    if (!pauseMenu.gameOver) {
+      hotbarMenu.update(dt)
+      pauseSystem.renderGui(canvas, inputs)
+    }
 
     if (!isPaused) {
       enemySystem.update(dt)
@@ -824,7 +828,6 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     buildSystem.setWireGuiEnabled(hotbarMenu.openCategory.exists(_.wireCategory))
     buildSystem.setEntityTypeToBuild(hotbarMenu.selectedItem.map(_.entityType.get))
 
-    pauseSystem.renderGui(canvas, inputs)
 
     val screenWidth = globalRenderSystem.screenWidth
     val screenHeight = globalRenderSystem.screenHeight
@@ -877,7 +880,12 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     else
       renderer.setTextureTargetColor(TonemapShader.Textures.Backbuffer, globalRenderSystem.mainTargetMsaa, 0)
 
-    renderer.setTexture(TonemapShader.Textures.ColorLookup, Colorgrade.get.texture)
+    val colorgrade = if (pauseMenu.gameOver) {
+      ColorgradeGameOver
+    } else {
+      Colorgrade
+    }
+    renderer.setTexture(TonemapShader.Textures.ColorLookup, colorgrade.get.texture)
 
     renderer.drawQuad()
 
