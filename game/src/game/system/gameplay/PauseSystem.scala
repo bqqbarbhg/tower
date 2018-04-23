@@ -43,6 +43,8 @@ object PauseSystemImpl {
   val InfoFont = FontAsset("font/open-sans/OpenSans-Regular.ttf.s2ft")
   val InfoText = TextStyle(InfoFont, 30.0, outline = Outline(1.0), align = AlignCenter)
 
+  val WinDelay = 3.0
+
 }
 
 final class PauseSystemImpl extends PauseSystem {
@@ -52,6 +54,8 @@ final class PauseSystemImpl extends PauseSystem {
   val unpauseBind = KeyEvent.NameToKey.get(Options.current.binds.unpause).getOrElse(KeyEvent.Space)
   val unpauseName = KeyEvent.KeyToName.get(unpauseBind).getOrElse("Space")
 
+  var winTimer = 0.0
+
   override def paused: Boolean = _paused
 
   def bindToText(bind: String): String = Locale.getSimpleOption(s"key.$bind").getOrElse(bind)
@@ -59,15 +63,17 @@ final class PauseSystemImpl extends PauseSystem {
   override def update(dt: Double): Unit = {
 
     if (enemySystem.numEnemiesActive <= 0) {
-      if (_paused == false) {
-        saveStateSystem.recreateMissingEntities()
-      }
+      winTimer += dt
 
-      _paused = true
+      if (_paused == false && winTimer >= WinDelay) {
+        saveStateSystem.recreateMissingEntities()
+        _paused = true
+      }
     }
 
     if (AppWindow.keyDownEvents.exists(_.key == unpauseBind) && paused) {
       _paused = false
+      winTimer = 0.0
       enemySpawnSystem.spawnNextRound()
     }
 
@@ -85,7 +91,9 @@ final class PauseSystemImpl extends PauseSystem {
     } else {
 
       val num = enemySystem.numEnemiesActive
-      val locale = if (num > 1) "game.playHint.many" else "game.playHint.one"
+      val locale = if (num > 1) "game.playHint.many"
+      else if (num == 1) "game.playHint.one"
+      else "game.playHint.zero"
       val text = Locale.getExpression(locale, "num" -> num.toString)
 
       canvas.drawText(1, InfoText, top, text)
