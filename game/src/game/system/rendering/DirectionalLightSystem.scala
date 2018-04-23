@@ -60,8 +60,8 @@ final class DirectionalLightSystemImpl extends DirectionalLightSystem {
   override def lightDirection = _lightDirection
   override def lightIntensity = _lightIntensity
 
-  val shadowTargetSize = if (Options.current.graphics.quality.shaderQuality >= 3) 2048
-  else if (Options.current.graphics.quality.shaderQuality >= 2) 1024
+  val shadowTargetSize = if (Options.current.graphics.quality.shaderQuality >= 2) 2048
+  else if (Options.current.graphics.quality.shaderQuality >= 1) 1024
   else 512
 
   override val shadowTarget = RenderTarget.create(shadowTargetSize, shadowTargetSize, None, Some(TexFormat.D24S8), true)
