@@ -1,10 +1,13 @@
 package game.system.gameplay
 
+import java.nio.ByteBuffer
+
 import core._
 import util._
 import PathfindSystemImpl._
 import ui.DebugDraw
 import util.SparseGrid.CellPos
+import util.BufferUtils._
 
 sealed trait PathfindSystem {
 
@@ -16,6 +19,21 @@ sealed trait PathfindSystem {
 
   /** Debug draw pathfinding grid */
   def debugDraw(fine: Boolean, coarse: Boolean): Unit
+
+  /** Store a copy of the current dynamic state */
+  def storeDynamicSnapshot(): Unit
+
+  /** Apply state to snapshot created with storeDynamicSnapshot() */
+  def applyDynamicSnapshot(): Unit
+
+  /** Write the latest snapshot to a buffer */
+  def saveSnapshot(buffer: ByteBuffer): Unit
+
+  /** Read and replace the current snapshot from a buffer */
+  def loadSnapshot(buffer: ByteBuffer): Unit
+
+  /** Release resources used by the system */
+  def unload(): Unit
 
 }
 
@@ -91,6 +109,7 @@ final class PathfindSystemImpl extends PathfindSystem {
   val coarseGrid = new Grid(CoarseSize, CoarseOffset, (x, y) => new Node(x, y))
   val fineGrid = new Grid(FineSize, FineOffset, (x, y) => new Node(x, y))
   val allGrids = Array(coarseGrid, fineGrid)
+  var snapshot: Option[ByteBuffer] = None
 
   override def increaseDynamicWeight(min: Vector2, max: Vector2, amount: Double): Unit = {
     for (grid <- allGrids; node <- grid.createIntersecting(min, max)) {
@@ -127,13 +146,98 @@ final class PathfindSystemImpl extends PathfindSystem {
     for (node <- grid) {
       val min = grid.getPosition(node.x, node.y, Vector2.Zero)
       val max = grid.getPosition(node.x, node.y, Vector2.One)
-      DebugDraw.drawAabb(min.toXz(0.0), max.toXz(10.0), Color(node.weight * 0.2, 0.0, 0.0))
+      DebugDraw.drawAabb(min.toXz(0.0), max.toXz(10.0), Color((node.weight - 1.0) * 0.2, 0.0, 0.0))
     }
   }
 
   def debugDraw(fine: Boolean, coarse: Boolean): Unit = {
     if (fine) debugDrawGrid(fineGrid)
     if (coarse) debugDrawGrid(coarseGrid)
+  }
+
+  def gridSnapshotSize(grid: Grid): Int = {
+    4 + grid.size * (4+4+8)
+  }
+
+  def storeGridSnapshot(grid: Grid, buffer: ByteBuffer): Unit = {
+    buffer.putInt(grid.size)
+    for (cell <- grid) {
+      buffer.putInt(cell.x)
+      buffer.putInt(cell.y)
+      buffer.putDouble(cell.dynamicWeight)
+    }
+  }
+
+  def loadGridSnapshot(grid: Grid, buffer: ByteBuffer): Unit = {
+    val num = buffer.getInt()
+    for (cell <- grid) cell.dynamicWeight = 0.0
+
+    for (_ <- 0 until num) {
+      val x = buffer.getInt()
+      val y = buffer.getInt()
+      val cell = grid.createCell(x, y)
+      cell.dynamicWeight = buffer.getDouble()
+    }
+  }
+
+  override def storeDynamicSnapshot(): Unit = {
+    for (snap <- snapshot) Memory.free(snap)
+    val size = gridSnapshotSize(fineGrid) + gridSnapshotSize(coarseGrid)
+    val snap = Memory.alloc(size)
+    val buf = snap.duplicateEx
+    storeGridSnapshot(fineGrid, buf)
+    storeGridSnapshot(coarseGrid, buf)
+    snapshot = Some(snap)
+  }
+
+  override def applyDynamicSnapshot(): Unit = {
+    for (snap <- snapshot) {
+      val buf = snap.duplicateEx
+      loadGridSnapshot(fineGrid, buf)
+      loadGridSnapshot(coarseGrid, buf)
+    }
+  }
+
+  override def saveSnapshot(buffer: ByteBuffer): Unit = {
+
+    val Version = 1
+    buffer.putMagic("s2pf")
+    buffer.putVersion(Version)
+
+    snapshot match {
+      case Some(snap) =>
+        buffer.putInt(snap.limit)
+        buffer.put(snap.duplicateEx)
+      case None =>
+        buffer.putInt(0)
+    }
+
+    buffer.putMagic("E.pf")
+  }
+
+  override def loadSnapshot(buffer: ByteBuffer): Unit = {
+
+    val MaxVersion = 1
+    buffer.verifyMagic("s2pf")
+    val version = buffer.getVersion(MaxVersion)
+
+    val size = buffer.getInt()
+
+    if (size > 0) {
+      val buf = buffer.getBuffer(size)
+      val snap = Memory.alloc(size)
+      Memory.copy(snap, buf)
+      snapshot = Some(snap)
+    } else {
+      snapshot = None
+    }
+
+    buffer.verifyMagic("E.pf")
+  }
+
+  override def unload(): Unit = {
+    for (snap <- snapshot) Memory.free(snap)
+    snapshot = None
   }
 
 }

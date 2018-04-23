@@ -112,6 +112,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     system.rendering.loadGame()
     system.gameplay.loadGame()
 
+    pathfindSystem.storeDynamicSnapshot()
+
     prevTime = AppWindow.currentTime
 
     music = audioSystem.play(IdleMusic, AudioSystem.Music)
@@ -145,8 +147,12 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   // -- Persistency
 
   def saveGame(): Unit = {
-    val buffer = Memory.alloc(1024 * 16)
+    val buffer = Memory.alloc(1024 * 128)
     val header = Memory.alloc(1024)
+
+    val Version = 1
+    header.putMagic("s2sv")
+    header.putVersion(Version)
 
     val writer = new BinaryWriter(buffer)
     writer.write(Camera)
@@ -154,11 +160,14 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     writer.writeHeader(header)
 
     saveStateSystem.save(buffer)
+    pathfindSystem.saveSnapshot(buffer)
+
+    buffer.putMagic("E.sv")
 
     header.finish()
     buffer.finish()
 
-    val os = new FileOutputStream("save.s2bi")
+    val os = new FileOutputStream("save.s2sv")
     header.writeTo(os)
     buffer.writeTo(os)
     os.close()
@@ -168,21 +177,29 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   }
 
   def loadGame(): Unit = {
-    val file = new java.io.File("save.s2bi")
+    val file = new java.io.File("save.s2sv")
     if (file.exists && file.canRead) {
       val buffer = Memory.alloc(1024 * 16)
-      buffer.readFromFile("save.s2bi")
+      buffer.readFromFile("save.s2sv")
       buffer.finish()
+
+      val MaxVersion = 1
+      buffer.verifyMagic("s2sv")
+      val version = buffer.getVersion(MaxVersion)
 
       val reader = new BinaryReader(buffer)
 
       reader.read(Camera)
 
       saveStateSystem.load(buffer)
+      pathfindSystem.loadSnapshot(buffer)
+
+      buffer.verifyMagic("E.sv")
 
       Memory.free(buffer)
 
       saveStateSystem.recreateMissingEntities()
+      pathfindSystem.applyDynamicSnapshot()
     }
   }
 

@@ -69,6 +69,7 @@ final class PauseSystemImpl extends PauseSystem {
         connectionSystem.resetMessages()
         towerSystem.resetTowers()
         saveStateSystem.recreateMissingEntities()
+        pathfindSystem.storeDynamicSnapshot()
         _paused = true
       }
     }
@@ -76,6 +77,7 @@ final class PauseSystemImpl extends PauseSystem {
     if (AppWindow.keyDownEvents.exists(_.key == unpauseBind) && paused) {
       _paused = false
       winTimer = 0.0
+      pathfindSystem.storeDynamicSnapshot()
       enemySpawnSystem.spawnNextRound()
     }
 
