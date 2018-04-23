@@ -13,9 +13,11 @@ object PauseMenu {
 
   val MenuAtlas = AtlasAsset("atlas/menu.s2at")
   val ButtonFont = FontAsset("font/catamaran/Catamaran-SemiBold.ttf.s2ft")
+  val GameOverFont = FontAsset("font/catamaran/Catamaran-Bold.ttf.s2ft")
 
   val BackgroundSprite = Identifier("gui/menu/pause_fade.png")
   val ButtonTextStyle = TextStyle(ButtonFont, 20.0, align = AlignCenter)
+  val GameOverTextStyle = TextStyle(GameOverFont, 30.0, align = AlignCenter)
 
   val Width = 200.0
   val Height = 200.0
@@ -33,10 +35,12 @@ object PauseMenu {
 
 class PauseMenu(val inputs: InputSet, val canvas: Canvas) {
 
+  var gameOver: Boolean = false
   var isOpen: Boolean = false
   var fade: Double = 0.0
 
   val ContinueButton = new Button("continue")
+  val RetryButton = new Button("retry")
   val ReturnToMenuButton = new Button("returnToMenu")
 
   def update(dt: Double): Unit = {
@@ -55,8 +59,10 @@ class PauseMenu(val inputs: InputSet, val canvas: Canvas) {
       snapScale = 1.0, magScale = 2.0, minScale = 8.0)
 
     val buttonsArea = area.copy.padTop(20.0).padBottom(20.0)
-    val buttons = Seq(ContinueButton, ReturnToMenuButton)
-
+    val buttons = if (gameOver)
+      Seq(RetryButton, ReturnToMenuButton)
+    else
+      Seq(ContinueButton, ReturnToMenuButton)
 
     if (fade > 0.001) {
       val sf = smoothStep(fade)
@@ -70,7 +76,15 @@ class PauseMenu(val inputs: InputSet, val canvas: Canvas) {
 
       canvas.draw(0, BackgroundSprite, rect, color)
 
-      buttonsArea.padTop(40.0)
+      if (gameOver) {
+        buttonsArea.padTop(30.0)
+        val area = buttonsArea.pushTop(30.0)
+        val style = GameOverTextStyle.copy(color = ButtonTextStyle.color.copy(a = sf))
+        canvas.drawText(0, style, area, lc"menu.pausemenu.gameOver")
+      } else {
+        buttonsArea.padTop(40.0)
+      }
+
       for (button <- buttons) {
         val buttonArea = buttonsArea.pushTop(30.0)
         val alpha = sf * (if (button.input.focused) 0.75 else 0.5)

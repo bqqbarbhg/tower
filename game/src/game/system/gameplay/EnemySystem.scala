@@ -59,6 +59,7 @@ object EnemySystemImpl {
   class Enemy(val entity: Entity, val component: EnemyComponent) extends CompactArrayPool.Element {
     val model = modelSystem.collectModels(entity).head
     val animator = animationSystem.addAnimator(entity, model)
+
     val walkLoop = animator.playLoop(0, component.moveAnim)
 
     val hitArea = Vector2(component.hitRadius, component.hitRadius)

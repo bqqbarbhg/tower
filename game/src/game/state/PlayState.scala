@@ -85,6 +85,8 @@ object PlayState {
     CablePulseMask,
     CablePulseTex,
   )
+
+  val GameOverDuration = 2.5
 }
 
 class PlayState(val loadExisting: Boolean) extends GameState {
@@ -99,6 +101,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   var spawnTime: Double = 0.0
 
   var music: SoundRef = null
+  var crystalEntity: Entity = null
+  var gameOverTimer: Double = 0.0
 
   override def load(): Unit = {
     Assets.acquire()
@@ -124,8 +128,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     directionalLightSystem.setLight(Vector3(0.25, 0.75, -0.25).normalize, Vector3.One * 1.0)
 
-    val crystal = entitySystem.create(CrystalEntity.get, Vector3(0.0, 0.0, 0.0))
-    ambientPointLightSystem.addLight(crystal, Vector3(0.0, 10.0, 0.0), Vector3(0.5, 0.7, 0.5) * 2.0, 60.0)
+    crystalEntity = entitySystem.create(CrystalEntity.get, Vector3(0.0, 0.0, 0.0))
+    ambientPointLightSystem.addLight(crystalEntity, Vector3(0.0, 10.0, 0.0), Vector3(0.5, 0.7, 0.5) * 2.0, 60.0)
   }
 
   override def stop(): Unit = {
@@ -221,7 +225,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
         return
       }
 
-      pauseMenu.isOpen = !pauseMenu.isOpen
+      if (!pauseMenu.gameOver)
+        pauseMenu.isOpen = !pauseMenu.isOpen
     }
 
     for (e <- AppWindow.keyDownEvents) {
@@ -230,8 +235,13 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       }
     }
 
-    if (pauseMenu.ContinueButton.input.clicked) {
+    if (pauseMenu.ContinueButton.input.clicked && !pauseMenu.gameOver) {
       pauseMenu.isOpen = false
+    }
+
+    if (pauseMenu.RetryButton.input.clicked && pauseMenu.gameOver) {
+      finished = true
+      GameState.push(new PlayState(true))
     }
 
     if (pauseMenu.ReturnToMenuButton.input.clicked) {
@@ -538,7 +548,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     }
 
     s.add("All debris")(debrisSystem)() {
-      debrisSystem.update(dt)
+      if (!isPaused)
+        debrisSystem.update(dt)
     }
 
     s.add("Visible debris")(debrisSystem)(DepActiveEntities) {
@@ -546,7 +557,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     }
 
     s.add("Visible animations")(modelSystem, animationSystem)(DepActiveEntities) {
-      animationSystem.updateVisibleAnimations(dt, activeEntities)
+      animationSystem.updateVisibleAnimations(dt, activeEntities, isPaused)
     }
 
     s.addTo("Wire GUI")(Task.Main)(towerSystem, buildSystem)(DepActiveEntities) {
@@ -775,6 +786,14 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     inputs.update()
 
+    if (crystalEntity.hasFlag(Entity.Flag_Deleted)) {
+      gameOverTimer += dt
+      if (gameOverTimer >= GameOverDuration) {
+        pauseMenu.isOpen = true
+        pauseMenu.gameOver = true
+      }
+    }
+
     pauseSystem.update(dt)
 
     updatePauseMenu(dt)
@@ -791,10 +810,11 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     hotbarMenu.update(dt)
 
-    enemySystem.update(dt)
-    towerSystem.update(dt)
-
-    connectionSystem.update(dt)
+    if (!isPaused) {
+      enemySystem.update(dt)
+      towerSystem.update(dt)
+      connectionSystem.update(dt)
+    }
 
     if (CableSystem.CableTweak.regenerateCables) {
       cableSystem.regenerateAllCables()
@@ -827,7 +847,9 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     buildSystem.update(dt, invViewProjection, inputs)
     buildSystem.renderBuildGui(canvas, viewProjection)
 
-    bulletSystem.updateBullets(dt)
+    if (!isPaused) {
+      bulletSystem.updateBullets(dt)
+    }
 
     cableSystem.generateCables()
     entitySystem.processDeletions()

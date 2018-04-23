@@ -54,7 +54,7 @@ sealed trait AnimationSystem extends EntityDeleteListener {
   def addAnimator(entity: Entity, model: ModelInstance): Animator
 
   /** Update all visible animations */
-  def updateVisibleAnimations(dt: Double, visible: EntitySet): Unit
+  def updateVisibleAnimations(dt: Double, visible: EntitySet, paused: Boolean): Unit
 
 }
 
@@ -186,8 +186,9 @@ final class AnimationSystemImpl extends AnimationSystem {
     animator
   }
 
-  override def updateVisibleAnimations(dt: Double, visible: EntitySet): Unit = {
-    currentTime += dt
+  override def updateVisibleAnimations(dt: Double, visible: EntitySet, paused: Boolean): Unit = {
+    if (!paused)
+      currentTime += dt
 
     for (e <- visible.flag(Flag_Animator)) {
       var anim = entityToAnimated(e)
