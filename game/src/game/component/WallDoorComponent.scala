@@ -35,7 +35,7 @@ class WallDoorComponent extends Component {
   /** Time closed after getting a message */
   var closeTime: DoubleProp.Type = 5.0
 
-  var open: SlotInfoProp.Type = new SlotInfo(true, "slot.wallDoor.open")
+  var open: SlotInfoProp.Type = new SlotInfo(true, "slot.wallDoor.open", Identifier("open"))
 
   override def dependencies = Some(ModelComponent)
 

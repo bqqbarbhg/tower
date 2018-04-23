@@ -72,7 +72,7 @@ class TurretTowerComponent extends Component {
   var visualYawLinear: DoubleProp.Type = 0.1
 
   /** Slot */
-  var targetIn: SlotInfoProp.Type = new SlotInfo(true, "slot.turret.targetIn")
+  var targetIn: SlotInfoProp.Type = new SlotInfo(true, "slot.turret.targetIn", Identifier("targetIn"))
 
   override def dependencies: Iterable[ComponentType] = Some(ModelComponent)
 

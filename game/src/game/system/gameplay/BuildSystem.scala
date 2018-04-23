@@ -395,6 +395,8 @@ final class BuildSystemImpl extends BuildSystem {
           }
         }
 
+        saveStateSystem.unregisterSavedTower(selected)
+
         audioSystem.play(BreakSound, AudioSystem.Sfx)
         selected.delete()
         selectedTower = None
@@ -449,6 +451,11 @@ final class BuildSystemImpl extends BuildSystem {
     wireGuiEnabled = enabled
   }
 
+  def connectSlots(a: Slot, b: Slot): Unit = {
+    towerSystem.connectSlots(a, b)
+    saveStateSystem.registerConnection(a, b)
+  }
+
   override def renderWireGui(canvas: Canvas, inputs: InputSet, visible: EntitySet, viewProjection: Matrix4): Unit = {
     if (!pauseSystem.paused) return
 
@@ -489,7 +496,7 @@ final class BuildSystemImpl extends BuildSystem {
       if (clickIndex >= 0) {
         activeSlot match {
           case Some(slot) =>
-            towerSystem.connectSlots(slot.gui.slots(slot.slot), wireGui.slots(clickIndex))
+            connectSlots(slot.gui.slots(slot.slot), wireGui.slots(clickIndex))
             activeSlot = None
             selectedTower = None
 
@@ -637,7 +644,7 @@ final class BuildSystemImpl extends BuildSystem {
 
         activeHudSlot match {
           case Some(prevSlot) =>
-            towerSystem.connectSlots(prevSlot, clickedSlot)
+            connectSlots(prevSlot, clickedSlot)
             activeHudSlot = None
 
           case None =>

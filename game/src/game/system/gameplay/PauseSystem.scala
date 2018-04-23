@@ -59,11 +59,14 @@ final class PauseSystemImpl extends PauseSystem {
   override def update(dt: Double): Unit = {
 
     if (enemySystem.numEnemiesActive <= 0) {
-      saveStateSystem.recreateMissingEntities()
+      if (_paused == false) {
+        saveStateSystem.recreateMissingEntities()
+      }
+
       _paused = true
     }
 
-    if (AppWindow.keyDownEvents.exists(_.key == unpauseBind)) {
+    if (AppWindow.keyDownEvents.exists(_.key == unpauseBind) && paused) {
       _paused = false
       enemySpawnSystem.spawnNextRound()
     }

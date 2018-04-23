@@ -11,7 +11,7 @@ object SlotInfo {
   val propertySet: PropertySet = new PropertySet("SlotInfo", arr)
 }
 
-class SlotInfo(initialIsInput: Boolean, initialLocale: String) extends PropertyContainer {
+class SlotInfo(initialIsInput: Boolean, initialLocale: String, initialId: Identifier) extends PropertyContainer {
   override def propertySet: PropertySet = SlotInfo.propertySet
 
   /** Is the slot an input */
@@ -19,6 +19,8 @@ class SlotInfo(initialIsInput: Boolean, initialLocale: String) extends PropertyC
 
   /** Locale key base for the slot */
   var locale: StringProp.Type = initialLocale
+
+  var id: IdentifierProp.Type = initialId
 
   /** Prefix of the cable node output */
   var cableNode: StringProp.Type = ""

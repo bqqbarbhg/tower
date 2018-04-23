@@ -17,9 +17,9 @@ class MergerComponent extends Component {
   override def propertySet: PropertySet = MergerComponent.propertySet
   override def componentType = MergerComponent
 
-  var output: SlotInfoProp.Type = new SlotInfo(false, "slot.merger.output")
-  var inputA: SlotInfoProp.Type = new SlotInfo(true, "slot.merger.inputA")
-  var inputB: SlotInfoProp.Type = new SlotInfo(true, "slot.merger.inputB")
+  var output: SlotInfoProp.Type = new SlotInfo(false, "slot.merger.output", Identifier("output"))
+  var inputA: SlotInfoProp.Type = new SlotInfo(true, "slot.merger.inputA", Identifier("inputA"))
+  var inputB: SlotInfoProp.Type = new SlotInfo(true, "slot.merger.inputB", Identifier("inputB"))
 
   override def create(entity: Entity): Unit = {
     towerSystem.addComponent(entity, this)

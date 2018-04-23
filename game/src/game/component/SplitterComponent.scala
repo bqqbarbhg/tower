@@ -17,9 +17,9 @@ class SplitterComponent extends Component {
   override def propertySet: PropertySet = SplitterComponent.propertySet
   override def componentType = SplitterComponent
 
-  var input: SlotInfoProp.Type = new SlotInfo(true, "slot.splitter.input")
-  var outputA: SlotInfoProp.Type = new SlotInfo(false, "slot.splitter.outputA")
-  var outputB: SlotInfoProp.Type = new SlotInfo(false, "slot.splitter.outputB")
+  var input: SlotInfoProp.Type = new SlotInfo(true, "slot.splitter.input", Identifier("input"))
+  var outputA: SlotInfoProp.Type = new SlotInfo(false, "slot.splitter.outputA", Identifier("outputA"))
+  var outputB: SlotInfoProp.Type = new SlotInfo(false, "slot.splitter.outputB", Identifier("outputB"))
 
   override def create(entity: Entity): Unit = {
     towerSystem.addComponent(entity, this)

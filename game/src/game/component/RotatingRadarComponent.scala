@@ -29,7 +29,7 @@ class RotatingRadarComponent extends Component {
   /** Offset for slot targetOut */
   var targetOutOffset: Vector3Prop.Type = Vector3.Zero
 
-  var targetOut: SlotInfoProp.Type = new SlotInfo(false, "slot.radar.targetOut")
+  var targetOut: SlotInfoProp.Type = new SlotInfo(false, "slot.radar.targetOut", Identifier("targetOut"))
 
   override def dependencies: Iterable[ComponentType] = Some(ModelComponent)
 
