@@ -823,7 +823,7 @@ final class TowerSystemImpl extends TowerSystem {
     val destroyable = entityToDestroyable(entity)
     destroyable.health -= amount
 
-    if (destroyable.health <= 0.0) {
+    if (destroyable.health <= 0.0 && !entity.hasFlag(Flag_Deleted)) {
       for (breakable <- entity.prototype.find(BreakableComponent)) {
         val et = EntityTypeAsset(breakable.hardBreakEffect)
         entitySystem.createEffect(et.get, entity.position, entity.rotation)

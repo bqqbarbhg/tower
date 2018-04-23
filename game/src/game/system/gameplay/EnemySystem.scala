@@ -70,6 +70,7 @@ object EnemySystemImpl {
 
     var path: Vector[Vector2] = NoPath
     var pathIndex: Int = 0
+    var pathTarget: Vector2 = Vector2.Zero
 
     var aimPos: Vector3 = Vector3.Zero
     var velocity: Vector3 = Vector3.Zero
@@ -240,25 +241,27 @@ final class EnemySystemImpl extends EnemySystem {
             enemy.animator.playOnce(1, enemy.component.attackAnim, 0.1, 0.1)
 
           case None =>
-            if (enemy.pathIndex < enemy.path.length) {
+            val pos = enemy.entity.position.xz
+
+            val target = if (enemy.pathIndex < enemy.path.length) {
               val target = enemy.path(enemy.pathIndex)
-              val pos = enemy.entity.position.xz
               val distSq = pos.distanceSquaredTo(target)
               if (distSq <= TargetReachDistanceSq) {
                 enemy.pathIndex += 1
-              } else {
-                val dir = (target - pos) / math.sqrt(distSq)
-                val dir3D = Vector3(dir.x, 0.0, dir.y)
-                val vel = dir3D * 5.0
-
-                enemy.velocity = vel
-                enemy.entity.position += vel * dt
-
-                enemy.targetRotation = math.atan2(vel.x, vel.z)
               }
+              target
             } else {
-              enemy.velocity = Vector3.Zero
+              enemy.pathTarget
             }
+
+            val dir = (target - pos).normalizeOrZero
+            val dir3D = Vector3(dir.x, 0.0, dir.y)
+            val vel = dir3D * 5.0
+
+            enemy.velocity = vel
+            enemy.entity.position += vel * dt
+
+            enemy.targetRotation = math.atan2(vel.x, vel.z)
         }
 
       } else if (enemy.aiState == AiAttack) {
