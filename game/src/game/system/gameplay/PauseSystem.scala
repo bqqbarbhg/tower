@@ -66,6 +66,8 @@ final class PauseSystemImpl extends PauseSystem {
       winTimer += dt
 
       if (_paused == false && winTimer >= WinDelay) {
+        connectionSystem.resetMessages()
+        towerSystem.resetTowers()
         saveStateSystem.recreateMissingEntities()
         _paused = true
       }

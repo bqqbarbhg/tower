@@ -31,6 +31,9 @@ sealed trait ConnectionSystem {
   /** Update transmitted messages */
   def update(dt: Double): Unit
 
+  /** Clear all messages */
+  def resetMessages(): Unit
+
 }
 
 object ConnectionSystemImpl {
@@ -108,6 +111,14 @@ final class ConnectionSystemImpl extends ConnectionSystem {
       } else {
         ix += 1
       }
+    }
+  }
+
+  override def resetMessages(): Unit = {
+    for (conn <- activeConnetions) {
+      conn.pendingMessage = MessageNone
+      conn.transmittingMessage = MessageNone
+      conn.receivedMessage = MessageNone
     }
   }
 

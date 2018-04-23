@@ -115,6 +115,9 @@ sealed trait TowerSystem extends EntityDeleteListener {
   /** Deal damage to a tower */
   def doDamage(entity: Entity, amount: Double): Unit
 
+  /** Reset towers back to build mode */
+  def resetTowers(): Unit
+
 }
 
 object TowerSystemImpl {
@@ -125,6 +128,8 @@ object TowerSystemImpl {
     def slots: Array[Slot]
     def update(dt: Double): Unit
     def updateVisible(): Unit
+
+    def reset(): Unit = { }
   }
 
   val MaxShootRes = 16
@@ -157,6 +162,15 @@ object TowerSystemImpl {
     var visualYaw: Double = 0.0
 
     var ambientLight: Option[AmbientPointLight] = None
+
+    override def reset(): Unit = {
+      targetAngle = 0.0
+      aimAngle = 0.0
+      visualVel = 0.0
+      visualAngle = 0.0
+      visualYaw = 0.0
+      targetTime = -100.0
+    }
 
     override val slots: Array[Slot] = Array(
       slotTargetIn,
@@ -299,6 +313,10 @@ object TowerSystemImpl {
     var angle: Double = 0.0
 
     val slotTargetOut = new Slot(entity, component.targetOut)
+
+    override def reset(): Unit = {
+      angle = 0.0
+    }
 
     override val slots: Array[Slot] = Array(
       slotTargetOut,
@@ -627,8 +645,11 @@ final class TowerSystemImpl extends TowerSystem {
 
   override def update(dt: Double): Unit = {
     timeImpl += dt
-    for (tower <- towers) {
-      tower.update(dt)
+
+    if (!pauseSystem.paused) {
+      for (tower <- towers) {
+        tower.update(dt)
+      }
     }
   }
 
@@ -790,6 +811,16 @@ final class TowerSystemImpl extends TowerSystem {
       }
 
       entity.delete()
+    }
+  }
+
+  override def resetTowers(): Unit = {
+    for ((entity, destroyable) <- entityToDestroyable) {
+      destroyable.health = destroyable.component.health
+    }
+
+    for (tower <- towers) {
+      tower.reset()
     }
   }
 
