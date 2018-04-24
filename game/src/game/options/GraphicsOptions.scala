@@ -9,15 +9,15 @@ object GraphicsOptions {
 
   class QualityOptions extends SimpleSerializable {
 
-    var maxTextureSize: Int = 2048
-    var shaderQuality: Int = 3
+    var maxTextureSize: Int = 1024
+    var shaderQuality: Int = 2
     var modelQuality: Int = 3
     var antialias: Int = 4
     var resolutionFactor: Double = 1.0
     var verticalSync: Boolean = true
     var halfFramerate: Boolean = false
     var highBitdepth: Boolean = true
-    var preset: String = ""
+    var preset: String = "Medium"
 
     override def visit(v: SimpleVisitor): Unit = {
       maxTextureSize = v.field("maxTextureSize", maxTextureSize)
@@ -27,6 +27,7 @@ object GraphicsOptions {
       resolutionFactor = v.field("resolutionFactor", resolutionFactor)
       verticalSync = v.field("verticalSync", verticalSync)
       halfFramerate = v.field("halfFramerate", halfFramerate)
+      highBitdepth = v.field("highBitdepth", highBitdepth)
       preset = v.field("preset", preset)
     }
 
@@ -54,10 +55,6 @@ object GraphicsOptions {
       }),
 
       "Medium" -> Some(() => new QualityOptions() {
-        maxTextureSize = 1024
-        antialias = 4
-        shaderQuality = 2
-        highBitdepth = false
         preset = "Medium"
       }),
 
@@ -65,6 +62,7 @@ object GraphicsOptions {
         maxTextureSize = 2048
         antialias = 8
         shaderQuality = 3
+        highBitdepth = true
         preset = "High"
       }),
 
@@ -75,13 +73,13 @@ object GraphicsOptions {
 
   class OpenGlOptions extends SimpleSerializable {
 
-    var uniformMapMode: String = "Persistent"
+    var uniformMapMode: String = "PersistentCopy"
     var vertexMapMode: String = "Persistent"
     var useUniformBuffers: Boolean = true
     var useVaoCache: Boolean = true
     var useRowMajorMatrices: Boolean = false
     var useImmutableTextureStorage: Boolean = true
-    var preset: String = ""
+    var preset: String = "Modern"
 
     override def visit(v: SimpleVisitor): Unit = {
       uniformMapMode = v.field("uniformMapMode", uniformMapMode)
@@ -121,12 +119,6 @@ object GraphicsOptions {
       }),
 
       "Modern" -> Some(() => new OpenGlOptions() {
-        uniformMapMode = "PersistentCopy"
-        vertexMapMode = "Persistent"
-        useUniformBuffers = true
-        useVaoCache = true
-        useRowMajorMatrices = false
-        useImmutableTextureStorage = true
         preset = "Modern"
       }),
 

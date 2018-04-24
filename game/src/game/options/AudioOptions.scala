@@ -26,10 +26,10 @@ class AudioOptions extends SimpleSerializable {
   var volumeUi: Double = 1.0
 
   /** Volume for the background music */
-  var volumeMusic: Double = 1.0
+  var volumeMusic: Double = 0.8
 
   /** Volume for everything */
-  var volumeMaster: Double = 1.0
+  var volumeMaster: Double = 0.8
 
   override def visit(v: SimpleVisitor): Unit = {
     sampleRate = v.field("sampleRate", sampleRate)

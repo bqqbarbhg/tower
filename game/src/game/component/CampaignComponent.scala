@@ -39,7 +39,9 @@ class CampaignComponent extends Component {
   lazy val spawns = {
     val pack = io.content.Package.get
     val spawns = pack.list(spawnRoot).filter(_.name.endsWith(".s2es"))
-    spawns.map(file => EntityTypeAsset(file.name))
+    spawns
+      .sortBy(_.name)
+      .map(file => EntityTypeAsset(file.name))
   }
 
   override def assets = spawns
