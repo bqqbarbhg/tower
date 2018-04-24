@@ -136,6 +136,12 @@ object EngineStartup {
     AppWindow.setSwapInterval(OptsGl.swapInterval)
 
     Renderer.initialize()
+
+    // Reset all UBO layouts in case rendering options have changed
+    for (ubo <- UniformBlock.allBlocks) {
+      ubo.resetLayout()
+    }
+
   }
 
   def softStop(): Unit = {

@@ -108,6 +108,8 @@ object ShaderProgramGl {
 
     val stack = MemoryStack.stackPush()
 
+    val fixedLayout = OptsGl.useUboStd140 || !OptsGl.useUniformBlocks
+
     // -- List active uniform blocks
     val numUniformBlocks = glGetProgrami(program, GL_ACTIVE_UNIFORM_BLOCKS)
     val uboMapping = (0 until numUniformBlocks).map(index => {
@@ -115,7 +117,7 @@ object ShaderProgramGl {
       glUniformBlockBinding(program, index, index)
 
       uniforms.find(_.name == name).map(ub => {
-        if (OptsGl.useUniformBlocks && !OptsGl.useUboStd140) {
+        if (OptsGl.useUniformBlocks && !fixedLayout) {
           val size = glGetActiveUniformBlocki(program, index, GL_UNIFORM_BLOCK_DATA_SIZE)
           ub.updateLayoutSize(size)
         }
@@ -152,7 +154,7 @@ object ShaderProgramGl {
 
       findUniformInBlock(name).flatMap({ case (block, uniform) =>
 
-        if (OptsGl.useUniformBlocks && !OptsGl.useUboStd140) {
+        if (OptsGl.useUniformBlocks && !fixedLayout) {
           val offset = glGetActiveUniformsi(program, index, GL_UNIFORM_OFFSET)
           val arrayStride = if (uniform.arraySize > 0)
             glGetActiveUniformsi(program, index, GL_UNIFORM_ARRAY_STRIDE) else 0

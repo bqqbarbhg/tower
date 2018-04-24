@@ -15,8 +15,9 @@ object UniformBlock {
     * @param offsetInBytes Offset of the uniform in bytes
     * @param arraySize Number of elements in an array (0 for scalar)
     */
-  sealed abstract class Uniform(val name: String, var offsetInBytes: Int, val arraySize: Int) {
+  sealed abstract class Uniform(val name: String, val originalOffset: Int, val arraySize: Int) {
 
+    var offsetInBytes: Int = originalOffset
     var arrayStrideInBytes = elementSizeInBytes
     protected var matrixStrideInBytes = 16
     protected var matrixRowMajor = true
@@ -188,6 +189,7 @@ object UniformBlock {
   def maxSerial: Int = UniformBlock.synchronized { serialCounter }
 
   def blockBySerial(serial: Int): UniformBlock = blocks(serial)
+  def allBlocks: Seq[UniformBlock] = blocks
 }
 
 class UniformBlock(val name: String) {
@@ -219,6 +221,12 @@ class UniformBlock(val name: String) {
   def mat4(name: String, arraySize: Int): UMat4 = push(new UMat4(name, layoutPosition, arraySize))
   def mat4x3(name: String): UMat4x3 = push(new UMat4x3(name, layoutPosition, 0))
   def mat4x3(name: String, arraySize: Int): UMat4x3 = push(new UMat4x3(name, layoutPosition, arraySize))
+
+  def resetLayout(): Unit = {
+    for (u <- uniforms) {
+      u.offsetInBytes = u.originalOffset
+    }
+  }
 
 }
 

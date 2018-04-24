@@ -27,10 +27,9 @@ object CreateGpuMesh {
     var attribs = Vector(
       Attrib(3, DataFmt.F32,  Semantic.Position),
       Attrib(2, DataFmt.UN16, Semantic.TexCoord),
-      Attrib(3, DataFmt.SN8,  Semantic.Normal),
-      Attrib(3, DataFmt.SN8,  Semantic.Tangent),
-      Attrib(3, DataFmt.SN8,  Semantic.Bitangent),
-      Attrib(3, DataFmt.PAD,  Semantic.Padding),
+      Attrib(4, DataFmt.SN8,  Semantic.Normal),
+      Attrib(4, DataFmt.SN8,  Semantic.Tangent),
+      Attrib(4, DataFmt.SN8,  Semantic.Bitangent),
     )
 
     if (gpuMesh.maxBonesPerVertex > 0) {
@@ -50,7 +49,7 @@ object CreateGpuMesh {
     gpuMesh.indexData = indexBuffer
     gpuMesh.vertexSpec = spec
 
-    val ts = new Array[Byte](3)
+    val ts = new Array[Byte](4)
     for (vert <- mesh.vertices) {
       vertexBuffer.putFloat(vert.position.x.toFloat)
       vertexBuffer.putFloat(vert.position.y.toFloat)
@@ -75,11 +74,6 @@ object CreateGpuMesh {
       ts(0) = clamp((vert.bitangent.x * 127.0).toInt, -127, 127).toByte
       ts(1) = clamp((vert.bitangent.y * 127.0).toInt, -127, 127).toByte
       ts(2) = clamp((vert.bitangent.z * 127.0).toInt, -127, 127).toByte
-      vertexBuffer.put(ts)
-
-      ts(0) = 0
-      ts(1) = 0
-      ts(2) = 0
       vertexBuffer.put(ts)
 
       if (gpuMesh.maxBonesPerVertex > 0) {

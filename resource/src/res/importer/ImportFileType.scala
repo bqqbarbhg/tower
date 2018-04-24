@@ -48,7 +48,7 @@ object ImportFileImage extends ImportFileType {
 }
 
 object ImportFileModel extends ImportFileType {
-  def version = 41
+  def version = 44
 
   def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
     dst.animation = src.animation

@@ -322,6 +322,7 @@ class RendererGl {
           case GL_FLOAT_VEC4 => glUniform4fv(loc, block.slicedOffset(off, num * 16).asFloatBuffer)
           case GL_FLOAT_MAT4x3 => glUniformMatrix4x3fv(loc, true, block.slicedOffset(off, num * 48).asFloatBuffer)
           case GL_FLOAT_MAT4 => glUniformMatrix4fv(loc, true, block.slicedOffset(off, num * 64).asFloatBuffer)
+          case GL_INT_VEC4 => glUniform4iv(loc, block.slicedOffset(off, num * 16).asIntBuffer)
         }
       }
 
