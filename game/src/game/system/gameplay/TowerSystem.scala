@@ -244,9 +244,7 @@ object TowerSystemImpl {
 
     def shoot(): Unit = {
 
-      for (sound <- component.shootSound.asset) {
-        audioSystem.play(sound, AudioSystem.Sfx, component.shootSound.volume, 0.0, component.shootSound.pitch)
-      }
+      sceneAudioSystem.play(shootPos, component.shootSound)
 
       val originalDir = (targetPos - shootPos).normalizeOr { return }
       val dir = (originalDir + Vector3(
@@ -293,8 +291,8 @@ object TowerSystemImpl {
           val right = (dir cross random).normalizeOrZero
           val up = (right cross dir).normalizeOrZero
           val t = rayT + 0.5
-          bulletSystem.addHit(shootPos + dir * t, right, 0.1, bulletDuration)
-          bulletSystem.addHit(shootPos + dir * t, up, 0.1, bulletDuration)
+          bulletSystem.addHit(shootPos + dir * t, right, 0.1, bulletDuration, Some(component.hitSound))
+          bulletSystem.addHit(shootPos + dir * t, up, 0.1, bulletDuration, None)
 
 
         }

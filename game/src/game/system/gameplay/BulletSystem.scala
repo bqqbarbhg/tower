@@ -4,8 +4,10 @@ import core._
 import asset._
 import BulletSystem._
 import BulletSystemImpl._
+import game.component.SoundInfo
 import game.system._
 import game.system.rendering._
+import game.system.audio._
 import game.system.rendering.AmbientPointLightSystem.AmbientPointLight
 import ui.{BillboardBatch, Canvas}
 import render._
@@ -36,7 +38,7 @@ sealed trait BulletSystem {
   def addSmoke(position: Vector3, direction: Vector3, duration: Double, size: Vector2, beginColor: Color, endColor: Color): Unit
 
   /** Add a hit effect */
-  def addHit(position: Vector3, direction: Vector3, duration: Double, delay: Double): Unit
+  def addHit(position: Vector3, direction: Vector3, duration: Double, delay: Double, sound: Option[SoundInfo]): Unit
 
   /** Move the active bullets */
   def updateBullets(dt: Double): Unit
@@ -57,7 +59,9 @@ object BulletSystemImpl {
   class LightFlash(val entity: Entity, val light: AmbientPointLight, var time: Double, val duration: Double, val intensity: Vector3)
   class Bullet(var position: Vector3, var lifetime: Double, val velocity: Vector3, val direction: Vector3)
   class Smoke(val position: Vector3, val direction: Vector3, var time: Double, val duration: Double, val size: Vector2, val beginColor: Color, val endColor: Color)
-  class Hit(val position: Vector3, val direction: Vector3, var time: Double, val duration: Double)
+  class Hit(val position: Vector3, val direction: Vector3, var time: Double, val duration: Double, val sound: Option[SoundInfo]) {
+    var soundPlayed: Boolean = false
+  }
 }
 
 final class BulletSystemImpl extends BulletSystem {
@@ -84,8 +88,8 @@ final class BulletSystemImpl extends BulletSystem {
     smokes += new Smoke(position, direction, 0.0, duration, size, beginColor, endColor)
   }
 
-  override def addHit(position: Vector3, direction: Vector3, duration: Double, delay: Double): Unit = {
-    hits += new Hit(position, direction, -delay, duration)
+  override def addHit(position: Vector3, direction: Vector3, duration: Double, delay: Double, sound: Option[SoundInfo]): Unit = {
+    hits += new Hit(position, direction, -delay, duration, sound)
   }
 
   override def updateBullets(dt: Double): Unit = {
@@ -150,6 +154,12 @@ final class BulletSystemImpl extends BulletSystem {
       while (ix < hits.length) {
         val hit = hits(ix)
         hit.time += dt
+
+        if (hit.time >= 0.0 && !hit.soundPlayed) {
+          hit.soundPlayed = true
+          for (sound <- hit.sound)
+            sceneAudioSystem.play(hit.position, sound)
+        }
 
         if (hit.time >= hit.duration) {
           hits(ix) = hits.last

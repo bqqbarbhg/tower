@@ -180,6 +180,7 @@ class PlayState(val startPoint: StartPoint) extends GameState {
 
     system.base.loadState()
     system.rendering.loadState()
+    system.audio.loadState()
     system.rendering.loadGame()
     system.gameplay.loadGame()
 
@@ -237,6 +238,7 @@ class PlayState(val startPoint: StartPoint) extends GameState {
 
     system.gameplay.unloadGame()
     system.rendering.unloadGame()
+    system.audio.unloadState()
     system.rendering.unloadState()
     system.base.unloadState()
 
@@ -956,8 +958,6 @@ class PlayState(val startPoint: StartPoint) extends GameState {
       updateCameraMovement(dt)
     }
 
-    audioSystem.update()
-
     tutorialSystem.render(canvas, inputs)
 
     if (!pauseMenu.gameOver) {
@@ -1013,6 +1013,9 @@ class PlayState(val startPoint: StartPoint) extends GameState {
     projection = Matrix4.perspective(aspectRatio, fov, 1.0, 200.0)
     viewProjection = projection * view
     invViewProjection = viewProjection.inverse
+
+    sceneAudioSystem.update(cameraPos, cameraDir)
+    audioSystem.update()
 
     directionalLightSystem.setupShadowProjection(cameraPos, cameraDir)
 
