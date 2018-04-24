@@ -201,6 +201,9 @@ object TowerSystemImpl {
         yawTarget = math.atan2(dy, dx)
       }
 
+      aimAngle = wrapAngle(aimAngle)
+      aimAngle = clamp(aimAngle, component.minAimAngle, component.maxAimAngle)
+
       if (math.abs(deltaAngle) < 0.1 && targetTime + component.shootTime >= time) {
         towerSystem.updateTurretTarget(entity, targetPos)
         spinVel += dt * component.visualSpinSpeed

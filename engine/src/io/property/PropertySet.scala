@@ -11,6 +11,7 @@ object PropertySet {
     def set(inst: PropertyContainer, prop: Property, value: Int): Unit = prop.setGenericWithConversion(inst, value)
     def set(inst: PropertyContainer, prop: Property, value: Double): Unit = prop.setGenericWithConversion(inst, value)
     def set(inst: PropertyContainer, prop: Property, value: String): Unit = prop.setGenericWithConversion(inst, value)
+    def set(inst: PropertyContainer, prop: Property, value: Boolean): Unit = prop.setGenericWithConversion(inst, value)
   }
 
 }

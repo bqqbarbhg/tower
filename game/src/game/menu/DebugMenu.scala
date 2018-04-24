@@ -171,7 +171,7 @@ class DebugMenu(val inputs: InputSet, val canvas: Canvas, val propObj: PropertyC
 
         case p =>
           elements += new Label(NormalLabel) {
-            override val text: String = s"${p.name}: ${p.getGeneric(obj).toString}"
+            override def text: String = s"${p.name}: ${p.getGeneric(obj).toString}"
           }
       }
     }

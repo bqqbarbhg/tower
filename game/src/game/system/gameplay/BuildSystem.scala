@@ -170,16 +170,18 @@ object BuildSystemImpl {
 
   object PersistentState {
     private val arr = MacroPropertySet.make[PersistentState]()
-    private val propertySet: PropertySet = new PropertySet("PersistentState", arr)
+    private val propertySet: PropertySet = new PropertySet("BuildSystem.PersistentState", arr)
   }
 
   class PersistentState extends PropertyContainer {
     override def propertySet: PropertySet = PersistentState.propertySet
 
     /** Current money balance */
-    var currentMoney: IntProp.Type = 1000
+    var currentMoney: IntProp.Type = 150
 
   }
+
+  val ForbiddenBuildAreaColor = Color.rgba(0xFF0000, 0.5)
 
 }
 
@@ -295,6 +297,10 @@ final class BuildSystemImpl extends BuildSystem {
       return
     }
 
+    if (activeHudSlot.isEmpty && activeSlot.isEmpty) {
+      tutorialSystem.progress(TutorialSystem.BuildNoCable, 1.0)
+    }
+
     val mouseDown = AppWindow.mouseButtonDown(0)
     val clicked = mouseDown && !prevMouseDown && inputs.focusedLayer < -1000
 
@@ -325,9 +331,11 @@ final class BuildSystemImpl extends BuildSystem {
 
       selectedTower = None
 
-      for (e <- AppWindow.keyDownEvents if e.key == rotateBind) {
-        buildRotationIndex = (buildRotationIndex + 1) % BuildRotations.length
-        buildRotation = BuildRotations(buildRotationIndex)
+      if (tutorialSystem.allowRotate) {
+        for (e <- AppWindow.keyDownEvents if e.key == rotateBind) {
+          buildRotationIndex = (buildRotationIndex + 1) % BuildRotations.length
+          buildRotation = BuildRotations(buildRotationIndex)
+        }
       }
 
       val t = ray.intersect(GroundPlane)
@@ -360,6 +368,23 @@ final class BuildSystemImpl extends BuildSystem {
           validPlace = false
         }
 
+        for (allowed <- tutorialSystem.allowedBuilding) {
+          if (!buildE.name.contains(allowed)) {
+            validPlace = false
+          }
+        }
+
+        for (allowed <- tutorialSystem.allowedRotationIndex) {
+          if (buildRotationIndex != allowed) {
+            validPlace = false
+          }
+        }
+
+        for ((min, max) <- tutorialSystem.buildArea) {
+          if (point.x < min.x || point.z < min.y || point.x > max.x || point.z > max.y)
+            validPlace = false
+        }
+
         if (clicked) {
           if (validPlace) {
             persistent.currentMoney -= buildC.price
@@ -371,6 +396,9 @@ final class BuildSystemImpl extends BuildSystem {
               val sound = SoundAsset(buildC.placeSound)
               audioSystem.play(sound, AudioSystem.Sfx)
             }
+
+            tutorialSystem.progress(TutorialSystem.BuildAny, 1.0)
+
           } else {
             if (failCooldown <= 0.0) {
               audioSystem.play(FailPlaceSound, AudioSystem.Ui)
@@ -419,27 +447,31 @@ final class BuildSystemImpl extends BuildSystem {
       towerHoverTime += dt
     }
 
-
     for (selected <- selectedTower) {
 
       if (AppWindow.keyDownEvents.exists(_.key == deleteBind)) {
+        val allowDelete = tutorialSystem.allowedDeleteTarget.forall(selected.name.contains(_))
 
-        for (buildC <- selected.prototype.find(BuildableComponent)) {
-          persistent.currentMoney += buildC.price
-        }
-
-        for (breakComp <- selected.prototype.find(BreakableComponent)) {
-          if (breakComp.softBreakEffect.nonEmpty) {
-            val prototype = EntityTypeAsset(breakComp.softBreakEffect).get
-            entitySystem.createEffect(prototype, selected.position, selected.rotation)
+        if (allowDelete) {
+          for (buildC <- selected.prototype.find(BuildableComponent)) {
+            persistent.currentMoney += buildC.price
           }
+
+          for (breakComp <- selected.prototype.find(BreakableComponent)) {
+            if (breakComp.softBreakEffect.nonEmpty) {
+              val prototype = EntityTypeAsset(breakComp.softBreakEffect).get
+              entitySystem.createEffect(prototype, selected.position, selected.rotation)
+            }
+          }
+
+          saveStateSystem.unregisterSavedTower(selected)
+
+          audioSystem.play(BreakSound, AudioSystem.Sfx)
+          selected.delete()
+          selectedTower = None
+
+          tutorialSystem.progress(TutorialSystem.BuildAnyDelete, 1.0)
         }
-
-        saveStateSystem.unregisterSavedTower(selected)
-
-        audioSystem.play(BreakSound, AudioSystem.Sfx)
-        selected.delete()
-        selectedTower = None
       }
 
     }
@@ -494,6 +526,9 @@ final class BuildSystemImpl extends BuildSystem {
   def connectSlots(a: Slot, b: Slot): Unit = {
     towerSystem.connectSlots(a, b)
     saveStateSystem.registerConnection(a, b)
+
+    if (a != b)
+      tutorialSystem.progress(TutorialSystem.BuildAnyCable, 1.0)
   }
 
   override def renderWireGui(canvas: Canvas, inputs: InputSet, visible: EntitySet, viewProjection: Matrix4): Unit = {
@@ -542,6 +577,7 @@ final class BuildSystemImpl extends BuildSystem {
 
           case None =>
             activeSlot = Some(SlotRef(wireGui, clickIndex))
+            tutorialSystem.progress(TutorialSystem.StartBuildCable, 1.0)
         }
       }
     }
@@ -689,43 +725,53 @@ final class BuildSystemImpl extends BuildSystem {
 
           case None =>
             activeHudSlot = Some(clickedSlot)
+            tutorialSystem.progress(TutorialSystem.StartBuildCable, 1.0)
         }
       }
 
       val hoverT = math.min(towerHoverTime / 0.05, 1.0)
       val animT = (smoothStep(hoverT * 0.5 + 0.5) - 0.5) * 2.0
 
-      for ((slot, index) <- slots.zipWithIndex) {
-        val worldPos = slot.worldPosition
+      var allowed = true
 
-        val projected = viewProjection.projectPoint(worldPos)
-        val x = (projected.x + 1.0) * 0.5 * globalRenderSystem.screenWidth
-        val y = (1.0 - (projected.y + 1.0) * 0.5) * globalRenderSystem.screenHeight
-        val pos = Vector2(x, y)
-        val extent = math.min(globalRenderSystem.screenWidth, globalRenderSystem.screenHeight) * 0.05
-        val size = Vector2(extent, extent)
-        val anchor = Vector2(0.5, 0.5)
-
-        val layout = new Layout(Vector2.One, x - size.x * 0.5, y - size.y * 0.5, x + size.x * 0.5, y + size.y * 0.5)
-
-        val baseAlpha = if (hudSlotInput.focusIndex == index) 0.9 else 0.5
-        val alpha = baseAlpha * animT
-
-        val isCompatbile = activeHudSlot.forall(_.isInput != slot.isInput)
-        val isFull = slot.connection.isDefined
-
-        val sprite = (isCompatbile, isFull) match {
-          case (false, false) => SlotHudIncompatibleEmptySprite
-          case (false, true ) => SlotHudIncompatibleFullSprite
-          case (true, false) => SlotHudEmptySprite
-          case (true, true ) => SlotHudFullSprite
-        }
-
-        canvas.draw(3, sprite, pos, size, anchor, Color.White.copy(a = alpha))
-        inputs.add(3, hudSlotInput, layout, 0.0, index)
+      for (name <- tutorialSystem.allowedCableTarget) {
+        if (!entity.prototype.name.contains(name))
+          allowed = false
       }
 
-      hudSlotEntity = entity
+      if (allowed) {
+        for ((slot, index) <- slots.zipWithIndex) {
+          val worldPos = slot.worldPosition
+
+          val projected = viewProjection.projectPoint(worldPos)
+          val x = (projected.x + 1.0) * 0.5 * globalRenderSystem.screenWidth
+          val y = (1.0 - (projected.y + 1.0) * 0.5) * globalRenderSystem.screenHeight
+          val pos = Vector2(x, y)
+          val extent = math.min(globalRenderSystem.screenWidth, globalRenderSystem.screenHeight) * 0.05
+          val size = Vector2(extent, extent)
+          val anchor = Vector2(0.5, 0.5)
+
+          val layout = new Layout(Vector2.One, x - size.x * 0.5, y - size.y * 0.5, x + size.x * 0.5, y + size.y * 0.5)
+
+          val baseAlpha = if (hudSlotInput.focusIndex == index) 0.9 else 0.5
+          val alpha = baseAlpha * animT
+
+          val isCompatbile = activeHudSlot.forall(_.isInput != slot.isInput)
+          val isFull = slot.connection.isDefined
+
+          val sprite = (isCompatbile, isFull) match {
+            case (false, false) => SlotHudIncompatibleEmptySprite
+            case (false, true ) => SlotHudIncompatibleFullSprite
+            case (true, false) => SlotHudEmptySprite
+            case (true, true ) => SlotHudFullSprite
+          }
+
+          canvas.draw(3, sprite, pos, size, anchor, Color.White.copy(a = alpha))
+          inputs.add(3, hudSlotInput, layout, 0.0, index)
+        }
+
+        hudSlotEntity = entity
+      }
     }
   }
 
@@ -786,6 +832,18 @@ final class BuildSystemImpl extends BuildSystem {
     val prevWvp = sb.worldViewProjection
 
     sb.worldViewProjection = Some(viewProjection * ingameGuiWorld)
+
+
+    for ((min, max) <- tutorialSystem.buildArea) {
+      if (buildEntity.isDefined) {
+        val radius = 4.0
+        val color = ForbiddenBuildAreaColor
+        sb.draw(QuadSprite, Vector2(min.x - radius, min.y - radius), Vector2(radius, max.y - min.y + 2 * radius), color)
+        sb.draw(QuadSprite, Vector2(max.x, min.y - radius), Vector2(radius, max.y - min.y + 2 * radius), color)
+        sb.draw(QuadSprite, Vector2(min.x, min.y - radius), Vector2(max.x - min.x, radius), color)
+        sb.draw(QuadSprite, Vector2(min.x, max.y), Vector2(max.x - min.x, radius), color)
+      }
+    }
 
     for (sel <- selectedTower) {
       val pos = sel.position

@@ -4,7 +4,7 @@ import core._
 import ui._
 import asset._
 import HotbarMenu._
-import game.component.{BuildPreviewComponent, BuildableComponent}
+import game.component.{BuildPreviewComponent, BuildableComponent, ItemComponent}
 import game.options.Options
 import game.system.EntityType
 import locale.Locale
@@ -23,22 +23,10 @@ object HotbarMenu {
   val MenuAtlas = AtlasAsset("atlas/menu.s2at")
   val BarAtlas = AtlasAsset("atlas/bar.s2at")
 
-  val TurretBasic = EntityTypeAsset("entity/tower/turret_basic.es.toml")
-  val RadarBasic = EntityTypeAsset("entity/tower/radar_basic.es.toml")
-  val CableSplitter = EntityTypeAsset("entity/tower/splitter.es.toml")
-  val CableMerger = EntityTypeAsset("entity/tower/merger.es.toml")
-  val WallDoor = EntityTypeAsset("entity/tower/wall_door.es.toml")
-
   val Assets = new AssetBundle("HotbarMenu",
     BarAtlas,
     MenuAtlas,
     HotkeyFont,
-
-    TurretBasic,
-    RadarBasic,
-    CableSplitter,
-    CableMerger,
-    WallDoor,
   )
 
   val Quad = Identifier("gui/menu/background_white.png")
@@ -51,7 +39,7 @@ object HotbarMenu {
   val IconPad = 5.0
   val CellSize = IconSize + IconPad * 2.0
 
-  class Item(val entityType: EntityTypeAsset) {
+  class Item(val entityType: EntityTypeAsset, val sortIndex: Int) {
     def buildable: BuildableComponent = entityType.get.find(BuildableComponent).get
     val input = new InputArea()
   }
@@ -96,22 +84,14 @@ class HotbarMenu(val inputs: InputSet, val canvas: Canvas) {
     new Category(Identifier("gui/bar/icon_structure.png")),
   )
 
-  categories(0).items = Vector(
-    new Item(TurretBasic),
-  )
+  def addItem(itemC: ItemComponent): Unit = {
+    val cat = categories(itemC.category)
 
-  categories(1).items = Vector(
-    new Item(RadarBasic),
-  )
+    cat.items = (cat.items :+ new Item(itemC.entityAsset, itemC.index)).sortBy(_.sortIndex)
+  }
 
-  categories(2).items = Vector(
-    new Item(CableSplitter),
-    new Item(CableMerger),
-  )
-
-  categories(3).items = Vector(
-    new Item(WallDoor),
-  )
+  // For tutorial
+  val turretCategory = categories(0)
 
   var openCategory: Option[Category] = None
   var selectedItem: Option[Item] = None

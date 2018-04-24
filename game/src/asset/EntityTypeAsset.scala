@@ -34,6 +34,14 @@ class EntityTypeAsset(val name: Identifier) extends LoadableAsset {
     entityType
   }
 
+  /**
+    * Returns a model instance with potentially only metadata loaded.
+    */
+  def getShallowUnsafe: EntityType = {
+    preload()
+    entityType
+  }
+
   override def loadAsset(): Unit = {
   }
 

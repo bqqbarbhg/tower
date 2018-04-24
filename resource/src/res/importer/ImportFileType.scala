@@ -98,7 +98,7 @@ object ImportFileLocale extends ImportFileType {
 }
 
 object ImportFileEntity extends ImportFileType {
-  def version = 4
+  def version = 5
 
   def copyRelevant(dst: Config.Res, src: Config.Res): Unit = {
     // No options

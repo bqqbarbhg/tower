@@ -7,6 +7,7 @@ import asset._
 import game.shader._
 import platform.{AppWindow, KeyEvent}
 import MenuState._
+import game.component.CampaignComponent
 import gfx.Material
 import menu.{DebugMenu, OptionsMenu}
 import ui._
@@ -18,10 +19,12 @@ import game.system.audio.AudioSystem.SoundRef
 import game.system.rendering.ModelSystem.ModelInstance
 import game.system.rendering._
 import game.system.audio._
+import locale.Locale
 import locale.LocaleString._
 import main.GameStartup
 import util.geometry.Frustum
 import render.Renderer._
+import task.Task
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -37,6 +40,8 @@ object MenuState {
   val MenuMusic = SoundAsset("audio/music/mainmenu.ogg.s2au")
 
   private val tMenuItem = TextStyle(MainFont, 44.0)
+  private val tCampaignItem = TextStyle(MainFont, 38.0)
+  private val tCampaignTitle = TextStyle(MainFont, 24.0, color = Color.rgba(0xFFFFFF, 0.5))
   private val tCredits = TextStyle(CreditsFont, 22.0)
 
   private val lMain = 0
@@ -58,6 +63,7 @@ object MenuState {
   class Button(val localeKey: String) {
     val text = lc"menu.mainmenu.button.$localeKey"
     val input = new InputArea()
+    var visible: Boolean = true
   }
 
   object Tweak extends PropertyContainer {
@@ -103,12 +109,42 @@ class MenuState extends GameState {
 
   var prevTime: Double = 0.0
 
+  var campaignLoadTask: Task[Array[EntityType]] = null
+  var campaigns: Array[EntityType] = Array[EntityType]()
+
+  val campaignSelectInput = new InputArea()
+  val campaignCancelInput = new InputArea()
+
+  var showCampaignSelect: Boolean = false
+
+  var preloadedSave: Option[PlayState.PreloadInfo] = None
+
   override def load(): Unit = {
+
+    campaignLoadTask = Task.Main.add(() => {
+      val pack = io.content.Package.get
+      pack.list("entity/campaign")
+        .filter(_.name.endsWith(".s2es"))
+        .map(file => {
+          val asset = EntityTypeAsset(file.name)
+          asset.getShallowUnsafe
+        })
+        .toArray
+        .sortBy(et => {
+          et.find(CampaignComponent).map(_.sortIndex).getOrElse(0)
+        })
+    })
+
     Assets.acquire()
     GameState.push(new LoadingState())
   }
 
   override def start(): Unit = {
+    campaigns = campaignLoadTask.get
+    preloadedSave = PlayState.preloadSave(campaigns)
+
+    ContinueButton.visible = preloadedSave.isDefined
+
     base.loadState()
     rendering.loadState()
 
@@ -155,12 +191,11 @@ class MenuState extends GameState {
 
     if (ContinueButton.input.clicked) {
       finished = true
-      GameState.push(new PlayState(true))
+      GameState.push(new PlayState(PlayState.StartLastSave(preloadedSave.get)))
     }
 
     if (NewGameButton.input.clicked) {
-      finished = true
-      GameState.push(new PlayState(false))
+      showCampaignSelect = true
     }
 
     if (OptionsButton.input.clicked) {
@@ -181,6 +216,18 @@ class MenuState extends GameState {
       creditsOpen = false
     }
 
+    if (campaignCancelInput.clicked) {
+      showCampaignSelect = false
+    }
+
+    if (campaignSelectInput.clickIndex >= 0) {
+      val index = campaignSelectInput.clickIndex
+      val campaign = campaigns(index).asset.get
+      val start = PlayState.StartCampaign(campaign)
+      finished = true
+      GameState.push(new PlayState(start))
+    }
+
     for (menu <- optionsMenu) {
       if (menu.wantsToClose)
         optionsMenu = None
@@ -188,6 +235,7 @@ class MenuState extends GameState {
 
     if (AppWindow.keyDownEvents.exists(_.key == KeyEvent.Escape)) {
       creditsOpen = false
+      showCampaignSelect = false
       for (opt <- optionsMenu)
         opt.wantsToClose = true
     }
@@ -224,7 +272,7 @@ class MenuState extends GameState {
       menu.update()
     // debugMenu.update(div.copy.padAround(100.0).pushLeft(200.0))
 
-    if (optionsMenu.isEmpty && !creditsOpen) {
+    if (optionsMenu.isEmpty && !creditsOpen && !showCampaignSelect) {
       div.pushLeft(1280.0 * 0.1)
       val options = div.pushLeft(200.0)
       options.pushTop(300.0)
@@ -232,16 +280,61 @@ class MenuState extends GameState {
       for (button <- buttons) {
         val pos = options.pushTop(40.0)
 
-        inputSet.add(0, button.input, pos)
+        if (button.visible) {
+          inputSet.add(0, button.input, pos)
 
-        var style = tMenuItem.copy(height = pos.heightPx, color = Color.White.copy(a = 0.5))
-        if (button.input.focused) {
-          style = style.copy(color = style.color.copy(a = 0.75))
+          var style = tMenuItem.copy(height = pos.heightPx, color = Color.White.copy(a = 0.5))
+          if (button.input.focused) {
+            style = style.copy(color = style.color.copy(a = 0.75))
+          }
+          canvas.drawText(lMain, style, pos.x0, pos.y0, button.text)
         }
-        canvas.drawText(lMain, style, pos.x0, pos.y0, button.text)
+
         options.padTop(20.0)
       }
+    }
 
+    if (showCampaignSelect) {
+      div.pushLeft(1280.0 * 0.1)
+      val options = div.pushLeft(300.0)
+      options.padTop(200.0)
+
+      {
+        val pos = options.pushTop(40.0)
+        canvas.drawText(lMain, tCampaignTitle, pos, lc"menu.mainmenu.selectCampaign")
+      }
+
+      for ((campaign, index) <- campaigns.zipWithIndex) {
+        val campC = campaign.find(CampaignComponent).get
+
+        val pos = options.pushTop(40.0)
+
+        inputSet.add(0, campaignSelectInput, pos, 0.0, index)
+
+        var style = tCampaignItem.copy(color = Color.White.copy(a = 0.5))
+        if (campaignSelectInput.focusIndex == index) {
+          style = style.copy(color = style.color.copy(a = 0.75))
+        }
+
+        val name = if (campC.name.nonEmpty) campC.name else {
+          Locale.getSimple(campC.locale)
+        }
+        canvas.drawText(lMain, style, pos, name)
+      }
+
+      options.padBottom(150.0)
+
+      {
+        val pos = options.pushBottom(40.0)
+        inputSet.add(0, campaignCancelInput, pos)
+
+        var style = tCampaignItem.copy(color = Color.White.copy(a = 0.5))
+        if (campaignCancelInput.focused) {
+          style = style.copy(color = style.color.copy(a = 0.75))
+        }
+
+        canvas.drawText(lMain, style, pos, lc"menu.mainmenu.button.cancelGame")
+      }
     }
 
     if (creditsOpen) {

@@ -70,15 +70,20 @@ final class PauseSystemImpl extends PauseSystem {
         towerSystem.resetTowers()
         saveStateSystem.recreateMissingEntities()
         pathfindSystem.storeDynamicSnapshot()
+        enemySpawnSystem.advanceRound()
         _paused = true
+
+        tutorialSystem.progress(TutorialSystem.AnyRoundEnd, 1.0)
       }
     }
 
-    if (AppWindow.keyDownEvents.exists(_.key == unpauseBind) && paused) {
+    if (AppWindow.keyDownEvents.exists(_.key == unpauseBind) && paused && tutorialSystem.allowStartRound) {
       _paused = false
       winTimer = 0.0
       pathfindSystem.storeDynamicSnapshot()
       enemySpawnSystem.spawnNextRound()
+
+      tutorialSystem.progress(TutorialSystem.AnyRoundStart, 1.0)
     }
 
   }
@@ -88,10 +93,13 @@ final class PauseSystemImpl extends PauseSystem {
 
     if (paused) {
 
-      val keyText = bindToText(unpauseName)
-      val text = Locale.getExpression("game.buildHint", "key" -> keyText)
+      if (tutorialSystem.allowStartRound) {
+        val keyText = bindToText(unpauseName)
+        val text = Locale.getExpression("game.buildHint", "key" -> keyText)
 
-      canvas.drawText(1, InfoText, top, text)
+        canvas.drawText(1, InfoText, top, text)
+      }
+
     } else {
 
       val num = enemySystem.numEnemiesActive

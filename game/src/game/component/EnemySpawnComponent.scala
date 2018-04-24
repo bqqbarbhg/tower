@@ -24,6 +24,12 @@ class EnemySpawnComponent extends Component {
   /** How many units of the enemy to spawn */
   var amount: IntProp.Type = 1
 
+  /** Minimum corner where to spawn */
+  var areaMin: Vector2Prop.Type = Vector2.Zero
+
+  /** Maximum corner where to spawn */
+  var areaMax: Vector2Prop.Type = Vector2.Zero
+
   /** Resolve the enemy to use */
   def enemyAsset: EntityTypeAsset = {
     val name = if (enemy.endsWith(".es.toml")) enemy else {
@@ -33,8 +39,6 @@ class EnemySpawnComponent extends Component {
     EntityTypeAsset(name)
   }
 
-  override def create(entity: Entity): Unit = {
-  }
-
+  override def assets = Some(enemyAsset)
 }
 

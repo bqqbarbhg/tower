@@ -31,8 +31,11 @@ object EntityFile {
           case SString(a) =>
             buffer.putInt(3)
             buffer.putString(a)
-          case m: SMap =>
+          case SBool(v) =>
             buffer.putInt(4)
+            buffer.putInt(if (v) 1 else 0)
+          case m: SMap =>
+            buffer.putInt(5)
             writeMap(m)
           case other =>
             throw new RuntimeException(s"Unsupported data type: ${other.kind}")

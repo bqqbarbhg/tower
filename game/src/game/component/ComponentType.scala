@@ -26,6 +26,9 @@ object ComponentType {
     DestroyableTowerComponent,
 
     DebrisComponent,
+
+    CampaignComponent,
+    ItemComponent,
   )
 
 }

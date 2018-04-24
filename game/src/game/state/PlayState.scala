@@ -31,6 +31,7 @@ import task.{Scheduler, Task}
 import util.geometry.Frustum
 import util.BufferUtils._
 import render.Renderer._
+import util.BufferIntegrityException
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -89,9 +90,53 @@ object PlayState {
   )
 
   val GameOverDuration = 2.5
+
+  sealed abstract class StartPoint {
+    def campaign: EntityTypeAsset
+  }
+
+  final case class StartLastSave(preloadInfo: PreloadInfo) extends StartPoint {
+    override def campaign: EntityTypeAsset = preloadInfo.campaign
+  }
+  final case class StartCampaign(campaignAsset: EntityTypeAsset) extends StartPoint {
+    override def campaign: EntityTypeAsset = campaignAsset
+  }
+
+  case class PreloadInfo(campaign: EntityTypeAsset)
+
+  def preloadSave(availableCampaigns: Iterable[EntityType]): Option[PreloadInfo] = {
+    val file = new java.io.File("save.s2sv")
+    if (file.exists && file.canRead) {
+      val buffer = Memory.alloc(1024 * 16)
+      buffer.readFromFile("save.s2sv")
+      buffer.finish()
+
+      val campaign: Identifier = try {
+        val MinVersion = 3
+        val MaxVersion = 3
+        buffer.verifyMagic("s2sv")
+        buffer.getVersion(MaxVersion, MinVersion)
+        buffer.getIdentifier()
+      } catch {
+        case ex: BufferIntegrityException => Identifier.Empty
+      }
+
+      Memory.free(buffer)
+
+      if (campaign != Identifier.Empty) {
+        return availableCampaigns
+          .flatMap(_.asset)
+          .find(_.name == campaign)
+          .map(PreloadInfo)
+      }
+    }
+
+    None
+  }
+
 }
 
-class PlayState(val loadExisting: Boolean) extends GameState {
+class PlayState(val startPoint: StartPoint) extends GameState {
 
   val inputs = new InputSet()
   val canvas = new Canvas()
@@ -106,12 +151,21 @@ class PlayState(val loadExisting: Boolean) extends GameState {
   var crystalEntity: Entity = null
   var gameOverTimer: Double = 0.0
 
+  val campaign: EntityTypeAsset = startPoint.campaign
+  var campaignInstance: EntityType = null
+  var campaignComponent: CampaignComponent = null
+
   override def load(): Unit = {
+
+    campaign.acquire()
     Assets.acquire()
+
     GameState.push(new LoadingState())
   }
 
   override def start(): Unit = {
+    campaignInstance = campaign.get
+    campaignComponent = campaignInstance.find(CampaignComponent).get
 
     system.base.loadState()
     system.rendering.loadState()
@@ -120,13 +174,26 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     pathfindSystem.storeDynamicSnapshot()
 
+    if (campaignComponent.enableTutorial)
+      tutorialSystem.startTutorial()
+
+    for (itemC <- campaignInstance.components.collect { case c: ItemComponent => c }) {
+      hotbarMenu.addItem(itemC)
+    }
+
     prevTime = AppWindow.currentTime
 
     music = audioSystem.play(IdleMusic, AudioSystem.Music)
     music.instance.setFullLoop()
 
-    if (loadExisting)
-      loadGame()
+    enemySpawnSystem.setRounds(campaignComponent.spawns)
+
+    startPoint match {
+      case StartLastSave(info) =>
+        loadGame()
+      case _ =>
+        enemySpawnSystem.setGameSeed(System.nanoTime.toInt)
+    }
 
     directionalLightSystem.setLight(Vector3(0.25, 0.75, -0.25).normalize, Vector3.One * 1.0)
 
@@ -148,6 +215,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     system.base.unloadState()
 
     Assets.release()
+    campaign.release()
   }
 
   // -- Persistency
@@ -156,14 +224,17 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     val buffer = Memory.alloc(1024 * 128)
     val header = Memory.alloc(1024)
 
-    val Version = 1
+    val Version = 3
     header.putMagic("s2sv")
     header.putVersion(Version)
+    header.putIdentifier(campaign.name.toString)
 
     val writer = new BinaryWriter(buffer)
 
     writer.write(Camera)
     writer.write(buildSystem.persistentState)
+    writer.write(tutorialSystem.persistentState)
+    writer.write(enemySpawnSystem.persistentState)
 
     writer.writeHeader(header)
 
@@ -191,14 +262,18 @@ class PlayState(val loadExisting: Boolean) extends GameState {
       buffer.readFromFile("save.s2sv")
       buffer.finish()
 
-      val MaxVersion = 1
+      val MinVersion = 3
+      val MaxVersion = 3
       buffer.verifyMagic("s2sv")
-      val version = buffer.getVersion(MaxVersion)
+      val version = buffer.getVersion(MaxVersion, MinVersion)
+      buffer.getIdentifier()
 
       val reader = new BinaryReader(buffer)
 
       reader.read(Camera)
       reader.read(buildSystem.persistentState)
+      reader.read(tutorialSystem.persistentState)
+      reader.read(enemySpawnSystem.persistentState)
 
       saveStateSystem.load(buffer)
       pathfindSystem.loadSnapshot(buffer)
@@ -246,7 +321,13 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     if (pauseMenu.RetryButton.input.clicked && pauseMenu.gameOver) {
       finished = true
-      GameState.push(new PlayState(true))
+      PlayState.preloadSave(Some(campaign.getShallowUnsafe)) match {
+        case Some(info) =>
+          val start = StartLastSave(info)
+          GameState.push(new PlayState(start))
+        case None =>
+          GameState.push(new MenuState())
+      }
     }
 
     if (pauseMenu.ReturnToMenuButton.input.clicked) {
@@ -303,6 +384,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     case "cameratweak" => CameraTweak
     case "debugview" => DebugView
     case "cable" => CableSystem.CableTweak
+    case "build" => buildSystem.persistentState
+    case "tutorial" => tutorialSystem.persistentState
   }
 
   def debugSelect(target: PropertyContainer): Unit = {
@@ -401,6 +484,9 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     Camera.position += cameraVel * dt
 
     Camera.position = Vector2.clamp(Camera.position, CameraTweak.boundsMin, CameraTweak.boundsMax)
+    for ((min, max) <- tutorialSystem.cameraArea) {
+      Camera.position = Vector2.clamp(Camera.position, min, max)
+    }
   }
 
   // -- Scene render
@@ -571,7 +657,8 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     }
 
     s.addTo("Wire GUI")(Task.Main)(towerSystem, buildSystem)(DepActiveEntities) {
-      buildSystem.renderWireGui(canvas, inputs, activeEntities, viewProjection)
+      if (!isPaused)
+        buildSystem.renderWireGui(canvas, inputs, activeEntities, viewProjection)
     }
 
     s.add("Visible models")(modelSystem, DepVisMeshes)(DepVisEntities, debrisSystem) {
@@ -816,7 +903,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     audioSystem.update()
 
-    tutorialSystem.render(canvas)
+    tutorialSystem.render(canvas, inputs)
 
     if (!pauseMenu.gameOver) {
 
@@ -840,6 +927,21 @@ class PlayState(val loadExisting: Boolean) extends GameState {
     buildSystem.setWireGuiEnabled(hotbarMenu.openCategory.exists(_.wireCategory))
     buildSystem.setEntityTypeToBuild(hotbarMenu.selectedItem.map(_.entityType.get))
 
+    if (hotbarMenu.openCategory.contains(hotbarMenu.turretCategory)) {
+      tutorialSystem.progress(TutorialSystem.SelectTurretCategory, 1.0)
+    }
+    if (hotbarMenu.selectedItem.exists(_.entityType.name.toString.contains("turret_basic"))) {
+      tutorialSystem.progress(TutorialSystem.SelectTurret, 1.0)
+    }
+    if (hotbarMenu.selectedItem.exists(_.entityType.name.toString.contains("radar_basic"))) {
+      tutorialSystem.progress(TutorialSystem.SelectRadar, 1.0)
+    }
+    if (hotbarMenu.selectedItem.exists(_.entityType.name.toString.contains("turret_directed"))) {
+      tutorialSystem.progress(TutorialSystem.SelectDirectedTurret, 1.0)
+    }
+    if (hotbarMenu.openCategory.isEmpty && hotbarMenu.selectedItem.isEmpty) {
+      tutorialSystem.progress(TutorialSystem.BuildNoSelection, 1.0)
+    }
 
     val screenWidth = globalRenderSystem.screenWidth
     val screenHeight = globalRenderSystem.screenHeight
@@ -859,10 +961,9 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     directionalLightSystem.setupShadowProjection(cameraPos, cameraDir)
 
-    buildSystem.update(dt, invViewProjection, inputs)
-    buildSystem.renderBuildGui(canvas, viewProjection)
-
     if (!isPaused) {
+      buildSystem.update(dt, invViewProjection, inputs)
+      buildSystem.renderBuildGui(canvas, viewProjection)
       bulletSystem.updateBullets(dt)
     }
 
@@ -913,7 +1014,7 @@ class PlayState(val loadExisting: Boolean) extends GameState {
 
     renderer.setWriteSrgb(true)
 
-    if (!pauseMenu.gameOver)
+    if (!isPaused)
       towerSystem.renderIngameGui(viewProjection)
 
     canvas.render()

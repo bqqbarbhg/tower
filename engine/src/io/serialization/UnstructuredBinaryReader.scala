@@ -11,7 +11,8 @@ object UnstructuredBinaryReader {
   val DataDouble = 1
   val DataInt = 2
   val DataString = 3
-  val DataObject = 4
+  val DataBool = 4
+  val DataObject = 5
 }
 
 class UnstructuredBinaryReader(val buffer: ByteBuffer) extends AnyVal {
@@ -32,6 +33,7 @@ class UnstructuredBinaryReader(val buffer: ByteBuffer) extends AnyVal {
                 case DataDouble => conv.set(obj, prop, buffer.getDouble())
                 case DataInt => conv.set(obj, prop, buffer.getInt())
                 case DataString => conv.set(obj, prop, buffer.getString())
+                case DataBool => conv.set(obj, prop, buffer.getInt() != 0)
               }
 
             case None =>
@@ -39,6 +41,7 @@ class UnstructuredBinaryReader(val buffer: ByteBuffer) extends AnyVal {
                 case DataDouble => prop.setGenericWithConversion(obj, buffer.getDouble())
                 case DataInt => prop.setGenericWithConversion(obj, buffer.getInt())
                 case DataString => prop.setGenericWithConversion(obj, buffer.getString())
+                case DataBool => prop.setGenericWithConversion(obj, buffer.getInt() != 0)
                 case DataObject =>
                   val product = prop.asInstanceOf[ProductProp]
                   val productObj = product.getProductInstance(obj)

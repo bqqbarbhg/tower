@@ -71,6 +71,12 @@ class TurretTowerComponent extends Component {
   /** Linear interpolation towards visual yaw */
   var visualYawLinear: DoubleProp.Type = 0.1
 
+  /** Minimum angle to aim from the neutral */
+  var minAimAngle: DoubleProp.Type = -math.Pi * 2.0
+
+  /** Maximum angle to aim from the neutral */
+  var maxAimAngle: DoubleProp.Type = +math.Pi * 2.0
+
   /** Slot */
   var targetIn: SlotInfoProp.Type = new SlotInfo(true, "slot.turret.targetIn", Identifier("targetIn"))
 
