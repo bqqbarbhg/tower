@@ -960,11 +960,14 @@ class PlayState(val startPoint: StartPoint) extends GameState {
 
     tutorialSystem.render(canvas, inputs)
 
+    if (pauseSystem.paused && !pauseMenu.gameOver) {
+      hotbarMenu.update(dt)
+    } else {
+      hotbarMenu.openCategory = None
+      hotbarMenu.selectedItem = None
+    }
+
     if (!pauseMenu.gameOver) {
-
-      if (pauseSystem.paused)
-        hotbarMenu.update(dt)
-
       pauseSystem.renderGui(canvas, inputs)
     }
 

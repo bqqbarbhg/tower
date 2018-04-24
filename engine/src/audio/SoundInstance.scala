@@ -163,9 +163,9 @@ class SoundInstance private(var sound: Sound) extends Input {
     targetVolumeRight = (volume * math.sin(angle)).toFloat
 
     if (snapParameters) {
-      velocityPitch = 100.0
-      velocityVolumeLeft = 100.0f
-      velocityVolumeRight = 100.0f
+      velocityPitch = Float.PositiveInfinity
+      velocityVolumeLeft = Float.PositiveInfinity
+      velocityVolumeRight = Float.PositiveInfinity
       snapParameters = false
     } else {
       velocityPitch = targetPitch - interpPitch
@@ -231,6 +231,8 @@ class SoundInstance private(var sound: Sound) extends Input {
       val baseFrame = time.toInt
       val silent = interpVolumeLeft <= 0.001 && interpVolumeRight <= 0.001
 
+      followTarget(sampleRate)
+
       if (baseFrame >= 0 && !silent) {
         if (baseFrame < bufferFirstFrame || baseFrame + 1 > bufferLastFrame) {
           fillBuffer()
@@ -256,7 +258,6 @@ class SoundInstance private(var sound: Sound) extends Input {
         dstData(dstBase + 1) = 0.0f
       }
 
-      followTarget(sampleRate)
       timeInSourceFrames += timeAdvance * interpPitch
       dstIndex += 1
     }

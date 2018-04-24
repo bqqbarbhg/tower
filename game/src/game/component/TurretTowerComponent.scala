@@ -89,7 +89,7 @@ class TurretTowerComponent extends Component {
 
   override def dependencies: Iterable[ComponentType] = Some(ModelComponent)
 
-  override def assets = Vector(shootSound.asset).flatten
+  override def assets = shootSound.assets ++ hitSound.assets
 
   override def create(entity: Entity): Unit = {
     towerSystem.addComponent(entity, this)

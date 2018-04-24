@@ -53,7 +53,12 @@ class EnemyComponent extends Component {
   /** Amount to rotate towards target linearly */
   var rotateSpeedLinear: DoubleProp.Type = 0.1
 
+  /** Sound when defeated */
+  var dieSound: SoundInfoProp.Type = new SoundInfo
+
   override def dependencies = Some(ModelComponent)
+
+  override def assets = dieSound.assets
 
   override def create(entity: Entity): Unit = {
     enemySystem.addEnemy(entity, this)

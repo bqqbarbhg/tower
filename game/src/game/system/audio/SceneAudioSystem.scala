@@ -7,6 +7,8 @@ import game.system._
 import game.system.audio.AudioSystem._
 import SceneAudioSystemImpl._
 
+import scala.util.Random
+
 sealed trait SceneAudioSystem {
 
   /** Update the sounds in the scene */
@@ -29,6 +31,7 @@ object SceneAudioSystemImpl {
 
 final class SceneAudioSystemImpl extends SceneAudioSystem {
 
+  val random = new Random()
   var activeSounds = new CompactArrayPool[SceneSoundInstance]()
   var cameraPosition: Vector3 = Vector3.Zero
   var cameraDirection: Vector3 = Vector3.Zero
@@ -45,12 +48,14 @@ final class SceneAudioSystemImpl extends SceneAudioSystem {
   }
 
   override def play(position: Vector3, soundInfo: SoundInfo): Unit = {
-    for (asset <- soundInfo.asset) {
-      val chan = soundInfo.audioChannel
-      val ref = audioSystem.play(asset, chan, soundInfo.volume, 0.0, soundInfo.pitch)
-      val inst = new SceneSoundInstance(position, ref, soundInfo, ref.instance.volume)
-      updateSoundAttenuation(inst)
-    }
+    if (soundInfo.assets.isEmpty) return
+
+    val index = random.nextInt(soundInfo.assets.length)
+    val asset = soundInfo.assets(index)
+    val chan = soundInfo.audioChannel
+    val ref = audioSystem.play(asset, chan, soundInfo.volume, 0.0, soundInfo.pitch)
+    val inst = new SceneSoundInstance(position, ref, soundInfo, ref.instance.volume)
+    updateSoundAttenuation(inst)
   }
 
   override def update(cameraPosition: Vector3, cameraDirection: Vector3): Unit = {

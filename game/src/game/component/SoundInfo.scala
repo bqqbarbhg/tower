@@ -9,6 +9,8 @@ import io.property._
 import SoundInfo._
 import game.system.audio.AudioSystem
 
+import scala.collection.mutable.ArrayBuffer
+
 object SoundInfo {
   private val arr = MacroPropertySet.make[SoundInfo]()
   val propertySet: PropertySet = new PropertySet("SoundInfo", arr)
@@ -28,6 +30,8 @@ object SoundInfo {
       AudioSystem.Sfx
     }
   }
+
+  val NoSounds = Array[SoundAsset]()
 
 }
 
@@ -52,10 +56,33 @@ class SoundInfo extends PropertyContainer {
   /** Actual audio channel enum to use */
   def audioChannel: AudioSystem.AudioChannel.AudioChannel = getAudioChannel(channel)
 
-  def asset: Option[SoundAsset] = if (sound != Identifier.Empty)
-    Some(SoundAsset(sound))
-  else
-    None
+  def listFilesWithPattern(pattern: String): Array[SoundAsset] = {
+    var result = new ArrayBuffer[SoundAsset]()
+    val pack = io.content.Package.get
+
+    var ix = 1
+    while (true) {
+      val name = pattern.replace("*", ix.toString)
+      if (pack.get(name).isEmpty) return result.toArray
+
+      result += SoundAsset(name)
+
+      ix += 1
+    }
+
+    result.toArray
+  }
+
+  lazy val assets: Array[SoundAsset] = if (sound != Identifier.Empty) {
+    val str = sound.toString
+    if (str.contains("*")) {
+      listFilesWithPattern(str)
+    } else {
+      Array(SoundAsset(sound))
+    }
+  } else {
+    NoSounds
+  }
 
 }
 

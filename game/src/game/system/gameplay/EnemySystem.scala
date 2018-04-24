@@ -4,6 +4,7 @@ import core._
 import game.system._
 import game.system.base._
 import game.system.rendering._
+import game.system.audio._
 import game.system.Entity._
 import game.component._
 import EnemySystem._
@@ -319,6 +320,8 @@ final class EnemySystemImpl extends EnemySystem {
         enemiesDefeated.add(enemy)
         enemy.enemyState = StateDefeated
         enemy.animator.playOnce(10, enemy.component.defeatAnim, 0.1, 0.0)
+
+        sceneAudioSystem.play(enemy.entity.position, enemy.component.dieSound)
 
         for (shape <- cullingSystem.getShapes(entity, CullingSystem.MaskEnemy)) {
           cullingSystem.removeShape(entity, shape.serial)
