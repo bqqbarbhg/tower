@@ -19,8 +19,8 @@ object UniformBlock {
 
     var offsetInBytes: Int = originalOffset
     var arrayStrideInBytes = elementSizeInBytes
-    protected var matrixStrideInBytes = 16
-    protected var matrixRowMajor = true
+    var matrixStrideInBytes = 16
+    var matrixRowMajor = true
 
     /** Is the uniform some kind of a matrix */
     def isMatrix: Boolean
@@ -225,6 +225,7 @@ class UniformBlock(val name: String) {
   def resetLayout(): Unit = {
     for (u <- uniforms) {
       u.offsetInBytes = u.originalOffset
+      u.matrixRowMajor = true
     }
   }
 
