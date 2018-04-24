@@ -181,7 +181,7 @@ object BuildSystemImpl {
 
   }
 
-  val ForbiddenBuildAreaColor = Color.rgba(0xFF0000, 0.5)
+  val ForbiddenBuildAreaColor = Color.rgba(0xFF0000, 0.3)
 
 }
 
@@ -836,7 +836,7 @@ final class BuildSystemImpl extends BuildSystem {
 
     for ((min, max) <- tutorialSystem.buildArea) {
       if (buildEntity.isDefined) {
-        val radius = 4.0
+        val radius = 2.0
         val color = ForbiddenBuildAreaColor
         sb.draw(QuadSprite, Vector2(min.x - radius, min.y - radius), Vector2(radius, max.y - min.y + 2 * radius), color)
         sb.draw(QuadSprite, Vector2(max.x, min.y - radius), Vector2(radius, max.y - min.y + 2 * radius), color)

@@ -36,6 +36,7 @@ object PauseMenu {
 class PauseMenu(val inputs: InputSet, val canvas: Canvas) {
 
   var gameOver: Boolean = false
+  var gameWon: Boolean = false
   var isOpen: Boolean = false
   var fade: Double = 0.0
 
@@ -59,8 +60,10 @@ class PauseMenu(val inputs: InputSet, val canvas: Canvas) {
       snapScale = 1.0, magScale = 2.0, minScale = 8.0)
 
     val buttonsArea = area.copy.padTop(20.0).padBottom(20.0)
-    val buttons = if (gameOver)
+    val buttons = if (gameOver && !gameWon)
       Seq(RetryButton, ReturnToMenuButton)
+    else if (gameOver && gameWon)
+      Seq(ReturnToMenuButton)
     else
       Seq(ContinueButton, ReturnToMenuButton)
 
@@ -80,7 +83,13 @@ class PauseMenu(val inputs: InputSet, val canvas: Canvas) {
         buttonsArea.padTop(30.0)
         val area = buttonsArea.pushTop(30.0)
         val style = GameOverTextStyle.copy(color = ButtonTextStyle.color.copy(a = sf))
-        canvas.drawText(0, style, area, lc"menu.pausemenu.gameOver")
+
+        val text = if (gameWon)
+          lc"menu.pausemenu.gameWon"
+        else
+          lc"menu.pausemenu.gameOver"
+
+        canvas.drawText(0, style, area, text)
       } else {
         buttonsArea.padTop(40.0)
       }

@@ -24,6 +24,9 @@ sealed trait EnemySpawnSystem {
   /** Move to the next round */
   def advanceRound(): Unit
 
+  /** Has the player completed all the rounds */
+  def allRoundsComplete: Boolean
+
   def persistentState: PropertyContainer
 
 }
@@ -80,8 +83,9 @@ final class EnemySpawnSystemImpl extends EnemySpawnSystem {
         }
       }
     }
-
   }
+
+  override def allRoundsComplete: Boolean = ps.roundIndex >= rounds.length
 
 }
 

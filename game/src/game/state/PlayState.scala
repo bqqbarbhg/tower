@@ -197,15 +197,20 @@ class PlayState(val startPoint: StartPoint) extends GameState {
 
     directionalLightSystem.setLight(Vector3(0.25, 0.75, -0.25).normalize, Vector3.One * 1.0)
 
-    crystalEntity = entitySystem.create(CrystalEntity.get, Vector3(0.0, 0.0, 0.0))
-    ambientPointLightSystem.addLight(crystalEntity, Vector3(0.0, 10.0, 0.0), Vector3(0.5, 0.7, 0.5) * 2.0, 60.0)
+    if (!campaignComponent.enableTutorial) {
+      crystalEntity = entitySystem.create(CrystalEntity.get, Vector3(0.0, 0.0, 0.0))
+      ambientPointLightSystem.addLight(crystalEntity, Vector3(0.0, 10.0, 0.0), Vector3(0.5, 0.7, 0.5) * 2.0, 60.0)
+    }
   }
 
   override def stop(): Unit = {
     music.stop()
     audioSystem.update()
 
-    saveGame()
+    if (enemySpawnSystem.allRoundsComplete)
+      deleteSaveGame()
+      else
+      saveGame()
 
     entitySystem.deleteAllEntities()
 
@@ -219,6 +224,15 @@ class PlayState(val startPoint: StartPoint) extends GameState {
   }
 
   // -- Persistency
+
+  def deleteSaveGame(): Unit = {
+    try {
+      val file = new java.io.File("save.s2sv")
+      file.delete()
+    } catch {
+      case ex: Exception =>
+    }
+  }
 
   def saveGame(): Unit = {
     val buffer = Memory.alloc(1024 * 128)
@@ -883,12 +897,18 @@ class PlayState(val startPoint: StartPoint) extends GameState {
 
     inputs.update()
 
-    if (crystalEntity.hasFlag(Entity.Flag_Deleted)) {
+    if (crystalEntity != null && crystalEntity.hasFlag(Entity.Flag_Deleted)) {
       gameOverTimer += dt
       if (gameOverTimer >= GameOverDuration) {
         pauseMenu.isOpen = true
         pauseMenu.gameOver = true
       }
+    }
+
+    if (enemySpawnSystem.allRoundsComplete) {
+      pauseMenu.isOpen = true
+      pauseMenu.gameOver = true
+      pauseMenu.gameWon = true
     }
 
     pauseSystem.update(dt)
@@ -933,7 +953,7 @@ class PlayState(val startPoint: StartPoint) extends GameState {
     if (hotbarMenu.selectedItem.exists(_.entityType.name.toString.contains("turret_basic"))) {
       tutorialSystem.progress(TutorialSystem.SelectTurret, 1.0)
     }
-    if (hotbarMenu.selectedItem.exists(_.entityType.name.toString.contains("radar_basic"))) {
+    if (hotbarMenu.selectedItem.exists(_.entityType.name.toString.contains("radar_tutorial"))) {
       tutorialSystem.progress(TutorialSystem.SelectRadar, 1.0)
     }
     if (hotbarMenu.selectedItem.exists(_.entityType.name.toString.contains("turret_directed"))) {
@@ -993,7 +1013,7 @@ class PlayState(val startPoint: StartPoint) extends GameState {
     else
       renderer.setTextureTargetColor(TonemapShader.Textures.Backbuffer, globalRenderSystem.mainTargetMsaa, 0)
 
-    val colorgrade = if (pauseMenu.gameOver) {
+    val colorgrade = if (pauseMenu.gameOver && !pauseMenu.gameWon) {
       ColorgradeGameOver
     } else {
       Colorgrade

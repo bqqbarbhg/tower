@@ -275,7 +275,7 @@ final class TutorialSystemImpl extends TutorialSystem {
       if (phase == BuildTurret) {
         Some("turret_basic")
       } else if (phase == BuildRadar) {
-        Some("radar_basic")
+        Some("radar_tutorial")
       } else if (phase == BuildDirectedTurret) {
         Some("turret_directed")
       } else {
@@ -294,7 +294,7 @@ final class TutorialSystemImpl extends TutorialSystem {
     if (phase == ps.currentPhase) {
 
       if (phase == StartBuildCable) {
-        Some("radar_basic")
+        Some("radar_tutorial")
       } else if (phase == EndBuildCable) {
         Some("turret_basic")
       } else if (phase == ConnectDirectedTurret) {
@@ -354,7 +354,7 @@ final class TutorialSystemImpl extends TutorialSystem {
   override def buildArea: Option[(Vector2, Vector2)] = {
     if (ps.nextPhase == -1) return None
 
-    Some((Vector2(-25.0, -20.0), Vector2(25.0, 20.0)))
+    Some((Vector2(-9.0, -9.0), Vector2(9.0, 9.0)))
   }
 }
 
