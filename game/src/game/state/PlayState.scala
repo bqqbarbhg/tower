@@ -41,7 +41,9 @@ object PlayState {
   val Colorgrade = TextureAsset("colorgrade/ingame.png.s2tx")
   val ColorgradeGameOver = TextureAsset("colorgrade/game_over.png.s2tx")
 
-  val IdleMusic = SoundAsset("audio/music/ingame.ogg.s2au")
+  val MusicIdleIntro = SoundAsset("audio/music/ingame_idle_intro.ogg.s2au")
+  val MusicIdleLoop = SoundAsset("audio/music/ingame_idle_loop.ogg.s2au")
+  val MusicBattleLoop = SoundAsset("audio/music/ingame_battle_loop.ogg.s2au")
 
   val TestPlaceModel = ModelAsset("game/tower/turret_basic/tower_turret.fbx.s2md")
   val TestPlaceMask = TextureAsset("game/tower/turret_basic/placemask.png.s2tx")
@@ -75,7 +77,10 @@ object PlayState {
 
     Colorgrade,
     ColorgradeGameOver,
-    IdleMusic,
+
+    MusicIdleIntro,
+    MusicIdleLoop,
+    MusicBattleLoop,
 
     GroundShader,
     InstancedMeshShader,
@@ -147,13 +152,19 @@ class PlayState(val startPoint: StartPoint) extends GameState {
 
   var spawnTime: Double = 0.0
 
-  var music: SoundRef = null
+  var musicIdleIntro: SoundRef = null
+  var musicIdleLoop: SoundRef = null
+  var musicBattleLoop: SoundRef = null
+
   var crystalEntity: Entity = null
   var gameOverTimer: Double = 0.0
 
   val campaign: EntityTypeAsset = startPoint.campaign
   var campaignInstance: EntityType = null
   var campaignComponent: CampaignComponent = null
+
+  val BattleFadeDuration = 2.0
+  var battleAudioFade: Double = 0.0
 
   override def load(): Unit = {
 
@@ -183,8 +194,15 @@ class PlayState(val startPoint: StartPoint) extends GameState {
 
     prevTime = AppWindow.currentTime
 
-    music = audioSystem.play(IdleMusic, AudioSystem.Music)
-    music.instance.setFullLoop()
+    val loopLength = MusicIdleLoop.get.lengthInFrames
+    val introLength = MusicIdleIntro.get.lengthInFrames
+
+    musicIdleIntro = audioSystem.play(MusicIdleIntro, AudioSystem.Music)
+    musicIdleLoop = audioSystem.play(MusicIdleLoop, AudioSystem.Music, startFrame = -introLength)
+    musicBattleLoop = audioSystem.play(MusicBattleLoop, AudioSystem.Music, startFrame = loopLength - introLength)
+    musicIdleLoop.instance.setFullLoop()
+    musicBattleLoop.instance.setFullLoop()
+    musicBattleLoop.instance.volume = 0.0
 
     enemySpawnSystem.setRounds(campaignComponent.spawns)
 
@@ -204,7 +222,10 @@ class PlayState(val startPoint: StartPoint) extends GameState {
   }
 
   override def stop(): Unit = {
-    music.stop()
+    musicIdleIntro.stop()
+    musicIdleLoop.stop()
+    musicBattleLoop.stop()
+
     audioSystem.update()
 
     if (enemySpawnSystem.allRoundsComplete)
@@ -909,6 +930,20 @@ class PlayState(val startPoint: StartPoint) extends GameState {
       pauseMenu.isOpen = true
       pauseMenu.gameOver = true
       pauseMenu.gameWon = true
+    }
+
+    if ((pauseSystem.paused && !pauseMenu.gameOver) || pauseMenu.gameWon) {
+      battleAudioFade -= dt / BattleFadeDuration
+    } else {
+      battleAudioFade += dt / BattleFadeDuration
+    }
+    battleAudioFade = clamp(battleAudioFade, 0.0, 1.0)
+
+    {
+      val fade = smoothStep(battleAudioFade)
+      musicIdleIntro.instance.volume = 1.0 - fade
+      musicIdleLoop.instance.volume = 1.0 - fade
+      musicBattleLoop.instance.volume = fade
     }
 
     pauseSystem.update(dt)

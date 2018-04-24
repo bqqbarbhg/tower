@@ -66,6 +66,10 @@ class SoundInstance private(var sound: Sound) extends Input {
 
   private var cursor = sound.sampleSource.open()
 
+  def forceTime(timeInFrames: Double): Unit = {
+    timeInSourceFrames = timeInFrames
+  }
+
   def setFullLoop(): Unit = {
     loop = Some(0 -> sound.lengthInFrames)
   }
@@ -225,28 +229,35 @@ class SoundInstance private(var sound: Sound) extends Input {
 
       val time = timeInSourceFrames
       val baseFrame = time.toInt
+      val silent = interpVolumeLeft <= 0.001 && interpVolumeRight <= 0.001
 
-      if (baseFrame < bufferFirstFrame || baseFrame + 1 > bufferLastFrame) {
-        fillBuffer()
+      if (baseFrame >= 0 && !silent) {
+        if (baseFrame < bufferFirstFrame || baseFrame + 1 > bufferLastFrame) {
+          fillBuffer()
+        }
+
+        val bufOffset = baseFrame - bufferFirstFrame
+        val beta = (time - time.floor).toFloat
+        val alpha = 1.0f - beta
+        val base = bufOffset << 1
+        val al = buffer(base + 0)
+        val ar = buffer(base + 1)
+        val bl = buffer(base + 2)
+        val br = buffer(base + 3)
+        val sl = al * alpha + bl * beta
+        val sr = ar * alpha + br * beta
+
+        val dstBase = dstIndex << 1
+        dstData(dstBase + 0) = sl * interpVolumeLeft
+        dstData(dstBase + 1) = sr * interpVolumeRight
+      } else {
+        val dstBase = dstIndex << 1
+        dstData(dstBase + 0) = 0.0f
+        dstData(dstBase + 1) = 0.0f
       }
 
-      val bufOffset = baseFrame - bufferFirstFrame
-      val beta = (time - time.floor).toFloat
-      val alpha = 1.0f - beta
-      val base = bufOffset << 1
-      val al = buffer(base + 0)
-      val ar = buffer(base + 1)
-      val bl = buffer(base + 2)
-      val br = buffer(base + 3)
-      val sl = al * alpha + bl * beta
-      val sr = ar * alpha + br * beta
-
-      val dstBase = dstIndex << 1
-      dstData(dstBase + 0) = sl * interpVolumeLeft
-      dstData(dstBase + 1) = sr * interpVolumeRight
-      timeInSourceFrames += timeAdvance * interpPitch
-
       followTarget(sampleRate)
+      timeInSourceFrames += timeAdvance * interpPitch
       dstIndex += 1
     }
 

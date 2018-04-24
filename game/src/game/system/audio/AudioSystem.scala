@@ -45,7 +45,7 @@ sealed trait AudioSystem {
   def update(): Unit
 
   /** Play a sound */
-  def play(soundAsset: SoundAsset, channel: AudioChannel.AudioChannel, volume: Double = 1.0, pan: Double = 0.0, pitch: Double = 1.0): SoundRef
+  def play(soundAsset: SoundAsset, channel: AudioChannel.AudioChannel, volume: Double = 1.0, pan: Double = 0.0, pitch: Double = 1.0, startFrame: Double = 0.0): SoundRef
 
   /** Wait until the audio thread is finished */
   def joinAudioThread(): Unit
@@ -264,7 +264,7 @@ final class AudioSystemImpl extends AudioSystem {
     }
   }
 
-  override def play(soundAsset: SoundAsset, channel: AudioChannel.AudioChannel, volume: Double = 1.0, pan: Double = 0.0, pitch: Double = 1.0): SoundRef = {
+  override def play(soundAsset: SoundAsset, channel: AudioChannel.AudioChannel, volume: Double = 1.0, pan: Double = 0.0, pitch: Double = 1.0, startFrame: Double = 0.0): SoundRef = {
     val mixer = channel match {
       case AudioChannel.Sfx => mixerSfx
       case AudioChannel.Ui => mixerUi
@@ -276,6 +276,8 @@ final class AudioSystemImpl extends AudioSystem {
     inst.volume = volume
     inst.pan = pan
     inst.pitch = pitch
+    if (startFrame != 0.0)
+      inst.forceTime(startFrame)
 
     val ref = new SoundRef(mixer, inst)
     newInstances += ref

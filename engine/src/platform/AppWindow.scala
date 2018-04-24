@@ -369,6 +369,8 @@ object AppWindow {
   /** Does the application window want to close? */
   def running: Boolean = !glfwWindowShouldClose(window)
 
+  var screenToFramebuffer: Vector2 = Vector2.One
+
   /** Update input etc */
   def pollEvents(): Unit = {
     glfwPollEvents()
@@ -384,6 +386,14 @@ object AppWindow {
       glfwCallbackQueue.charEvents.clear()
       glfwCallbackQueue.mouseScroll = 0.0
     }
+
+    val wx = Array(0)
+    val wy = Array(0)
+    val fx = Array(0)
+    val fy = Array(0)
+    glfwGetFramebufferSize(window, fx, fy)
+    glfwGetWindowSize(window, wx, wy)
+    screenToFramebuffer = Vector2(fx(0).toDouble / wx(0).toDouble, fy(0).toDouble / wy(0).toDouble)
   }
 
   /** Present the rendered frame */
@@ -412,7 +422,7 @@ object AppWindow {
     val x = Array(0.0)
     val y = Array(0.0)
     glfwGetCursorPos(window, x, y)
-    Vector2(x(0), y(0))
+    Vector2(x(0) * screenToFramebuffer.x, y(0) * screenToFramebuffer.y)
   }
 
   /** Returns whether a mouse button is currently down */

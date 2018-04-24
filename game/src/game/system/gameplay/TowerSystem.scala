@@ -6,6 +6,7 @@ import game.system._
 import game.system.Entity._
 import game.system.base._
 import game.system.rendering._
+import game.system.audio._
 import game.system.rendering.ModelSystem._
 import TowerSystem._
 import TowerSystemImpl._
@@ -242,6 +243,11 @@ object TowerSystemImpl {
     }
 
     def shoot(): Unit = {
+
+      for (sound <- component.shootSound.asset) {
+        audioSystem.play(sound, AudioSystem.Sfx, component.shootSound.volume, 0.0, component.shootSound.pitch)
+      }
+
       val originalDir = (targetPos - shootPos).normalizeOr { return }
       val dir = (originalDir + Vector3(
         (sharedRandom.nextDouble - 0.5) * component.spread.x,
@@ -289,6 +295,8 @@ object TowerSystemImpl {
           val t = rayT + 0.5
           bulletSystem.addHit(shootPos + dir * t, right, 0.1, bulletDuration)
           bulletSystem.addHit(shootPos + dir * t, up, 0.1, bulletDuration)
+
+
         }
       }
 

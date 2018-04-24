@@ -1,5 +1,6 @@
 package game.component
 
+import asset.SoundAsset
 import core._
 import game.system.Entity
 import game.system.rendering._
@@ -77,10 +78,18 @@ class TurretTowerComponent extends Component {
   /** Maximum angle to aim from the neutral */
   var maxAimAngle: DoubleProp.Type = +math.Pi * 2.0
 
+  /** Shoot sound effect */
+  var shootSound: SoundInfoProp.Type = new SoundInfo
+
+  /** Hit sound effect */
+  var hitSound: SoundInfoProp.Type = new SoundInfo
+
   /** Slot */
   var targetIn: SlotInfoProp.Type = new SlotInfo(true, "slot.turret.targetIn", Identifier("targetIn"))
 
   override def dependencies: Iterable[ComponentType] = Some(ModelComponent)
+
+  override def assets = Vector(shootSound.asset).flatten
 
   override def create(entity: Entity): Unit = {
     towerSystem.addComponent(entity, this)
