@@ -75,6 +75,7 @@ object EnemySystemImpl {
 
     var aimPos: Vector3 = Vector3.Zero
     var velocity: Vector3 = Vector3.Zero
+    var smoothVelocity: Vector3 = Vector3.Zero
 
     var attackTime: Double = 0.0
     var didAttack: Boolean = false
@@ -155,7 +156,7 @@ final class EnemySystemImpl extends EnemySystem {
     val radiusSq = radius * radius
     enemiesActive.iterator
       .filter(_.aimPos.distanceSquaredTo(position) <= radiusSq)
-      .map(e => EnemyTarget(e.entity, e.aimPos, e.velocity))
+      .map(e => EnemyTarget(e.entity, e.aimPos, e.smoothVelocity))
   }
 
   def removeBlocker(blocker: Blocker): Unit = {
@@ -294,6 +295,8 @@ final class EnemySystemImpl extends EnemySystem {
         }
 
       }
+
+      enemy.smoothVelocity = Vector3.lerp(enemy.velocity, enemy.smoothVelocity, powDt(0.95, dt))
 
       val maxSpeed = enemy.component.rotateSpeedLinear * dt
       enemy.rotationAngle += (enemy.targetRotation - enemy.rotationAngle) * powDt(enemy.component.rotateSpeedExponential, dt)
