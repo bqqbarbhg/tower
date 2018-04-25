@@ -359,6 +359,7 @@ class PlayState(val startPoint: StartPoint) extends GameState {
 
     if (pauseMenu.RetryButton.input.clicked) {
       finished = true
+      saveGame()
       PlayState.preloadSave(Some(campaign.getShallowUnsafe)) match {
         case Some(info) =>
           val start = StartLastSave(info)

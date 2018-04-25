@@ -387,11 +387,17 @@ object TowerSystemImpl {
     val slotOutputA = new Slot(entity, component.outputA)
     val slotOutputB = new Slot(entity, component.outputB)
 
+    var sendToA: Boolean = false
+
     override val slots: Array[Slot] = Array(
       slotInput,
       slotOutputA,
       slotOutputB,
     )
+
+    override def reset(): Unit = {
+      sendToA = false
+    }
 
     override def update(dt: Double): Unit = {
 
@@ -400,11 +406,13 @@ object TowerSystemImpl {
         case msg =>
 
           if (slotOutputA.isEmpty && slotOutputB.isEmpty) {
-            if (sharedRandom.nextBoolean()) {
+            if (sendToA) {
               slotOutputA.sendQueued(msg)
             } else {
               slotOutputB.sendQueued(msg)
             }
+
+            sendToA = !sendToA
           } else if (slotOutputA.isEmpty) {
             slotOutputA.sendQueued(msg)
           } else if (slotOutputB.isEmpty) {
