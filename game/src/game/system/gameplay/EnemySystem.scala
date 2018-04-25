@@ -17,7 +17,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 object EnemySystem {
-  case class EnemyTarget(entity: Entity, position: Vector3, velocity: Vector3)
+  case class EnemyTarget(entity: Entity, position: Vector3, velocity: Vector3, offset: Vector3)
 }
 
 sealed trait EnemySystem extends EntityDeleteListener {
@@ -156,7 +156,7 @@ final class EnemySystemImpl extends EnemySystem {
     val radiusSq = radius * radius
     enemiesActive.iterator
       .filter(_.aimPos.distanceSquaredTo(position) <= radiusSq)
-      .map(e => EnemyTarget(e.entity, e.aimPos, e.smoothVelocity))
+      .map(e => EnemyTarget(e.entity, e.aimPos, e.smoothVelocity, e.component.aimPosition))
   }
 
   def removeBlocker(blocker: Blocker): Unit = {
@@ -296,7 +296,7 @@ final class EnemySystemImpl extends EnemySystem {
 
       }
 
-      enemy.smoothVelocity = Vector3.lerp(enemy.velocity, enemy.smoothVelocity, powDt(0.95, dt))
+      enemy.smoothVelocity = Vector3.lerp(enemy.velocity, enemy.smoothVelocity, powDt(0.8, dt))
 
       val maxSpeed = enemy.component.rotateSpeedLinear * dt
       enemy.rotationAngle += (enemy.targetRotation - enemy.rotationAngle) * powDt(enemy.component.rotateSpeedExponential, dt)

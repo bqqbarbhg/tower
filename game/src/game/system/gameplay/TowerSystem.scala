@@ -29,9 +29,9 @@ object TowerSystem {
   abstract class Message
 
   case object MessageNone extends Message
-  case class MessageTarget(position: Vector3, velocity: Vector3, time: Double) extends Message {
+  case class MessageTarget(target: Entity, offset: Vector3, time: Double) extends Message {
 
-    def positionAt(currentTime: Double): Vector3 = position + velocity * (currentTime - time)
+    def position: Vector3 = target.transformPoint(offset)
 
   }
 
@@ -181,7 +181,7 @@ object TowerSystemImpl {
 
       slotTargetIn.peek match {
         case m: MessageTarget =>
-          val worldPos = m.positionAt(time)
+          val worldPos = m.position
           val pos = entity.inverseTransformPoint(worldPos)
           targetTime = m.time
           targetAngle = math.atan2(-pos.x, -pos.z)
@@ -347,7 +347,7 @@ object TowerSystemImpl {
 
             val delta = math.abs(wrapAngle(angle - enemyAngle))
             if (delta <= dt * 4.0 + 0.05) {
-              val msg = MessageTarget(target.position, target.velocity, towerSystem.time)
+              val msg = MessageTarget(target.entity, target.offset, towerSystem.time)
               slotTargetOut.sendQueued(msg)
               towerSystem.addTargetMessage(msg)
               return
@@ -753,7 +753,7 @@ final class TowerSystemImpl extends TowerSystem {
         visibleTargetVisuals.trimEnd(1)
       } else {
 
-        val pos = vis.msg.positionAt(timeImpl)
+        val pos = vis.msg.position
         val projected = viewProjection.projectPoint(pos)
         val x = (projected.x + 1.0) * 0.5 * globalRenderSystem.screenWidth
         val y = (1.0 - (projected.y + 1.0) * 0.5) * globalRenderSystem.screenHeight

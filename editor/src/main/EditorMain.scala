@@ -7,6 +7,7 @@ import render._
 import core._
 import asset.AssetLoader
 import game.state._
+import game.system.gameplay._
 import platform.AppWindow
 import io.content._
 import ui.Layout
@@ -198,6 +199,9 @@ object EditorMain extends App {
       }
       if (AppWindow.keyEvents.exists(e => e.down == true && e.control && e.key == 'U')) {
         Layout.debug = !Layout.debug
+      }
+      if (AppWindow.keyEvents.exists(e => e.down == true && e.control && e.key == 'J')) {
+        enemySpawnSystem.advanceRound()
       }
     }
 
