@@ -5,6 +5,7 @@ import ui.Sprite.SpriteMap
 
 import collection.mutable.ArrayBuffer
 import scala.collection.mutable
+import scala.collection.immutable
 import scala.reflect.ClassTag
 import io.content.Package
 import locale.Locale
@@ -14,7 +15,7 @@ object AssetLoader {
   private val namedAssets = new mutable.HashMap[Identifier, LoadableAsset]()
   private val atlases = new ArrayBuffer[AtlasAsset]()
 
-  def add(asset: LoadableAsset): Unit = {
+  def add(asset: LoadableAsset): Unit = this.synchronized {
     assets += asset
 
     asset match {
@@ -23,7 +24,7 @@ object AssetLoader {
     }
   }
 
-  def getOrAdd[T <: LoadableAsset : ClassTag](name: Identifier, ctor: => T): T = {
+  def getOrAdd[T <: LoadableAsset : ClassTag](name: Identifier, ctor: => T): T = this.synchronized {
     namedAssets.getOrElseUpdate(name, {
       val asset = ctor
       namedAssets(name) = asset
@@ -31,7 +32,7 @@ object AssetLoader {
     }).asInstanceOf[T]
   }
 
-  def preloadAtlases(): Unit = {
+  def preloadAtlases(): Unit = this.synchronized {
     val atlasFiles = Package.get.list("atlas").filter(_.name.endsWith(".s2at"))
     for (atlasFile <- atlasFiles) {
       AtlasAsset(atlasFile.name)
@@ -43,7 +44,7 @@ object AssetLoader {
     }
   }
 
-  def reloadEverything(): Unit = {
+  def reloadEverything(): Unit = this.synchronized {
     val preloaded = assets.toSeq.filter(_.isPreloaded)
     val loaded = assets.toSeq.filter(_.isLoaded)
 
@@ -64,19 +65,26 @@ object AssetLoader {
     }
   }
 
-  def unloadEverything(): Unit = {
+  def unloadEverything(): Unit = this.synchronized {
     for (asset <- assets) {
       asset.unload()
     }
   }
 
-  def startLoading(): ArrayBuffer[LoadableAsset] = {
-    // Queue load on all referenced assets (may reference new assets)
-    for (asset <- assets) {
-      if (asset.isReferenced) {
-        asset.queueLoad()
+  def startLoading(): ArrayBuffer[LoadableAsset] = this.synchronized {
+
+    // Queue load on all referenced assets. Since the preload() phase may
+    // generate new assets we may need to go over all the assets multiple
+    // times.
+    var immutableAssets: immutable.Set[LoadableAsset] = null
+    do {
+      immutableAssets = assets.toSet
+      for (asset <- assets) {
+        if (asset.isReferenced) {
+          asset.queueLoad()
+        }
       }
-    }
+    } while (immutableAssets.size != assets.size)
 
     val queuedLoads = new ArrayBuffer[LoadableAsset]()
     val currentlyLoading = assets.filter(_.isLoading)

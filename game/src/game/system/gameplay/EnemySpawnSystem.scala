@@ -62,6 +62,14 @@ final class EnemySpawnSystemImpl extends EnemySpawnSystem {
   }
 
   override def advanceRound(): Unit = {
+
+    for (roundAsset <- rounds.lift(ps.roundIndex)) {
+      val round = roundAsset.get
+      for (roundC <- round.find(RoundComponent)) {
+        buildSystem.addMoney(roundC.rewardMoney)
+      }
+    }
+
     ps.roundIndex += 1
   }
 

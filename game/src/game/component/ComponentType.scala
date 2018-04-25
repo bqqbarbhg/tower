@@ -12,7 +12,6 @@ object ComponentType {
     EnemyTargetComponent,
     EnemyBlockerComponent,
     LightProbeComponent,
-    EnemySpawnComponent,
     GridBlockComponent,
 
     TurretTowerComponent,
@@ -29,6 +28,8 @@ object ComponentType {
 
     CampaignComponent,
     ItemComponent,
+    RoundComponent,
+    EnemySpawnComponent,
   )
 
 }

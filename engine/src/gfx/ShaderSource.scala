@@ -34,12 +34,15 @@ object ShaderSource {
   }
 
   val NoChunks = Array[SourceChunk]()
+
+  case class ShaderExtension(name: String, behavior: String)
 }
 
 class ShaderSource(val filename: Identifier) {
 
   var imports = Array[ShaderSourceAsset]()
   var sources = Array[String]()
+var extensions = Array[ShaderExtension]()
   var sourceBaseLines = Array[Int]()
   private var chunkRefs = Array[ChunkRef]()
 
@@ -55,6 +58,21 @@ class ShaderSource(val filename: Identifier) {
       }
   })
 
+  private def collectExtensions(set: mutable.HashSet[ShaderExtension]): Unit = {
+    set ++= extensions
+
+    chunkRefs.collect {
+      case ChunkRefImport(index) =>
+        imports(index).get.collectExtensions(set)
+    }
+  }
+
+  def allExtensions: Seq[ShaderExtension] = {
+    val set = new mutable.HashSet[ShaderExtension]()
+    collectExtensions(set)
+    set.toSeq.sortBy(e => (e.behavior, e.name))
+  }
+
   def load(buffer: ByteBuffer): Unit = {
     // @Deserialize(.s2sh)
 
@@ -65,6 +83,7 @@ class ShaderSource(val filename: Identifier) {
     val numChunks = buffer.getInt()
     val numImports = buffer.getInt()
     val numSources = buffer.getInt()
+    val numExtensions = buffer.getInt()
 
     sources = new Array[String](numSources)
     sourceBaseLines = new Array[Int](numSources)
@@ -74,6 +93,13 @@ class ShaderSource(val filename: Identifier) {
       sources(i) = buffer.getString()
       sourceBaseLines(i) = buffer.getInt()
     }
+
+    extensions = Array.fill(numExtensions) {
+      val name = buffer.getString()
+      val behavior = buffer.getString()
+      ShaderExtension(name, behavior)
+    }
+
     chunkRefs = Array.fill(numChunks) {
       buffer.getMagic() match {
         case ".inc" => ChunkRefImport(buffer.getInt())

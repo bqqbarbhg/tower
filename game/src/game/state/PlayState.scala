@@ -212,6 +212,7 @@ class PlayState(val startPoint: StartPoint) extends GameState {
         loadGame()
       case _ =>
         enemySpawnSystem.setGameSeed(System.nanoTime.toInt)
+        buildSystem.addMoney(campaignComponent.startMoney)
     }
 
     directionalLightSystem.setLight(Vector3(0.25, 0.75, -0.25).normalize, Vector3.One * 1.0)
@@ -356,7 +357,7 @@ class PlayState(val startPoint: StartPoint) extends GameState {
       pauseMenu.isOpen = false
     }
 
-    if (pauseMenu.RetryButton.input.clicked && pauseMenu.gameOver) {
+    if (pauseMenu.RetryButton.input.clicked) {
       finished = true
       PlayState.preloadSave(Some(campaign.getShallowUnsafe)) match {
         case Some(info) =>

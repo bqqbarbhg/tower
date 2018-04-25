@@ -74,6 +74,9 @@ sealed trait BuildSystem extends EntityDeleteListener {
   /** Render the in-game overlay GUI elements */
   def renderIngameGui(viewProjection: Matrix4): Unit
 
+  /** Add currency that the player can use to build more stuff */
+  def addMoney(amount: Int): Unit
+
   /** Release resources used by the system */
   def unload(): Unit
 
@@ -177,7 +180,7 @@ object BuildSystemImpl {
     override def propertySet: PropertySet = PersistentState.propertySet
 
     /** Current money balance */
-    var currentMoney: IntProp.Type = 150
+    var currentMoney: IntProp.Type = 0
 
   }
 
@@ -434,6 +437,8 @@ final class BuildSystemImpl extends BuildSystem {
 
         if (clicked) {
           selectedTower = Some(closest.entity)
+          activeSlot = None
+          activeHudSlot = None
         }
         hoveredTower = Some(closest.entity)
       }
@@ -724,6 +729,7 @@ final class BuildSystemImpl extends BuildSystem {
             activeHudSlot = None
 
           case None =>
+            selectedTower = None
             activeHudSlot = Some(clickedSlot)
             tutorialSystem.progress(TutorialSystem.StartBuildCable, 1.0)
         }
@@ -874,6 +880,10 @@ final class BuildSystemImpl extends BuildSystem {
     sb.flush()
 
     sb.worldViewProjection = prevWvp
+  }
+
+  override def addMoney(amount: Int): Unit = {
+    persistent.currentMoney += amount
   }
 
   override def unload(): Unit = {

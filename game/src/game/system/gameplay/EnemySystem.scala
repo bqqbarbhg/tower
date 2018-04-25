@@ -257,7 +257,18 @@ final class EnemySystemImpl extends EnemySystem {
 
             val dir = (target - pos).normalizeOrZero
             val dir3D = Vector3(dir.x, 0.0, dir.y)
-            val vel = dir3D * 5.0
+            var vel = dir3D * enemy.component.moveSpeed
+
+            // Horrible O(n^2) implementation of this :(
+            for (other <- enemiesActive if other ne enemy) {
+              val maxDist = enemy.component.pushRadius + other.component.pushRadius
+
+              val distSq = other.entity.position.distanceSquaredTo(enemy.entity.position)
+              if (distSq < maxDist * maxDist) {
+                val enemyDir = (enemy.entity.position - other.entity.position).copy(y = 0.0)
+                vel += enemyDir.normalizeOrZero / (1.0 + distSq * 0.1) * 4.0
+              }
+            }
 
             enemy.velocity = vel
             enemy.entity.position += vel * dt

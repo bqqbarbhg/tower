@@ -8,6 +8,7 @@ import asset.AssetBundle
 import ui.Canvas._
 import locale.LocaleString._
 import ui.InputSet.InputArea
+import game.system.gameplay._
 
 object PauseMenu {
 
@@ -64,6 +65,8 @@ class PauseMenu(val inputs: InputSet, val canvas: Canvas) {
       Seq(RetryButton, ReturnToMenuButton)
     else if (gameOver && gameWon)
       Seq(ReturnToMenuButton)
+    else if (!pauseSystem.paused)
+      Seq(ContinueButton, RetryButton, ReturnToMenuButton)
     else
       Seq(ContinueButton, ReturnToMenuButton)
 

@@ -8,6 +8,7 @@ import scala.collection.mutable.ArrayBuffer
 object PreprocessShader {
 
   val PragmaImport = """^\s*#pragma\s+import\s*"([^"]*)".*$""".r
+  val PragmaExtension = """^\s*#pragma\s+extension\s*(\w+)\s*:\s*(\w+)\s*$""".r
 
   def preprocessShader(shader: Shader, config: Config.Res.Shader): ProcessedShader = {
     val result = new ProcessedShader()
@@ -34,6 +35,8 @@ object PreprocessShader {
         case PragmaImport(filename) =>
           flushChunk()
           result.chunks += new ChunkImport(resolveImportFilename(filename))
+        case PragmaExtension(name, behavior) =>
+          result.extensions += Extension(name, behavior)
         case normalLine =>
           if (chunkLines.isEmpty) chunkFirstLine = index + 1
           chunkLines += normalLine

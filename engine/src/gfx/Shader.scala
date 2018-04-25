@@ -6,6 +6,7 @@ import core._
 import render._
 import util.BufferUtils._
 import Shader._
+import gfx.ShaderSource.ShaderExtension
 import task.Task
 import io.content.Package
 import org.lwjgl.system.MemoryUtil
@@ -105,12 +106,19 @@ object Shader {
 
     // TODO: Generate less shaders using separable shader objects
 
+    val vertExt = vertSrc.allExtensions
+    val fragExt = fragSrc.allExtensions
+
     /** Generate the source for a shader permutation */
-    def generateShaderPermutationPrelude(mask: Int, values: Seq[Int]): SourceChunk = {
+    def generateShaderPermutationPrelude(mask: Int, values: Seq[Int], extensions: Seq[ShaderExtension]): SourceChunk = {
       val builder = new mutable.StringBuilder()
 
       // General shader header
       builder ++= "#version 330\n"
+
+      for (ext <- extensions) {
+        builder ++= s"#extension ${ext.name} : ${ext.behavior}\n"
+      }
 
       // Uniform block macros
       if (render.opengl.OptsGl.useUniformBlocks) {
@@ -161,8 +169,8 @@ object Shader {
     /** Compile a permutation shader program, which consists of vertex and fragment shaders */
     def compilePermutation(values: Seq[Int]): Option[ShaderProgram] = {
       try {
-        val vertGen = generateShaderPermutationPrelude(MaskVert, values)
-        val fragGen = generateShaderPermutationPrelude(MaskFrag, values)
+        val vertGen = generateShaderPermutationPrelude(MaskVert, values, vertExt)
+        val fragGen = generateShaderPermutationPrelude(MaskFrag, values, fragExt)
 
         val vertChunks = vertGen +: vertSrc.chunks
         val fragChunks = fragGen +: fragSrc.chunks

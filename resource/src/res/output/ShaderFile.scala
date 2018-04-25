@@ -27,6 +27,7 @@ object ShaderFile {
     buffer.putInt(shader.chunks.length)
     buffer.putInt(imports.length)
     buffer.putInt(sources.length)
+    buffer.putInt(shader.extensions.length)
 
     for (chunk <- imports) {
       buffer.putIdentifier(chunk.filename)
@@ -34,6 +35,10 @@ object ShaderFile {
     for (chunk <- sources) {
       buffer.putString(chunk.source)
       buffer.putInt(chunk.baseLine)
+    }
+    for (ext <- shader.extensions) {
+      buffer.putString(ext.name)
+      buffer.putString(ext.behavior)
     }
 
     for (chunk <- shader.chunks) {

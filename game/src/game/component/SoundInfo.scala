@@ -53,6 +53,9 @@ class SoundInfo extends PropertyContainer {
   /** How fast does the volume drop to a quarter of the original */
   var attenuation: DoubleProp.Type = 60.0
 
+  /** How much randomness to apply to the pitch */
+  var pitchVariation: DoubleProp.Type = 0.0
+
   /** Actual audio channel enum to use */
   def audioChannel: AudioSystem.AudioChannel.AudioChannel = getAudioChannel(channel)
 

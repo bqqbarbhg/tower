@@ -53,6 +53,12 @@ class EnemyComponent extends Component {
   /** Amount to rotate towards target linearly */
   var rotateSpeedLinear: DoubleProp.Type = 0.1
 
+  /** How fast do the enemies move */
+  var moveSpeed: DoubleProp.Type = 5.0
+
+  /** How far away to start pushing other enemies away */
+  var pushRadius: DoubleProp.Type = 3.0
+
   /** Sound when defeated */
   var dieSound: SoundInfoProp.Type = new SoundInfo
 

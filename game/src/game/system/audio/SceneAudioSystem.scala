@@ -50,10 +50,15 @@ final class SceneAudioSystemImpl extends SceneAudioSystem {
   override def play(position: Vector3, soundInfo: SoundInfo): Unit = {
     if (soundInfo.assets.isEmpty) return
 
+    val pitch = if (soundInfo.pitchVariation >= 0.001)
+      soundInfo.pitch + soundInfo.pitchVariation * (random.nextDouble() - 0.5) * 2.0
+    else
+      soundInfo.pitch
+
     val index = random.nextInt(soundInfo.assets.length)
     val asset = soundInfo.assets(index)
     val chan = soundInfo.audioChannel
-    val ref = audioSystem.play(asset, chan, soundInfo.volume, 0.0, soundInfo.pitch)
+    val ref = audioSystem.play(asset, chan, soundInfo.volume, 0.0, pitch)
     val inst = new SceneSoundInstance(position, ref, soundInfo, ref.instance.volume)
     updateSoundAttenuation(inst)
   }
