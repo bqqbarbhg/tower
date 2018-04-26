@@ -387,8 +387,91 @@ data they read or write.
 
 Even though named UI for user interface this package contains all the 2D base
 2D rendering functionality of the engine. The main component being `SpriteBatch`
-which can render 2D images efficiently. Also contains a primitive mouse-based
-user interface input implementation `InputSet`.
+which can render 2D images efficiently.
+
+In addition to the 2D rendering API it contains higher-level `Canvas`, `InputSet`,
+and `Layout` APIs that can be used for building user interfaces. These should
+probably be split off into their own package (preferably by moving the 2D rendering
+functionality somewhere else)
+
+#### main
+
+The "entrypoint" of the engine defining setup/teardown functionality.
+
+### game
+
+#### game.component
+
+Contains classes for components that can be configured from entity specification
+*.es.toml* files. Explained in more depth in the section entity-component-system.
+
+#### game.lighting
+
+Alternative light-probe implementations. Originally the game used `AmbientCube`,
+but at some point transitioned to using second order spherical harmonics with
+`SphericalHarmonics2`. However with real content the spherical harmonics ringing
+artifacts were unbearable and now `AmbientCube` is used again.
+
+#### game.menu
+
+Some menus used in the game. Most importantly contains the sub-package `gui`
+which defines a set of re-usable half-immediate half-retained mode GUI elements.
+
+#### game.options
+
+Contains deserialized options classes for user preferences.
+
+#### game.shader
+
+A collection of all the shaders and uniform blocks used by the game.
+
+#### game.state
+
+High-level game state implementations, such as main menu, loading screen, and
+in-game.
+
+#### game.system
+
+Almost everything above is just utilities, all the actual game and engine logic
+is contained in this package. See the section entity-component-system for more
+information on the high-level structure of systems. The root `system` pacakge
+contains the implementation for the vital `Entity` class which is used to bridge
+all the systems together.
+
+#### game.system.audio
+
+* AudioSystem: Core audio playback: Playing sounds either by fire-and-forget or by controlled loops. Manages the background audio thread and `SoundInstance` parameter synchronization between threads
+* SceneAudioSystem: Implements a 3D positional audio system modifying the volume and pan of sounds in space
+
+#### game.system.gameplay
+
+* BuildSystem: Manages the user interface and logic of player building towers
+* BulletSystem: Bullet effects, should have been replaced with a general effect system
+* CableSystem: Routes the cables between the towers
+* ConnectionSystem: Handles the gameplay side of passing messages in the cables
+* EnemySpawnSystem: Spawns rounds of enemies
+* EnemySystem: Updates the spawned enemy instances and drives a very basic AI
+* PathfindSystem: Used for enemy pathfinding
+* PauseSystem: High-level build-mode/play-mode implementation
+* SaveStateSystem: Handles persistent state about towers and cables
+* TowerSystem: Contains implementation of _all_ the towers, should have been split more granularly
+* TutorialSystem: Implentation of the tutorial
+
+#### game.system.rendering
+
+* AmbientPointLightSystem: Point lights that are applied to ambient light probes
+* AmbientSystem: Ambient light probe manager
+* AnimationSystem: Drives the skinned model animations
+* CableRenderSystem: Generates the cable meshes
+* CullingSystem: Handles frustum culling so only entities in the view need to be processed by certain systems
+* DebrisSystem: Handles broken tower effect debris
+* DirectionalLightSystem: Contains global sunlight parameters and shadowmap
+* ForwardRenderingSystem: Generates draw-calls from mesh instances for the forward rendering pass
+* GlobalRenderSystem: Manages global render targets
+* GroundSystem: Generates the ground meshes and manages ground light probes
+* ModelSystem: Updates model transformation matrices and collects instanced visible meshes
+* PointLightSystem: Non-ambient point-light implementation (never used)
+* ShadowRenderingSystem: Generates draw-calls for the shadow map rendering phase
 
 ## Asset pipeline
 
