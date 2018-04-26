@@ -207,6 +207,15 @@ the asset configuration. Asset configuration `.ac.toml` files are parsed using
 `util.Toml` and `util.SimpleSerialization` to these classes. The deserialized
 configuration classes are then passed onwards to the relevant processes.
 
+* AssimpImporter: Used for *.fbx* model files using [Assimp](http://www.assimp.org/)
+* EntityImporter: Used for *.es.toml* entity specification files using `util.Toml`
+* GlslImporter: Used for *.glsl* shader files, just reads the source file text
+* LocaleImporter: Used for *.lc.toml* locale files using `util.Toml`
+* StbImageImporter: Used for *.png* image files using [stb\_image](https://github.com/nothings/stb)
+* StbTruetypeImporter: Used for *.ttf* font files using [stb\_truetype](https://github.com/nothings/stb)
+* StbVorbisImporter: Used for *.ogg* audio files using [stb\_vorbis](https://github.com/nothings/stb)
+* WavImporter: Used for *.wav* audio files using custom wave header parsing
+
 #### res.process
 
 The actual processing steps, they either operate in-place on some intermediate
@@ -216,10 +225,39 @@ the processing time. Just reading the filenames and comments on the objects shou
 give some perspective on the transformations the resource processing applies to
 the assets.
 
+* AnimationCleanup: Flip quaternions so the interpolation distance is minimized
+* BakeFont: Render truetype font glyphs into a bitmap
+* CompressDxt: Convert textures to GPU-friendly format using [stb\_dxt](https://github.com/nothings/stb)
+* CreateGpuMesh: Convert intermediate mesh into a GPU-friendly vertex stream
+* CreateTexture: Convert intermediate image to GPU-friendly textures (compressed or not)
+* CropSprite: Crop the transparent area around a sprite
+* FlattenLocale: Transform a hierarchial TOML-based locale into a flat key-value list
+* FlattenModel: Transform a hierarchial node-tree model into a flat list of nodes
+* GenerateAtlas: Layout and draw sprites into a larger image
+* GenerateMipmaps: Generate a [mipmap][wiki-mipmap] chain for an image
+* HyphenateLocale: Add [soft hyphens][wiki-shy] to localization file strings
+* JoinMesh: Join multiple separate meshes into one that can be rendered at once
+* MeshCleanup: Utilities for cleaning up mesh bone influences on vertices
+* OptimizeVertexCache: Re-order mesh vertices into a more GPU-friendly format using [Tom Forsyth's algorithm](https://tomforsyth1000.github.io/papers/fast_vert_cache_opt.html)
+* PatchAnimationProperties: Patch animation configuration properties from a configuration file
+* PatchModelProperties: Patch model configuration properties from a configuration file
+* PcmProcess: Re-sample, flatten and encode [PCM][wiki-pcm] data
+* PremultiplyAlpha: Pre-multiply the color channel with the alpha for better texture filtering and blending
+* PreprocessShader: Apply custom GLSL shader pragmas `#pragma import` and `#pragma extension`
+* ProcessAnimation: Apply lower-level animation processing based on configuration
+* ProcessColorgrade: Crop the color-lookup image from the top-right corner of an image
+* ProcessMesh: Apply lower-level mesh processing based on configuration 
+* ProcessMeshBones: Algorithm for splitting mesh into chunks with a fixed maximum amount of bones
+* ProcessSprite: Apply other sprite processes and split animation frames
+* ReduceAnimationKeyframes: Optimize animations by reducing redundant keyframes
+* ResolveMaterial: Match material texture names to real processed textures
+* SaveDebugImage: Save a *.png* file of an image for debug purposes
+* ScaleModel: Apply a scale to a model
+
 #### res.output
 
 Contains the actual output file serialization steps. Each file here should
-correspond to one `.s2**` output file format with the exception of `MeshFile`
+correspond to one `.s2\*\*` output file format with the exception of `MeshFile`
 which writes both mesh `.s2ms` and mesh part `.s2mp` files. They are mostly
 clean of any processing and should be a simple serialization from some
 intermediate format. These files are the de-facto asset file format specifications.
@@ -990,6 +1028,7 @@ which gives some context to the raw assets.
 [wiki-openexr]: https://en.wikipedia.org/wiki/OpenEXR
 [wiki-hermite-spline]: https://en.wikipedia.org/wiki/Cubic_Hermite_spline
 [wiki-astar]: https://en.wikipedia.org/wiki/A*_search_algorithm
+[wiki-pcm]: https://en.wikipedia.org/wiki/Pulse-code_modulation
 [gh-toml]: https://github.com/toml-lang/toml
 [gh-stb-oversample]: https://github.com/nothings/stb/tree/master/tests/oversample
 [gh-finnish-hyphenator]: https://github.com/vepasto/finnish-hyphenator
