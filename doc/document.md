@@ -257,7 +257,7 @@ the assets.
 #### res.output
 
 Contains the actual output file serialization steps. Each file here should
-correspond to one `.s2\*\*` output file format with the exception of `MeshFile`
+correspond to one `.s2**` output file format with the exception of `MeshFile`
 which writes both mesh `.s2ms` and mesh part `.s2mp` files. They are mostly
 clean of any processing and should be a simple serialization from some
 intermediate format. These files are the de-facto asset file format specifications.
@@ -277,6 +277,118 @@ deserialized version of the `config.toml` file in the asset repository root.
 `Runner` is probably the best entrance to reading to the resource processing code.
 It lists the assets to process, merges configurations, spawns worker threads, and
 most importantly kicks off the import, processing, and output tasks.
+
+### engine
+
+#### asset
+
+Defines different loadable/unloadable asset types. The main class here is
+`LoadableAsset` which defines the lifecycle of an asset and its dependencies.
+Assets are handles to content files that may or may not be loaded. Calling
+`asset.get` will forcibly load the asset in the middle of everything and emits
+a warning. The right way to use assets is to collect them in `AssetBundle`s and
+reference them before entering a loading screen, which will display a loading
+animation until all referenced assets are loaded. The assets are also capable
+of being hot-loaded so that external changes can be propagated into the game
+without restarting the program.
+
+#### audio
+
+The core audio functionality. `Sound` represents one audio asset, `SoundInstance`
+is as the name implies an instance of a sound that has it's own playback
+position and parameters such as volume or pitch. The sub-pacakge `source` contains
+implementations for different sound file formats. `output` contains back-ends
+for the audio output. `effect` defines only one effect `Limiter` which works as
+a dynamic range compressor to keep the final output from cracking on unexpected
+loud noises.
+
+#### core
+
+The engine doesn't add much to the `core` package except a wrapper for LWJGL's
+native memory allocation routines so they can be used in packages that depend
+on `engine` but not LWJGL itself.
+
+#### debug
+
+Implements a resource tracker that can check for leaks. For example if you
+allocate an OpenGL vertex buffer and never free it, `ResourceTracker` will
+complain when closing the game. The tracker captures a call-stack of frames
+where resources are created so when reporting leaks it's very easy to diagnose
+and fix these issues.
+
+#### render
+
+The low-level rendering API. Mostly a wrapper over OpenGL but should be possible
+to port to other backend APIs with relatively little effort. The actual implementation
+is under the sub-package `opengl`.
+
+#### gfx
+
+The high-level rendering API. Contains classes like `Model` and `Texture` that
+can be loaded from asset files.
+
+#### io.content
+
+Contains `Package` which is the virtual file system abstraction used for loading
+content. Supports loading content out of plain folders, content packed into the *.jar*,
+and *.zip* files for mods and patches.
+
+#### io.format
+
+Contains limited implentations writing for TIFF *.tiff* and OpenEXR *.exr* file
+formats. Used for exporting HDR image data for authoring tonemapping images.
+
+#### io.property
+
+The new property system superseding `SimpleSerialization`. The most important
+functionality here is `MacroPropertySet` which is what makes the propeties usable
+in the first place. You can use properties by defining class members as `*Prop.Type`
+instead of plain types and then gathering the properties using a macro:
+
+```scala
+object PersistentState {
+  private val arr = MacroPropertySet.make[PersistentState]()
+  private val propertySet: PropertySet = new PropertySet("EnemySpawnSystem.PersistentState", arr)
+}
+
+class PersistentState extends PropertyContainer {
+  override def propertySet: PropertySet = PersistentState.propertySet
+
+  var gameSeed: IntProp.Type = 0
+  var roundIndex: IntProp.Type = 0
+}
+```
+
+#### io.serialization
+
+Functionality for serializing/deserializing `PropertyContainer`s described above
+into different binary formats. `BinaryWriter` and `BinaryReader` are used for
+save files and `UnstructuredBinaryReader` is used for entity specification assets.
+
+#### locale
+
+Contains localization implementation, pretty much a glorified hash-map loaded
+from a file. Supports expressions in locales such as `Hello {thing}` where
+`{thing}` would be replaced with some other text from the code.
+
+#### platform
+
+Interfacing with the operating system. `AppWindow` manages the GLFW window and
+collects events into more easily processed streams.
+
+#### task
+
+Contains a task-based multithreading implementation. Tasks can be assigned to
+run on different threads (even on main thread) as needed. `Scheduler` implements
+a way of automatically generating dependencies between tasks depending on what
+data they read or write.
+
+#### ui
+
+Even though named UI for user interface this package contains all the 2D base
+2D rendering functionality of the engine. The main component being `SpriteBatch`
+which can render 2D images efficiently. Also contains a primitive mouse-based
+user interface input implementation `InputSet`.
 
 ## Asset pipeline
 

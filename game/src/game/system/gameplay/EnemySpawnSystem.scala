@@ -32,6 +32,7 @@ sealed trait EnemySpawnSystem {
 }
 
 object EnemySpawnSystemImpl {
+
   object PersistentState {
     private val arr = MacroPropertySet.make[PersistentState]()
     private val propertySet: PropertySet = new PropertySet("EnemySpawnSystem.PersistentState", arr)
