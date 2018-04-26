@@ -1,5 +1,16 @@
 # Project document
 
+## Description
+
+This is a tower defence game where turrets can't aim themselves.
+The goal is to guard some kind of crystal in the center of the level by
+building turrets and radars, and then connecting them with cables.
+
+![
+Screenshot of the game.
+Some kind of aliens approach turrets and radars.
+](image/desc-01-screencap.png)&shy;
+
 ## Building
 
 The source code for the project is located in repository [raivios1/tower][gl-tower]
