@@ -119,7 +119,7 @@ as I got fed up with the old systems and made newer ways to do things. As such
 the codebase is quite organic and possibly the youngest legacy codebase I have
 worked with.
 
-## Highlight: Asset pipeline
+## Asset pipeline
 
 The game needs hand-crafted assets, such as sounds, textures, and models.
 They are authored using some content creation tools and exported in exchange
@@ -185,7 +185,7 @@ to a temporary cache directory mirroring the output structure. The processing
 application compares this directory to the source files to determine which files
 need to be reprocessed.
 
-## Highlight: OpenGL options
+## OpenGL options
 
 [OpenGL][about-opengl] is a standardized graphics API that the game uses to
 render all its content. More specifically, the game requires the version 3.3
@@ -379,7 +379,7 @@ There is one exception to the mapping of buffers: If OpenGL compatability mode
 is requested, for example with `--gl-compat`, __everything__ is mapped with
 `glBufferSubData()`, since it's the most foolproof API.
 
-## Highlight: Cable rendering
+## Cable rendering
 
 To get a feeling of the code flow of the engine let's go through an overview
 of how the cables in the game get layouted and rendered.
