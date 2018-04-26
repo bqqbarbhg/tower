@@ -185,7 +185,7 @@ to a temporary cache directory mirroring the output structure. The processing
 application compares this directory to the source files to determine which files
 need to be reprocessed.
 
-## OpenGL options
+## Case study: OpenGL options
 
 [OpenGL][about-opengl] is a standardized graphics API that the game uses to
 render all its content. More specifically, the game requires the version 3.3
@@ -607,6 +607,48 @@ object CableShader extends ShaderAsset("shader/mesh/cable") {
 
 }
 ```
+
+## Testing
+
+When building the game many types of testing were applied.
+
+In games unit testing can be applied in a limited fashion as games contain lots
+of aspects that cannot be automatically tested. Unit tests were used mainly for
+core utilities, such as math primitives, some algorithms, and serialization
+functions. This turned out to be exceptionally helpful on matrices and quaternions
+as it forced me to evaluate and ensure the correct handedness of operations. For
+example `Quaternion.fromAxisAngle(Vector3.Up, 1.0)` should give the same result as
+`Matrix43.rotateY(1.0)` by definition.
+
+During development manual integration test cases were created to test the features
+without having to commit to building a full-sized game yet. The first one `TestScene` started
+as an animated model walking, then background music was added, then text rendering
+and some 2D graphics. The second major one `TestModelSystem` was built when creating
+the system-based architecture of the engine. Finally `TestCableSystem` was used to
+create the physically-based rendering shaders and first revisions of the cable
+layout algorithm. These tests won't run anymore with the data provided in the
+asset repository and require a specialized non-public test-data package.
+
+To ensure that the game works on multiple platforms, compatability testing needed to be
+done. Mainly everything worked acceptably between the systems, but the differing OpenGL
+driver implementations revealed shader compiler errors that were ignored on other systems.
+There were also a few OpenGL driver bugs that had to be worked around on some systems.
+Systems the game has been tested on:
+
+* Windows 10 desktop with NVIDIA GPU: Development machine, everything worked as intended
+* Windows 10 laptop with Intel GPU: Worked OK on low settings
+* Windows 8 laptop with Intel GPU: Worked OK on low settings
+* Windows 8 laptop with NVIDIA GPU: Worked OK on medium settings
+* Windows 8 laptop with ATI GPU: Issues with vertex attribute format packing (fixed)
+* macOS laptop with AMD GPU: Issues with row-major matrices and retina cursor mapping (fixed)
+* Linux laptop with Intel GPU: Issues with MSAA
+* Linux desktop with NVIDIA GPU: Issues with MSAA
+
+In addition to testing the functionality of the game focus testing has been employed
+to test the gameplay and user interface. The cable connecting UI was changed from
+window-based to in-game overlay to make it more understandable for players. The
+tutorial has been extensively tested by many people and it seems to serve it's
+purpose quite well.
 
 ## Post-mortem
 
