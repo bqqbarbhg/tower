@@ -14,7 +14,7 @@ import game.system.rendering.AmbientSystem.Probe
 import gfx.Model
 import platform.AppWindow
 import util.geometry.Aabb
-import util.BinarySearch
+import util.{BinarySearch, Hermite}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer

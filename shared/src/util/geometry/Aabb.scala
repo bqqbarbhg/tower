@@ -12,6 +12,12 @@ object Aabb {
 
 }
 
+/**
+  * An axis-aligned bounding box.
+  *
+  * @param center Center of the box
+  * @param halfSize Distance from the center to the positive corner of the box.
+  */
 final case class Aabb(center: Vector3, halfSize: Vector3) {
 
   def min: Vector3 = center - halfSize

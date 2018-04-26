@@ -11,7 +11,7 @@ import render.VertexSpec._
 import LineBatch._
 import asset.ShaderAsset
 import gfx.Shader.Permutations
-import util.BinarySearch
+import util.{BinarySearch, Hermite}
 
 import scala.collection.mutable.ArrayBuffer
 

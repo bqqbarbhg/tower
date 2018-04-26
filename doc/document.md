@@ -119,6 +119,55 @@ as I got fed up with the old systems and made newer ways to do things. As such
 the codebase is quite organic and possibly the youngest legacy codebase I have
 worked with.
 
+## Program structure
+
+The projects in the game belong to a loose hierarchy depending on how re-usable
+the code is. The project `shared` is just common utilities that could be used
+by about anything. `resource` could be used as a resource processer for a
+completely independent game. The `engine` project
+starts to lay out some more restricting framework, but could still be used to
+build lots of different kinds of 2D and 3D games. `game` contains a lot of game
+specific things intermixed with more general utilities, which could be salvageable
+with some work. The `test` project depends on everything and contains both very
+game-specific parts and general ones. `editor` is simply a launcher that runs the
+`game`, but bundling `resource` to processes attached, the idea was to have a
+separate project for the final release which wouldn't be dependent on `resource`.
+
+### shared
+
+#### core
+
+This package is intended to be imported everywhere and contains utilities that
+are useful and necessary for making games. Most importantly it defines the
+linear algebra classes such as `Vector3` and `Matrix43`. It also contains some
+very useful data structures like `ArrayPool` or `CompactArrayPool`. The package
+object defines some useful functions such as `clamp()` or `wrapAngle()`.
+
+#### io
+
+Base input/output functionality. Most important file here is `Toml.scala` which
+implements an incomplete [TOML][gh-toml] parser used for all sorts of configuration
+files in the engine. The parsed results are mapped to Scala classes using
+`SimpleSerialization` which is also defined in this package.
+
+#### util
+
+Useful utilities that are not as fundamental as the things defined in `core`.
+`SparseGrid` is a nice lightweight spatial partitioning data structure which
+represents space as a hash-map of quantized position to grid cells, supporting
+queries over points and ranges. `BinarySearch` implements `upperBound()` which
+is an extremely useful building block for searching in abstract sorted ranges.
+`AStar` implements a generic version of the [A\*-search algorithm][wiki-astar]
+search algorithm.
+
+#### util.geometry
+
+Geometric primitives and intersections. The basic shapes are `Aabb`, `Sphere`,
+and `Plane`. All the basic shapes support any vs. any intersection tests, eg.
+`Aabb.intersects(Plane)`. Non-basic primitives `Ray` and `Frustum` can be used
+to test intersections and hit distances on basic shapes, but for example frustum
+vs frustum intersection is not supported.
+
 ## Asset pipeline
 
 The game needs hand-crafted assets, such as sounds, textures, and models.

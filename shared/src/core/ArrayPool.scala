@@ -25,8 +25,21 @@ object ArrayPool {
 
 }
 
+/**
+  * ArrayPool is a contiguous array of data that may have `null` holes. When
+  * removing objects from the pool it is replaced with a `null` instead of shifting
+  * other elements. The container also maintains a free-list of holes to fill when
+  * allocating new elements.
+  *
+  * If you don't need total static ordering consider using `CompactArrayPool`
+  */
 final class ArrayPool[T >: Null : ClassTag] extends Iterable[T] {
+
+  /**
+    * Unsafe view into the sparse array, may contains nulls!
+    */
   var sparseData: Array[T] = new Array[T](0)
+
   private var sparseDataSize: Int = 0
 
   private var freeList: Array[Int] = new Array[Int](0)

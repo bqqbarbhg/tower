@@ -21,6 +21,12 @@ object CompactArrayPool {
 
 }
 
+/**
+  * CompactArrayPool is a contiguous array of data where the elements hold their
+  * index to the collection, which allows them to be removed with ease. Removing
+  * elements from the pool may change the ordering of the values as the last
+  * element is moved to fill the hole.
+  */
 class CompactArrayPool[A >: Null <: ElementBase : ClassTag] extends Seq[A] {
   var num: Int = 0
   var arr: Array[A] = new Array[A](0)

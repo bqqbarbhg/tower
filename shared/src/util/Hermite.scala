@@ -1,4 +1,6 @@
-package core
+package util
+
+import core.{UnsafeVector2, Vector2, Vector3}
 
 /**
   * Utilities for performing hermite interpolation.
