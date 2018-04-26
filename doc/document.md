@@ -65,10 +65,10 @@ been better Scala it might have looked something like this:
 
 ```scala
 case class MeshInfo(parentIndex: Int,
-					name: Identifier,
-					resource: Identifier,
-					materialIndex: Int
-					mesh: Mesh)
+          name: Identifier,
+          resource: Identifier,
+          materialIndex: Int
+          mesh: Mesh)
 
 var meshes: Vector[MeshInfo] = Vector[MeshInfo]()
 ```
@@ -539,6 +539,301 @@ to a temporary cache directory mirroring the output structure. The processing
 application compares this directory to the source files to determine which files
 need to be reprocessed.
 
+## Entity-component-system
+
+The game engine code is built using the [entity-component-system][wiki-ecs]
+methodology. This has the benefit of systems that conform to the Unix philosophy:
+Do one thing and do it well. By using separate systems no compromises need to
+be made about data layout, which is useful for performance.
+
+**Entity** by itself is just a handle, in itself it doesn't have any meaning.
+In the purest ECS implementations the concept of entity can just be an integer
+handle. For convenience I decided to allow some minimal data for entities:
+A local transform represented by a position and a rotation and a set of 256
+flags.
+
+**Component** describes an aspect of an entity, such as having some model or
+a bounding box of a specified size. The components are specified in entity
+specification *.es.toml* files, which makes authoring different kinds of entities
+easy.
+
+**System** manages the internal behavior of the aspects of entities. When an
+entity has some component it's added to the relevant system(s) that will manage
+the entity from there.
+
+### Example
+
+To illustrate how these systems interplay let's go through a simplified example
+of rendering a stone model. First we need to create the entity file, let's say
+*stone.es.toml*:
+
+```toml
+# Systems may assume the entity never moves
+static = true
+
+# Component managed by CullingSystem
+[BoundingAabb]
+min.x = -10.0
+min.y = 0
+min.z = -10.0
+
+max.x = 10.0
+max.y = 10.0
+max.z = 10.0
+
+# The entity should be included when querying renderable
+# and shadow casting objects
+mask = "Render Shadow"
+
+# Component manged by ModelSystem 
+[Model]
+asset = "stone.fbx.s2md"
+
+# Make it a little flatter
+scale.y = 0.7
+```
+
+The components are mapped to subclasses of `Component`, source below
+has been simplified for clarity. The `mask` property of the bounding
+box component will be converted from string to integer using a
+context-dependent converter, otherwise the properties are mapped
+one-to-one.
+
+```scala
+class BoundingAabbComponent extends Component {
+  var mask: IntProp.Type = 0
+  var min: Vector3Prop.Type = Vector3.Zero
+  var max: Vector3Prop.Type = Vector3.Zero
+
+  override def create(entity: Entity): Unit = {
+    cullingSystem.addAabb(entity, Aabb.fromMinMax(min, max), mask)
+  }
+}
+
+class ModelComponent extends Component {
+  var asset: IdentifierProp.Type = Identifier.Empty
+  var scale: Vector3Prop.Type = Vector3.One
+
+  override def create(entity: Entity): Unit = {
+    val model = modelSystem.addModel(entity, asset)
+    model.scale = scale
+  }
+}
+```
+
+To instantiate the entity we need to load the `EntityType` which contains a list
+of the components that make it up as well as whether the entity is static and such.
+We can load the stone using an `EntityTypeAsset` which has the benefit of handling
+dependencies loading the stone model for us.
+
+```scala
+// Define the asset, but don't load it yet
+val StoneTypeAsset = EntityTypeAsset("stone.es.toml")
+
+// Getting the result from the asset loads the entity type and the
+// stone model here. In a real game it should be loaded asynchronously.
+val stoneType = StoneTypeAsset.get
+
+// Instantiate the entity using EntitySystem
+val position = Vector3(10.0, 0.0, 5.0)
+val stone = entitySystem.create(stoneType, position)
+```
+
+The `EntitySystem.create()` method is actually extremely simple: It just calls
+`create()` on all the components that belong to the entity type. A cavaeat here
+is that the components may have dependencies between them. This is solved by
+pre-sorting the components to dependency order when importing the entity types.
+
+```scala
+def create(entityType: EntityType, position: Vector3, rotation: Quaternion): Entity = {
+  val entity = new Entity(entityType.static, entityType.name, entityType)
+  entity.position = position
+  entity.rotation = rotation
+  for (comp <- entityType.components) {
+    comp.create(entity)
+  }
+  entity
+}
+```
+
+As defined above the `create()` functions for the two components that make up the
+stone are both quite simple: one calls `cullingSystem.addAabb()`, the other
+`modelSystem.addModel()`. The bounding box creation is quite involved and doesn't
+really matter for this example, but feel free to skim over the source quickly to get
+some feel of how the systems look inside:
+
+```scala
+override def addAabb(entity: Entity, aabb: Aabb, mask: Int): Int = {
+
+  // This line adds the entity to the culling system and
+  // creates an internal representation for the entity.
+  val cullable = getOrAddCullable(entity)
+
+  // If the entity is rotated the bounding box needs to be adjusted
+  val rotatedAabb = if (entity.rotation != Quaternion.Identity) {
+    aabb.rotate(entity.rotation)
+  } else {
+    aabb
+  }
+
+  // Create the shape used for culling
+  cullable.aabb = new ShapeAabb(cullable, rotatedAabb, null, mask,
+                                cullable.aabb, nextSerial())
+
+  // If the entity is _not dynamic_ add the shape directly
+  // to the quad-tree data structure. Dynamic objects are
+  // added separately each frame.
+  if (cullable.dynamicIndex < 0)
+    addShape(cullable.aabb)
+
+  // Return a handle to the shape so it can be removed
+  cullable.aabb.serial
+}
+```
+
+The model system addition is a little bit clearer. Remember how the entities
+had a transform and some flags: Note that the model system tags the entity with
+`Flag_Model`, which will be important later.
+
+```scala
+override def addModel(entity: Entity, asset: ModelAsset): ModelInstance = {
+
+  // Common style inside systems: Internal object have an
+  // embedded linked list to support multiple models per
+  // entity while not adding overhead to the general case
+  // of maximum one model per entity.
+  val next = if (entity.hasFlag(Flag_Model))
+    entityToModel(entity)
+  else
+    null
+
+  // Create the internal model representation
+  val model = new ModelInstanceImpl(entity, asset, next)
+
+  // Insert the model into two data structures: the list
+  // of all models and the map from entities to models
+  model.poolIndex = allModels.add(model)
+  entityToModel(entity) = model
+
+  // IMPORTANT: Set the `Flag_Model` flag for the entity
+  entity.setFlag(Flag_Model)
+
+  // Return the created model instance, note how the return
+  // type is public `ModelInstance` while the actual type
+  // of it is `ModelInstanceImpl`
+  model
+}
+```
+
+So now the stone is in two separate systems which don't seem to know about each
+other. This is the common pitfall in entity-component-system style architectures,
+but I think the flag approach solves the bridging of systems quite nicely.
+When rendering the engine will query `CullingSystem` about which entities are
+currently visible in the viewport.
+
+```scala
+/**
+  * Find all entities with bounding areas tagged with `mask` which intersect
+  * with `frustum`. The results are gathered to `set`.
+  */
+def cullEntities(set: EntitySet, frustum: Frustum, mask: Int): Unit
+```
+
+The implementation of the culling itself is quite complicated and involves
+walking some quad-trees and performing intersection tests. The notable part
+here is the collection the entities are gathered to: `EntitySet`. Unlike a
+generic collection `EntitySet` supports partitioning the entities into flag-specific
+subsets efficiently. As the flags are stored in bit-masks we can do super fast
+bit-operations to assign the entities to the correct buckets. By using this bucketed
+approach we avoid the case of every system needing to check every visible entity
+if it belongs to the system.
+
+```scala
+/**
+  * A set of entities. Does not internally check that entities are unique, but
+  * contractually only contains unique entities.
+  */
+class EntitySet {
+
+  /** Every entity in the set */
+  val all = new ArrayBuffer[Entity]
+
+  /** Entities which contain a specific flag */
+  val flag = Array.fill(256)(new ArrayBuffer[Entity])
+
+  /** Add an entity to a flag-specific list.
+    *
+    * Performance is relative to the number of set flags per entity,
+    * unused flags are practically free.
+    *
+    * @param entity Entity to add
+    * @param mask Flag mask bits
+    * @param base Index of the first mask bit
+    */
+  private def addByFlag(entity: Entity, mask: Long, base: Int): Unit = {
+    var maskBits = mask
+
+    // Is there still set flags in this group?
+    while (maskBits != 0) {
+
+      // Use the CTZ instruction to calculate the index
+      // of the lowest bit
+      val index = java.lang.Long.numberOfTrailingZeros(maskBits)
+
+      // Clear the lowest bit and add the entity to the sub-set
+      maskBits &= (maskBits - 1)
+      flag(base + index) += entity
+    }
+  }
+
+  /** Add an entity to the set.
+    * Note: Never add an entity twice to a set. */
+  def add(entity: Entity): Unit = {
+    all += entity
+    addByFlag(entity, entity.flag0, 0)
+    addByFlag(entity, entity.flag1, 64)
+    addByFlag(entity, entity.flag2, 128)
+    addByFlag(entity, entity.flag3, 192)
+  }
+}
+```
+
+Now the `CullingSystem` has done it's job and collected all the currently visible
+entities. The visible `EntitySet` is passed on to `ModelSystem.collectVisibleModels()`
+which gathers the internal model instances from a set of entities. Note how the
+method doesn't need to check whether the entities have a model or not, since it
+goes through the sub-set of entities with the flag `Flag_Model`.
+
+```scala
+override def collectVisibleModels(visible: EntitySet): ArrayBuffer[ModelInstance] = {
+  val result = new ArrayBuffer[ModelInstance]()
+
+  // Go through each visible model with `Flag_Model`
+  for (entity <- visible.flag(Flag_Model)) {
+
+    // Get the first internal model instance for the entity
+    // and add it to the result
+    var model = entityToModel(entity)
+    do {
+      result += model
+
+      // Loop through the embedded linked list in case the
+      // entity contains more than one model
+      model = model.next
+    } while (model != null)
+
+  }
+
+  result
+}
+```
+
+Now all that needs to be done is to update and render the returned model instances.
+When we're done with the stone we can call `stone.delete()`. The deletion also
+uses an `EntitySet` for deleted entities. A set of deleted entities is given to
+every system once every frame, then the systems can use the same bucketing mechanism
+to remove the internal representation of entities that they are interested in.
+
 ## OpenGL options
 
 [OpenGL][about-opengl] is a standardized graphics API that the game uses to
@@ -604,8 +899,8 @@ To use uniform buffers instead of plain uniforms the shader declarations must be
 wrapped in an UBO block:
 ```glsl
 uniform UBO {
-	mat4 u_World;
-	mat4 u_ViewProj;
+  mat4 u_World;
+  mat4 u_ViewProj;
 };
 ```
 
@@ -653,10 +948,10 @@ are used or not: only the destination where they're written is different.
 ```scala
 // Alternative implementations: Map buffer or allocate "virtual UBO"
 val data = if (hasUboSupport) {
-	glBindBuffer(GL_UNIFORM_BUFFER, buffer)
-	glMapBufferRange(GL_UNIFORM_BUFFER, offset, size, ...)
+  glBindBuffer(GL_UNIFORM_BUFFER, buffer)
+  glMapBufferRange(GL_UNIFORM_BUFFER, offset, size, ...)
 } else {
-	MemoryUtil.memAllocStack(size)
+  MemoryUtil.memAllocStack(size)
 }
 
 // Unified part: Write the uniforms into some UBO
@@ -665,12 +960,12 @@ writeMatrix(data, ...)
 
 // Alternative implementations: Bind UBO or upload uniforms one-by-one
 if (hasUboSupport) {
-	glUnmapBuffer(GL_UNIFORM_BUFFER);
-	glBindBufferRange(GL_UNIFORM_BUFFER, UboBinding, buffer, offset, size)
+  glUnmapBuffer(GL_UNIFORM_BUFFER);
+  glBindBufferRange(GL_UNIFORM_BUFFER, UboBinding, buffer, offset, size)
 } else {
-	glUseProgram(program);
-	glUniformMatrix4fv(locWorld, data.sliced(0, 64))
-	glUniformMatrix4fv(locViewProj, data.sliced(64, 64))
+  glUseProgram(program);
+  glUniformMatrix4fv(locWorld, data.sliced(0, 64))
+  glUniformMatrix4fv(locViewProj, data.sliced(64, 64))
 }
 ```
 
@@ -1224,6 +1519,7 @@ which gives some context to the raw assets.
 [wiki-hermite-spline]: https://en.wikipedia.org/wiki/Cubic_Hermite_spline
 [wiki-astar]: https://en.wikipedia.org/wiki/A*_search_algorithm
 [wiki-pcm]: https://en.wikipedia.org/wiki/Pulse-code_modulation
+[wiki-ecs]: https://en.wikipedia.org/wiki/Entity%E2%80%93component%E2%80%93system
 [gh-toml]: https://github.com/toml-lang/toml
 [gh-stb-oversample]: https://github.com/nothings/stb/tree/master/tests/oversample
 [gh-finnish-hyphenator]: https://github.com/vepasto/finnish-hyphenator

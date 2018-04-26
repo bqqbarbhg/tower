@@ -14,6 +14,15 @@ class EntitySet {
   /** Entities which contain a specific flag */
   val flag = Array.fill(256)(new ArrayBuffer[Entity])
 
+  /** Add an entity to a flag-specific list.
+    *
+    * Performance is relative to the number of set flags per entity,
+    * unused flags are practically free.
+
+    * @param entity Entity to add
+    * @param mask Flag mask bits
+    * @param base Index of the first mask bit
+    */
   private def addByFlag(entity: Entity, mask: Long, base: Int): Unit = {
     var maskBits = mask
     while (maskBits != 0) {

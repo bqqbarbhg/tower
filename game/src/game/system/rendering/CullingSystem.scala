@@ -53,7 +53,7 @@ sealed trait CullingSystem extends EntityDeleteListener {
 
   /**
     * Find all entities with bounding areas tagged with `mask` which intersect
-    * with `frustum`. The resutls are gathered to `set`.
+    * with `frustum`. The results are gathered to `set`.
     */
   def cullEntities(set: EntitySet, frustum: Frustum, mask: Int): Unit
 
