@@ -147,7 +147,7 @@ object defines some useful functions such as `clamp()` or `wrapAngle()`.
 
 Base input/output functionality. Most important file here is `Toml.scala` which
 implements an incomplete [TOML][gh-toml] parser used for all sorts of configuration
-files in the engine. The parsed results are mapped to Scala classes using
+files in the engine. GThe parsed results are mapped to Scala classes using
 `SimpleSerialization` which is also defined in this package.
 
 #### util
@@ -167,6 +167,78 @@ and `Plane`. All the basic shapes support any vs. any intersection tests, eg.
 `Aabb.intersects(Plane)`. Non-basic primitives `Ray` and `Frustum` can be used
 to test intersections and hit distances on basic shapes, but for example frustum
 vs frustum intersection is not supported.
+
+### resource
+
+#### cli
+
+Contains the command line interface for running the resource processer.
+Has been superseded by the `editor` project.
+
+#### io
+
+Input/output utilities needed by the resource processing. Contains `PathUtil`
+which is used to recursively walk through the asset directories.
+
+#### util
+
+Algorithms useful for processing resources. `RectanglePacker` defines an interface
+for rectangle packing algorithms used for font and sprite packing. Turned out that
+[`LightmapRectanglePacker`][lightmap-rect] was good enough for both. `BufferHash`
+is used for caching resource processing results by hashing asset input/output
+files and comparing them to cached values.
+
+#### res.importer
+
+The first stage of processing an asset. Contains importers for different file
+formats, some hand-written some using a library. The file `Importer.scala`
+defines the interface all of the importers use and the mapping between names
+and importer implementations. `ImportFileType.scala` is used to filter the
+relevant configuration properties per asset so that changing an sound config
+doesn't cause the re-processing of texture assets. It also contains processer
+format versions, which can be incremented to force a re-processing of all assets
+of a specific type.
+
+#### res.intermediate
+
+All the intermediate representations of the imported/processed assets. The most
+important file here is `Config.scala` which contains the whole specification for
+the asset configuration. Asset configuration `.ac.toml` files are parsed using
+`util.Toml` and `util.SimpleSerialization` to these classes. The deserialized
+configuration classes are then passed onwards to the relevant processes.
+
+#### res.process
+
+The actual processing steps, they either operate in-place on some intermediate
+asset or map it from one type to another. These attempt to be as-pure-as possible
+functions so that they can be run in parallel for different assets to speed up
+the processing time. Just reading the filenames and comments on the objects should
+give some perspective on the transformations the resource processing applies to
+the assets.
+
+#### res.output
+
+Contains the actual output file serialization steps. Each file here should
+correspond to one `.s2**` output file format with the exception of `MeshFile`
+which writes both mesh `.s2ms` and mesh part `.s2mp` files. They are mostly
+clean of any processing and should be a simple serialization from some
+intermediate format. These files are the de-facto asset file format specifications.
+
+#### res.runner
+
+The engine which runs rest of the asset processing machinery. Contains definitions
+of `AssetCacheFile` and `OutputCacheFile` which are to reduce unnecessary processing
+and output writing respectively. These files are located in the */temp/*-folder with
+extensions `.s2ac` and `.s2oc` and they contain hashes of the relevant files and
+configurations for later comparison. `OutputFileWriter` is a wrapper on top of
+normal file output which checks and maintains the output cache. The idea of the
+output cache is not to wear out SSD:s by not writing files that haven't changed.
+`RunOptions` contains the options used to launc hthe runner and contains the
+deserialized version of the `config.toml` file in the asset repository root.
+
+`Runner` is probably the best entrance to reading to the resource processing code.
+It lists the assets to process, merges configurations, spawns worker threads, and
+most importantly kicks off the import, processing, and output tasks.
 
 ## Asset pipeline
 
@@ -936,3 +1008,4 @@ which gives some context to the raw assets.
 [tiff-transferfunction]: https://www.awaresystems.be/imaging/tiff/tifftags/transferfunction.html
 [gl-tower]: https://version.aalto.fi/gitlab/raivios1/tower
 [gl-tower-data]: https://version.aalto.fi/gitlab/raivios1/tower-data
+[lightmap-rect]: http://blackpawn.com/texts/lightmaps/
